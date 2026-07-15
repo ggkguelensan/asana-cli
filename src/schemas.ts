@@ -21,8 +21,19 @@ export const userSchema = z.looseObject({
 
 export const customFieldSchema = z.looseObject({
   gid: z.string().optional(),
+  name: z.string().optional(),
   display_value: z.unknown().optional(),
   text_value: z.unknown().optional(),
+});
+
+export const resourceReferenceSchema = z.looseObject({
+  gid: z.string(),
+  name: z.string().optional(),
+});
+
+const membershipSchema = z.looseObject({
+  project: resourceReferenceSchema.optional(),
+  section: resourceReferenceSchema.optional(),
 });
 
 export const taskSchema = z.looseObject({
@@ -31,13 +42,22 @@ export const taskSchema = z.looseObject({
   notes: z.string().optional(),
   html_notes: z.string().optional(),
   completed: z.boolean().optional(),
+  completed_at: z.string().nullable().optional(),
   modified_at: z.string().optional(),
+  created_at: z.string().optional(),
   permalink_url: z.string().optional(),
+  due_on: z.string().nullable().optional(),
+  due_at: z.string().nullable().optional(),
+  start_on: z.string().nullable().optional(),
   assignee: z.looseObject({
     gid: z.string().optional(),
     name: z.string().optional(),
   }).nullable().optional(),
   custom_fields: z.array(customFieldSchema).optional(),
+  projects: z.array(resourceReferenceSchema).optional(),
+  memberships: z.array(membershipSchema).optional(),
+  tags: z.array(resourceReferenceSchema).optional(),
+  parent: resourceReferenceSchema.nullable().optional(),
 });
 
 export const storySchema = z.looseObject({
@@ -45,6 +65,11 @@ export const storySchema = z.looseObject({
   type: z.string().optional(),
   resource_subtype: z.string().optional(),
   text: z.string().optional(),
+  html_text: z.string().optional(),
+  created_at: z.string().optional(),
+  created_by: resourceReferenceSchema.nullable().optional(),
+  is_pinned: z.boolean().optional(),
+  is_edited: z.boolean().optional(),
 });
 
 export const taskListEnvelopeSchema = z.looseObject({

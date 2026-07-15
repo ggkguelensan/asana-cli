@@ -7,6 +7,7 @@ import { join } from "node:path";
 import { z } from "zod";
 import { runAgentCommand } from "../src/agent-cli";
 import { parseArgs } from "../src/args";
+import { contentBudgetMetadataSchema } from "../src/content-budget";
 import { taskSchema, storySchema } from "../src/schemas";
 import { createClient } from "../src/sdk";
 import { agentEnvelopeSchema, secureAgentEnvelope } from "../src/security";
@@ -34,6 +35,7 @@ const taskActionResultSchema = z.strictObject({
   data: z.strictObject({
     task: taskSchema,
     content_profile: z.literal("full-untrusted"),
+    content_budget: contentBudgetMetadataSchema,
   }),
 });
 
@@ -49,6 +51,7 @@ const commentsActionResultSchema = z.strictObject({
       task_gid: z.string(),
       all_stories: z.boolean(),
     }),
+    content_budget: contentBudgetMetadataSchema,
   }),
 });
 

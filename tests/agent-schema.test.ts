@@ -124,18 +124,18 @@ describe("agent capability and schema catalog", () => {
     ]);
     expect(AGENT_MANIFEST.actions).toHaveLength(AGENT_ACTION_NAMES.length);
     expect(AGENT_MANIFEST.safe_commands).toEqual([
-      "agent status",
-      "agent my-tasks",
-      "agent get-task",
-      "agent list-comments",
-      "agent search-tasks",
-      "agent find-git",
-      "agent prepare-task-update",
-      "agent prepare-comment",
+      "asana-cli agent status",
+      "asana-cli agent my-tasks",
+      "asana-cli agent get-task",
+      "asana-cli agent list-comments",
+      "asana-cli agent search-tasks",
+      "asana-cli agent find-git",
+      "asana-cli agent prepare-task-update",
+      "asana-cli agent prepare-comment",
     ]);
     expect(Object.keys(AGENT_MANIFEST.guarded_commands)).toEqual([
-      "agent apply-task-update",
-      "agent apply-comment",
+      "asana-cli agent apply-task-update",
+      "asana-cli agent apply-comment",
     ]);
     for (const descriptor of AGENT_MANIFEST.actions) {
       expect(agentActionDescriptorSchema.parse(descriptor)).toMatchObject({
