@@ -1,5 +1,14 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
+import {
+  commentPlanSchema,
+  taskUpdatePlanSchema,
+} from "./agent-action-schemas";
+import {
+  createAgentActionResult,
+  readAgentActionInput,
+  type AgentActionName,
+} from "./agent-contract";
 import { stringFlag, type ParsedArgs } from "./args";
 import {
   addTaskComment,
@@ -15,9 +24,7 @@ import {
   updateTask,
 } from "./asana-commands";
 import { CliError, errorStatus } from "./errors";
-import { readAgentJsonInput } from "./io";
 import {
-  gidSchema,
   parseExternalData,
   storySchema,
   taskListEnvelopeSchema,
@@ -35,106 +42,6 @@ type JsonObject = Record<string, unknown>;
 const agentEnvironmentSchema = z.object({
   ASANA_CLI_AGENT_POLICY: z.enum(["read", "read-write"]).optional().catch(undefined),
 });
-
-const resultLimitSchema = (maximum: number, fallback: number) =>
-  z.number().int().min(1).max(maximum).default(fallback);
-
-const myTasksInputSchema = z.strictObject({
-  workspace_gid: gidSchema.optional(),
-  completed: z.enum(["false", "true", "all"]).default("false"),
-  limit: resultLimitSchema(100, 50),
-  paginate: z.boolean().default(false),
-  max_results: resultLimitSchema(500, 100),
-});
-
-const getTaskInputSchema = z.strictObject({
-  task_gid: gidSchema,
-  include_content: z.boolean().default(false),
-});
-
-const listCommentsInputSchema = z.strictObject({
-  task_gid: gidSchema,
-  limit: resultLimitSchema(100, 50),
-  paginate: z.boolean().default(false),
-  max_results: resultLimitSchema(500, 100),
-});
-
-const searchInputSchema = z.strictObject({
-  query: z.string().trim().min(1).max(500),
-  workspace_gid: gidSchema.optional(),
-  all_assignees: z.boolean().default(false),
-  completed: z.boolean().optional(),
-  max_results: resultLimitSchema(100, 100),
-  field_gid: gidSchema.optional(),
-  contains: z.boolean().default(false),
-});
-
-const customFieldValueSchema = z.union([
-  z.string(),
-  z.number(),
-  z.boolean(),
-  z.null(),
-  z.array(z.string()),
-]);
-
-const customFieldsPatchSchema = z.record(gidSchema, customFieldValueSchema)
-  .refine((fields) => Object.keys(fields).length <= 50, "Too many custom field updates");
-
-const taskPatchSchema = z.strictObject({
-  name: z.string().max(500).optional(),
-  notes: z.string().max(8_000).optional(),
-  completed: z.boolean().optional(),
-  assignee: z.literal("me").optional(),
-  due_on: z.string().nullable().optional(),
-  due_at: z.string().nullable().optional(),
-  start_on: z.string().nullable().optional(),
-  custom_fields: customFieldsPatchSchema.optional(),
-}).refine((patch) => Object.keys(patch).length > 0, "patch must not be empty")
-  .refine((patch) => patch.due_on == null || patch.due_at == null, {
-    message: "patch cannot set due_on and due_at together",
-  });
-
-const prepareTaskUpdateInputSchema = z.strictObject({
-  task_gid: gidSchema,
-  patch: taskPatchSchema,
-});
-
-const planTargetSchema = z.strictObject({
-  gid: gidSchema,
-  name: z.string().optional(),
-  permalink_url: z.string().optional(),
-});
-
-const taskUpdatePlanSchema = z.strictObject({
-  version: z.literal(1),
-  operation: z.literal("task.update"),
-  task_gid: gidSchema,
-  expected_modified_at: z.string().min(1),
-  prepared_by: z.string().min(1),
-  target: planTargetSchema,
-  changes: taskPatchSchema,
-  hash: z.string().regex(/^sha256:[0-9a-f]{64}$/),
-});
-
-const applyTaskUpdateInputSchema = z.strictObject({ plan: taskUpdatePlanSchema });
-
-const prepareCommentInputSchema = z.strictObject({
-  task_gid: gidSchema,
-  text: z.string().min(1).max(8_000),
-});
-
-const commentPlanSchema = z.strictObject({
-  version: z.literal(1),
-  operation: z.literal("task.comment"),
-  task_gid: gidSchema,
-  expected_modified_at: z.string().min(1),
-  prepared_by: z.string().min(1),
-  target: planTargetSchema,
-  text: z.string().min(1).max(8_000),
-  hash: z.string().regex(/^sha256:[0-9a-f]{64}$/),
-});
-
-const applyCommentInputSchema = z.strictObject({ plan: commentPlanSchema });
 
 const ownedTaskSchema = taskSchema.extend({
   modified_at: z.string().min(1),
@@ -205,11 +112,10 @@ async function ownTask(
 }
 
 function agentResult(
-  operation: string,
-  effect: "read" | "prepare" | "write",
+  action: AgentActionName,
   data: unknown,
 ): unknown {
-  return { operation, effect, policy: policy(), data };
+  return createAgentActionResult(action, policy(), data);
 }
 
 function agentStatusUserProjection(user: AsanaUser): JsonObject {
@@ -266,14 +172,14 @@ export async function runAgentCommand(
       userSchema,
       "UsersApi.getUser",
     );
-    return agentResult("auth.status", "read", {
+    return agentResult("status", {
       authenticated: true,
       user: agentStatusUserProjection(user),
     });
   }
 
   if (action === "my-tasks") {
-    const input = await readAgentJsonInput(inputFlag, myTasksInputSchema);
+    const input = await readAgentActionInput(inputFlag, "my-tasks");
     const data = await getMyTasks(client, {
       workspace: input.workspace_gid,
       completed: input.completed,
@@ -282,24 +188,24 @@ export async function runAgentCommand(
       maxResults: input.max_results,
       fields: AGENT_TASK_FIELDS,
     });
-    return agentResult("tasks.mine", "read", data);
+    return agentResult("my-tasks", data);
   }
 
   if (action === "get-task") {
-    const input = await readAgentJsonInput(inputFlag, getTaskInputSchema);
+    const input = await readAgentActionInput(inputFlag, "get-task");
     const data = await getTask(
       client,
       input.task_gid,
       input.include_content ? TASK_FIELDS : AGENT_TASK_FIELDS,
     );
-    return agentResult("task.get", "read", {
+    return agentResult("get-task", {
       task: parseExternalData(data, taskSchema, "TasksApi.getTask"),
       content_profile: input.include_content ? "full-untrusted" : "metadata",
     });
   }
 
   if (action === "list-comments") {
-    const input = await readAgentJsonInput(inputFlag, listCommentsInputSchema);
+    const input = await readAgentActionInput(inputFlag, "list-comments");
     const data = await getTaskComments(client, input.task_gid, {
       limit: input.limit,
       all: input.paginate,
@@ -307,11 +213,11 @@ export async function runAgentCommand(
       fields: STORY_FIELDS,
       allStories: false,
     });
-    return agentResult("task.comments", "read", data);
+    return agentResult("list-comments", data);
   }
 
   if (action === "search-tasks" || action === "find-git") {
-    const input = await readAgentJsonInput(inputFlag, searchInputSchema);
+    const input = await readAgentActionInput(inputFlag, action);
     const mine = !input.all_assignees;
     if (action === "search-tasks") {
       const data = await searchTasks(client, input.query, {
@@ -322,7 +228,7 @@ export async function runAgentCommand(
         all: false,
         maxResults: input.max_results,
       });
-      return agentResult("task.search", "read", data);
+      return agentResult("search-tasks", data);
     }
 
     try {
@@ -355,7 +261,7 @@ export async function runAgentCommand(
           }
         }
       }
-      return agentResult("task.find-git", "read", {
+      return agentResult("find-git", {
         data: [...found.values()],
         meta: {
           query: input.query,
@@ -377,7 +283,7 @@ export async function runAgentCommand(
       const found = taskList(scanned, "TasksApi.getTasks")
         .filter((task) => gitMatches(task, input.query, input.contains))
         .map(agentTaskProjection);
-      return agentResult("task.find-git", "read", {
+      return agentResult("find-git", {
         data: found,
         meta: {
           query: input.query,
@@ -391,7 +297,7 @@ export async function runAgentCommand(
   }
 
   if (action === "prepare-task-update") {
-    const input = await readAgentJsonInput(inputFlag, prepareTaskUpdateInputSchema);
+    const input = await readAgentActionInput(inputFlag, "prepare-task-update");
     ensureNoRegisteredSecret(input.patch, "Update");
     const { user, task } = await ownTask(client, input.task_gid);
     const unsignedPlan = {
@@ -404,14 +310,14 @@ export async function runAgentCommand(
       changes: input.patch,
     };
     const plan = taskUpdatePlanSchema.parse({ ...unsignedPlan, hash: planHash(unsignedPlan) });
-    return agentResult("task.update.prepare", "prepare", {
+    return agentResult("prepare-task-update", {
       plan,
       approval: { required: true, reason: "This plan modifies one Asana task." },
     });
   }
 
   if (action === "apply-task-update") {
-    const { plan } = await readAgentJsonInput(inputFlag, applyTaskUpdateInputSchema);
+    const { plan } = await readAgentActionInput(inputFlag, "apply-task-update");
     verifyPlanHash(plan);
     ensureNoRegisteredSecret(plan.changes, "Update");
     const { user, task } = await ownTask(client, plan.task_gid);
@@ -420,14 +326,13 @@ export async function runAgentCommand(
     }
     const result = await updateTask(client, plan.task_gid, plan.changes, AGENT_TASK_FIELDS);
     return agentResult(
-      "task.update.apply",
-      "write",
+      "apply-task-update",
       parseExternalData(result, taskSchema, "TasksApi.updateTask"),
     );
   }
 
   if (action === "prepare-comment") {
-    const input = await readAgentJsonInput(inputFlag, prepareCommentInputSchema);
+    const input = await readAgentActionInput(inputFlag, "prepare-comment");
     ensureNoRegisteredSecret(input.text, "Comment");
     const { user, task } = await ownTask(client, input.task_gid);
     const unsignedPlan = {
@@ -440,14 +345,14 @@ export async function runAgentCommand(
       text: input.text,
     };
     const plan = commentPlanSchema.parse({ ...unsignedPlan, hash: planHash(unsignedPlan) });
-    return agentResult("task.comment.prepare", "prepare", {
+    return agentResult("prepare-comment", {
       plan,
       approval: { required: true, reason: "This plan posts one Asana comment." },
     });
   }
 
   if (action === "apply-comment") {
-    const { plan } = await readAgentJsonInput(inputFlag, applyCommentInputSchema);
+    const { plan } = await readAgentActionInput(inputFlag, "apply-comment");
     verifyPlanHash(plan);
     ensureNoRegisteredSecret(plan.text, "Comment");
     const { user, task } = await ownTask(client, plan.task_gid);
@@ -456,8 +361,7 @@ export async function runAgentCommand(
     }
     const result = await addTaskComment(client, plan.task_gid, { text: plan.text }, STORY_FIELDS);
     return agentResult(
-      "task.comment.apply",
-      "write",
+      "apply-comment",
       parseExternalData(result, storySchema, "StoriesApi.createStoryForTask"),
     );
   }
