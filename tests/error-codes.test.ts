@@ -60,10 +60,12 @@ describe("stable machine error codes", () => {
       "policy-denied": { default_exit_code: 2 },
       "not-found": { default_exit_code: 4 },
       conflict: { default_exit_code: 4 },
-      "stale-or-expired": { default_exit_code: 4 },
+      stale: { default_exit_code: 4 },
+      expired: { default_exit_code: 4 },
+      "unknown-result": { default_exit_code: 4, retryable: false },
       "storage-locked": { default_exit_code: 4 },
       "storage-invalid": { default_exit_code: 3 },
-      "network-unknown": { default_exit_code: 1 },
+      network: { default_exit_code: 1 },
       "asana-api": { default_exit_code: 4 },
       internal: { default_exit_code: 1 },
       interrupted: { default_exit_code: 130 },
@@ -112,14 +114,14 @@ describe("stable machine error codes", () => {
     expect(denied.payload.result.error.code).toBe("policy-denied");
   });
 
-  test("classifies optimistic task conflicts as stale-or-expired", () => {
+  test("classifies optimistic task conflicts as stale", () => {
     expect(() => assertPreparedTaskIsCurrent("1", "new", "1", "old"))
       .toThrow(CliError);
     try {
       assertPreparedTaskIsCurrent("1", "new", "1", "old");
     } catch (error) {
       const normalized = normalizeError(error);
-      expect(normalized.code).toBe("stale-or-expired");
+      expect(normalized.code).toBe("stale");
       expect(normalized.exitCode).toBe(4);
     }
   });
@@ -168,7 +170,7 @@ describe("stable machine error codes", () => {
     expect(serialized).not.toContain("RAW_REQUEST_MARKER");
   });
 
-  test("classifies storage and network failures structurally", () => {
+  test("classifies storage failures structurally", () => {
     expect(normalizeError({
       name: "OperationJournalError",
       code: "LOCKED",
@@ -179,8 +181,21 @@ describe("stable machine error codes", () => {
       code: "INVALID_RECORD",
       message: "invalid",
     }).code).toBe("storage-invalid");
-    expect(normalizeError({ code: "ECONNRESET", message: "socket closed" }).code)
-      .toBe("network-unknown");
+  });
+
+  test("uses a narrow allowlist for transport failures", () => {
+    expect(normalizeError({ code: "ENOTFOUND", message: "DNS lookup failed" }).code)
+      .toBe("network");
+    expect(normalizeError({
+      cause: { code: "UND_ERR_CONNECT_TIMEOUT" },
+      message: "connect timeout",
+    }).code).toBe("network");
+    expect(normalizeError(new TypeError("Unable to connect. Is the computer able to access the URL?")).code)
+      .toBe("network");
+    expect(normalizeError(new TypeError("fetch failed")).code).toBe("network");
+    expect(normalizeError(new TypeError("Cannot read properties of undefined")).code)
+      .toBe("internal");
+    expect(normalizeError(new Error("Unable to connect")).code).toBe("internal");
   });
 
   test("publishes and validates the real secure wire error schema", async () => {
@@ -192,8 +207,10 @@ describe("stable machine error codes", () => {
       (value) => typeof value === "object" && value !== null,
     );
     const published = z.fromJSONSchema(schemaBoundary.parse(catalog.error_schema));
-    const wire = secureAgentEnvelope(errorPayload(new CliError("validation", "invalid input")));
-    expect(published.safeParse(wire).success).toBe(true);
+    for (const code of ["stale", "expired", "unknown-result", "network"] as const) {
+      const wire = secureAgentEnvelope(errorPayload(new CliError(code, "test error")));
+      expect(published.safeParse(wire).success).toBe(true);
+    }
     expect(catalog.error_schema.$id).toBe(AGENT_ERROR_SCHEMA_ID);
   });
 });

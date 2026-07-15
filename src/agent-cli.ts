@@ -87,7 +87,7 @@ export function assertPreparedTaskIsCurrent(
 ): void {
   if (currentUserGid !== preparedBy || currentModifiedAt !== expectedModifiedAt) {
     throw new CliError(
-      "stale-or-expired",
+      "stale",
       "Task changed after the plan was prepared; prepare a new plan",
     );
   }

@@ -8,10 +8,12 @@ export const cliErrorCodeSchema = z.enum([
   "policy-denied",
   "not-found",
   "conflict",
-  "stale-or-expired",
+  "stale",
+  "expired",
+  "unknown-result",
   "storage-locked",
   "storage-invalid",
-  "network-unknown",
+  "network",
   "asana-api",
   "internal",
   "interrupted",
@@ -35,10 +37,12 @@ export const CLI_ERROR_REGISTRY = z.record(
   "policy-denied": { default_exit_code: 2, retryable: false },
   "not-found": { default_exit_code: 4, retryable: false },
   conflict: { default_exit_code: 4, retryable: false },
-  "stale-or-expired": { default_exit_code: 4, retryable: false },
+  stale: { default_exit_code: 4, retryable: false },
+  expired: { default_exit_code: 4, retryable: false },
+  "unknown-result": { default_exit_code: 4, retryable: false },
   "storage-locked": { default_exit_code: 4, retryable: true },
   "storage-invalid": { default_exit_code: 3, retryable: false },
-  "network-unknown": { default_exit_code: 1, retryable: false },
+  network: { default_exit_code: 1, retryable: true },
   "asana-api": { default_exit_code: 4, retryable: false },
   internal: { default_exit_code: 1, retryable: false },
   interrupted: { default_exit_code: 130, retryable: false },
@@ -135,11 +139,13 @@ const operationErrorCodeMap = z.record(
 });
 
 const networkErrorSchema = z.looseObject({
-  name: z.string().optional(),
-  message: z.string().optional(),
   code: z.string().optional(),
   cause: z.looseObject({ code: z.string().optional() }).optional(),
 });
+
+const transportErrorCodeSchema = z.string().regex(
+  /^(?:ENOTFOUND|ETIMEDOUT|EAI_AGAIN|ECONN[A-Z0-9_]+|ENET[A-Z0-9_]+|EHOST[A-Z0-9_]+|UND_ERR_[A-Z0-9_]+)$/,
+);
 
 function errorShape(error: unknown): z.infer<typeof errorShapeSchema> {
   const parsed = errorShapeSchema.safeParse(error);
@@ -195,11 +201,12 @@ function operationError(error: unknown): CliError | undefined {
 
 function isNetworkError(error: unknown): boolean {
   const parsed = networkErrorSchema.safeParse(error);
-  if (!parsed.success) return false;
-  const signal = [parsed.data.code, parsed.data.cause?.code, parsed.data.name, parsed.data.message]
-    .filter((value): value is string => typeof value === "string")
-    .join(" ");
-  return /(?:fetch|network|socket|timed?\s*out|abort|ECONN|ENET|EAI_AGAIN|DNS)/i.test(signal);
+  if (parsed.success) {
+    const codes = [parsed.data.code, parsed.data.cause?.code];
+    if (codes.some((code) => transportErrorCodeSchema.safeParse(code).success)) return true;
+  }
+  if (!(error instanceof TypeError)) return false;
+  return /^(?:fetch failed|Unable to connect)(?:[.:]|$)/i.test(error.message.trim());
 }
 
 export function normalizeError(error: unknown, pat?: string): CliError {
@@ -223,7 +230,7 @@ export function normalizeError(error: unknown, pat?: string): CliError {
       ...(messages.length ? { errors: messages } : {}),
     });
   }
-  if (isNetworkError(error)) return new CliError("network-unknown", message);
+  if (isNetworkError(error)) return new CliError("network", message);
   return new CliError("internal", message);
 }
 
