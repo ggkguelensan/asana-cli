@@ -1,40 +1,35 @@
 # Operation recovery safety
 
-> **CURRENT STATUS:** AP-008/AP-009 journal wiring is active. Prepare stores an immutable operation;
-> `agent apply --operation-id UUID` claims it with compare-and-set before one remote write. Applied,
-> applying, unknown and expired operations are not dispatched again. AP-010 read-only operation
-> status and reconciliation tooling are not implemented. After `unknown-result`, do not retry: a
-> comment may already have been created. This document describes the safety boundary, not a manual
-> recovery procedure.
+> **CURRENT STATUS:** AP-008/AP-009 journal wiring and AP-010 local operation status are active.
+> `agent apply --operation-id UUID` claims a prepared operation with compare-and-set before one
+> remote write. `asana-cli agent operation status UUID` is local-only, requires no PAT or SDK
+> client, and reports a safe metadata projection. Applied, applying, unknown, and expired
+> operations are never dispatched again. After `unknown-result`, do not retry: a comment may
+> already have been created.
 
-Once wired, the local operation journal is intended to prevent the CLI from casually starting the
-same prepared write twice. It will not provide server-side exactly-once delivery, and it will not be
-an authorization boundary against another process running as the same OS user.
+The local operation journal prevents the CLI from casually starting the same prepared write twice.
+It does not provide server-side exactly-once delivery or an authorization boundary against another
+process running as the same OS user.
 
 ## Read-only status
 
-The future status implementation may read a complete, non-expired atomic snapshot without acquiring
-its mutation lock, including when a stale lock file exists. It must return only operation metadata
-needed for diagnosis; it must not print the task update payload, comment text, credentials, request
-headers, raw HTTP bodies or error stacks.
+`asana-cli agent operation status UUID` reads the complete atomic journal snapshot without acquiring
+the mutation lock, including when a stale lock file exists. It projects only operation ID, action,
+state, task GID, timestamps, result metadata, expiration status, and a diagnostic next-step
+hint. It never prints a task update payload, comment text, credentials, request headers, raw HTTP
+bodies, or error stacks.
 
-That status operation must never change the record, remove a lock, call Asana or choose a recovery
-action. If an expired `prepared` record needs to be persisted as `expired`, that is a mutation and
-must acquire the lock.
+Status never changes a record, removes or reclaims a lock, calls Asana, loads credentials, or chooses
+a recovery action. It reports expiration from the snapshot only; persisting a prepared record as
+`expired` is a mutation and remains confined to the normal locked state transition.
 
 ## Stale lock
 
 A lock left by an interrupted process is ambiguous: the process may have stopped before or after a
-local transition. Future journal wiring must enforce these constraints:
-
-- status inspection of an already complete, non-expired snapshot must remain allowed;
-- compare-and-set, apply, expiry persistence and every other mutation must fail closed with `LOCKED`;
-- wiring must not infer that a lock is safe to reclaim from its age or PID;
-- tooling must not automatically remove, overwrite or retry a stale lock;
-- manual file deletion must not become an implicit recovery procedure.
-
-Recovery tooling must be an explicit, separately reviewed future workflow. The current CLI does not
-provide a supported journal recovery command or manual recovery procedure.
+local transition. Status inspection of a complete non-expired snapshot remains allowed; compare-and-
+set, apply, expiry persistence, and every other mutation fail closed with `LOCKED`. The CLI never
+infers that a lock is safe to reclaim from its age or PID, and it never automatically removes,
+overwrites, or retries a stale lock. Manual file deletion is not a recovery procedure.
 
 ## `applying` and `unknown`
 

@@ -5,11 +5,13 @@ import {
   getTaskInputSchema,
   listCommentsInputSchema,
   myTasksInputSchema,
+  operationStatusInputSchema,
   prepareCommentInputSchema,
   prepareTaskUpdateInputSchema,
   searchInputSchema,
   statusInputSchema,
 } from "./agent-action-schemas";
+import { operationStatusProjectionSchema } from "./operations/status-projection";
 import { AGENT_ERROR_SCHEMA_ID, CliError, errorPayloadSchema } from "./errors";
 import { readAgentJsonInput } from "./io";
 import { jsonObjectSchema, zodIssueSummary } from "./schemas";
@@ -41,21 +43,27 @@ export const agentActionDescriptorSchema = z.strictObject({
   output_schema: z.string().min(1),
   limits: actionLimitsSchema,
   minimum_cli_version: z.string().min(1),
+  command: z.array(z.string().min(1)).min(1).optional(),
 });
 
 type ActionLimits = z.input<typeof actionLimitsSchema>;
 type ActionEffect = z.input<typeof effectSchema>;
 type ApprovalClass = z.input<typeof approvalClassSchema>;
 
-function actionResultSchema<Operation extends string, Effect extends ActionEffect>(
+function actionResultSchema<
+  Operation extends string,
+  Effect extends ActionEffect,
+  DataSchema extends z.ZodType,
+>(
   operation: Operation,
   effect: Effect,
+  dataSchema: DataSchema,
 ) {
   return z.strictObject({
     operation: z.literal(operation),
     effect: z.literal(effect),
     policy: policySchema,
-    data: z.unknown().nonoptional(),
+    data: dataSchema,
   });
 }
 
@@ -65,6 +73,7 @@ type DescriptorSeed = {
   approval: ApprovalClass;
   limits: ActionLimits;
   minimumCliVersion?: string;
+  command?: readonly string[];
 };
 
 function defineAction<
@@ -74,6 +83,7 @@ function defineAction<
   action: Action,
   descriptor: DescriptorSeed,
   inputSchema: InputSchema,
+  outputDataSchema: z.ZodType = z.unknown().nonoptional(),
 ) {
   const inputSchemaId = `asana-cli.agent.input.${action}.v${AGENT_PROTOCOL_VERSION}`;
   const outputSchemaId = `asana-cli.agent.output.${action}.v${AGENT_PROTOCOL_VERSION}`;
@@ -87,10 +97,12 @@ function defineAction<
     output_schema: outputSchemaId,
     minimum_cli_version:
       descriptor.minimumCliVersion ?? AGENT_ACTION_MINIMUM_CLI_VERSION,
+    ...(descriptor.command === undefined ? {} : { command: [...descriptor.command] }),
   });
   const resultSchema = actionResultSchema(
     descriptor.operation,
     descriptor.effect,
+    outputDataSchema,
   );
   return {
     descriptor: { ...parsedDescriptor, action },
@@ -111,6 +123,19 @@ const statusAction = defineAction(
   statusInputSchema,
 );
 
+const operationStatusAction = defineAction(
+  "operation-status",
+  {
+    operation: "operation.status",
+    effect: "read",
+    approval: "none",
+    limits: { max_input_bytes: MAX_AGENT_INPUT_BYTES },
+    minimumCliVersion: AGENT_OPERATION_APPLY_MINIMUM_CLI_VERSION,
+    command: ["operation", "status", "UUID"],
+  },
+  operationStatusInputSchema,
+  operationStatusProjectionSchema,
+);
 const myTasksAction = defineAction(
   "my-tasks",
   {
@@ -215,6 +240,7 @@ const applyOperationAction = defineAction(
 
 export const AGENT_ACTIONS = {
   [statusAction.descriptor.action]: statusAction,
+  [operationStatusAction.descriptor.action]: operationStatusAction,
   [myTasksAction.descriptor.action]: myTasksAction,
   [getTaskAction.descriptor.action]: getTaskAction,
   [listCommentsAction.descriptor.action]: listCommentsAction,
@@ -251,6 +277,12 @@ function requireAgentAction(action: string): AgentActionDefinition {
 
 export function agentActionDescriptors(): z.output<typeof agentActionDescriptorSchema>[] {
   return AGENT_ACTION_NAMES.map((action) => AGENT_ACTIONS[action].descriptor);
+}
+
+export function agentActionInvocation(
+  descriptor: z.output<typeof agentActionDescriptorSchema>,
+): string {
+  return `asana-cli agent ${(descriptor.command ?? [descriptor.action]).join(" ")}`;
 }
 
 export async function readAgentActionInput<Action extends AgentActionName>(

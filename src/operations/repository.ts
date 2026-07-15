@@ -15,6 +15,7 @@ export type OperationCompareAndSetResult = Readonly<{
 export interface OperationRepository {
   create(input: CreateOperationInput): Promise<OperationRecord>;
   get(id: string): Promise<OperationRecord | null>;
+  inspect(id: string): Promise<OperationRecord | null>;
   compareAndSet(transition: OperationTransition): Promise<OperationCompareAndSetResult>;
 }
 

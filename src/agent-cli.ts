@@ -13,9 +13,13 @@ import {
   readApplyAgentInput,
   readDirectAgentInput,
   readPrepareCommentAgentInput,
+  readOperationStatusAgentInput,
   readStdinAgentInput,
 } from "./agent-input";
+import { rejectDeprecatedLegacyAgentApply } from "./agent-deprecations";
 import { AgentOperationService } from "./agent-operations";
+import type { MetadataAuditStore } from "./audit/repository";
+import type { HostScopedWritePolicyProvider } from "./host-write-policy";
 import { type ParsedArgs } from "./args";
 import {
   AGENT_USER_FIELDS,
@@ -47,6 +51,7 @@ import {
 } from "./schemas";
 import { type AsanaClient } from "./sdk";
 import type { OperationRepository } from "./operations/repository";
+import { operationStatusProjection } from "./operations/status-projection";
 
 type JsonObject = Record<string, unknown>;
 
@@ -154,7 +159,9 @@ export async function runAgentCommand(
 ): Promise<unknown> {
   const action = args.positionals[1];
   if (!action) throw new CliError("usage", "Missing agent action");
-  rejectLegacyAgentApply(action);
+  rejectDeprecatedLegacyAgentApply(action);
+
+  if (action === "operation") return runLocalAgentCommand(args, runtime);
 
   if (action === "status") {
     await readDirectAgentInput(args, "status");
@@ -310,16 +317,15 @@ export async function runAgentCommand(
       });
     }
   }
-
   if (action === "prepare-task-update") {
     const input = await readStdinAgentInput(args, "prepare-task-update");
-    const service = new AgentOperationService(client, runtime.operations);
+    const service = new AgentOperationService(client, runtime.operations, runtime);
     return agentResult("prepare-task-update", await service.prepareTaskUpdate(input));
   }
 
   if (action === "prepare-comment") {
     const input = await readPrepareCommentAgentInput(args);
-    const service = new AgentOperationService(client, runtime.operations);
+    const service = new AgentOperationService(client, runtime.operations, runtime);
     return agentResult("prepare-comment", await service.prepareComment(input));
   }
 
@@ -331,27 +337,31 @@ export async function runAgentCommand(
       );
     }
     const input = await readApplyAgentInput(args);
-    const service = new AgentOperationService(client, runtime.operations);
+    const service = new AgentOperationService(client, runtime.operations, runtime);
     return agentResult("apply", await service.apply(input.operation_id));
   }
 
   throw new CliError("usage", `Unknown agent action: ${action}`);
 }
 
-export interface AgentCommandRuntime {
-  operations: OperationRepository;
+/** Executes agent operations that inspect only local durable state and require no SDK client. */
+export async function runLocalAgentCommand(
+  args: ParsedArgs,
+  runtime: AgentCommandRuntime,
+): Promise<unknown> {
+  const input = readOperationStatusAgentInput(args);
+  const record = await runtime.operations.inspect(input.operation_id);
+  if (!record) {
+    throw new CliError("not-found", "Operation does not exist", undefined, {
+      operation_id: input.operation_id,
+    });
+  }
+  return agentResult("operation-status", operationStatusProjection(record));
 }
 
-export function rejectLegacyAgentApply(action: string | undefined): void {
-  if (action !== "apply-task-update" && action !== "apply-comment") return;
-  throw new CliError(
-    "usage",
-    `agent ${action} was removed because complete plans are unsafe to replay`,
-    undefined,
-    {
-      reason: "legacy-plan-apply-removed",
-      replacement_action: "apply",
-      required_input: { operation_id: "UUID" },
-    },
-  );
+
+export interface AgentCommandRuntime {
+  operations: OperationRepository;
+  writePolicy?: HostScopedWritePolicyProvider;
+  audit?: MetadataAuditStore;
 }

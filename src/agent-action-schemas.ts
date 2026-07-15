@@ -28,6 +28,10 @@ export const TASK_INCLUDE_SELECTORS = taskIncludeSelectorSchema.options;
 
 export const statusInputSchema = z.strictObject({});
 
+export const operationStatusInputSchema = z.strictObject({
+  operation_id: z.uuid(),
+});
+
 export const myTasksInputSchema = z.strictObject({
   workspace_gid: gidSchema.optional(),
   completed: z.enum(["false", "true", "all"]).default("false"),

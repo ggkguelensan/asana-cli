@@ -51,6 +51,12 @@ export class MemoryOperationRepository implements OperationRepository {
     return cloneOperationRecord(current);
   }
 
+  async inspect(idValue: string): Promise<OperationRecord | null> {
+    const id = z.uuid().parse(idValue);
+    const record = this.#records.get(id);
+    return record ? cloneOperationRecord(record) : null;
+  }
+
   async compareAndSet(transitionValue: OperationTransition): Promise<OperationCompareAndSetResult> {
     const transition = operationTransitionSchema.parse(transitionValue);
     const stored = this.#records.get(transition.id);

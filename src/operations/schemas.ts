@@ -167,6 +167,11 @@ export const operationTransitionSchema = z.discriminatedUnion("next_state", [
   }),
   z.strictObject({
     id: z.uuid(),
+    expected_state: z.literal("applying"),
+    next_state: z.literal("prepared"),
+  }),
+  z.strictObject({
+    id: z.uuid(),
     expected_state: z.literal("prepared"),
     next_state: z.literal("expired"),
   }),
@@ -323,7 +328,9 @@ export function transitionOperationRecord(
   let result: z.output<typeof operationResultSchema> | undefined;
   const attemptStartedAt = transition.next_state === "applying"
     ? recordedAt
-    : record.attempt_started_at;
+    : transition.next_state === "prepared"
+      ? undefined
+      : record.attempt_started_at;
   if (transition.next_state === "applied") {
     result = { outcome: "applied", recorded_at: recordedAt, ...transition.metadata };
   } else if (transition.next_state === "unknown") {

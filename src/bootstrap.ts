@@ -6,8 +6,8 @@ const runtimeEnvironmentSchema = z.object({
   NODE_TLS_REJECT_UNAUTHORIZED: z.string().optional(),
 });
 
-export function hardenRuntime(): void {
-  registerEnvironmentSecrets();
+export function hardenRuntime({ registerSecrets = true }: { registerSecrets?: boolean } = {}): void {
+  if (registerSecrets) registerEnvironmentSecrets();
   process.env.BUN_CONFIG_VERBOSE_FETCH = "";
   const environment = runtimeEnvironmentSchema.parse(process.env);
   if (environment.NODE_TLS_REJECT_UNAUTHORIZED === "0") {

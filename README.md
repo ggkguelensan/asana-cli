@@ -200,6 +200,23 @@ ASANA_CLI_AGENT_POLICY=read-write \
   asana-cli agent apply --operation-id 00000000-0000-4000-8000-000000000000
 ```
 
+Устаревшие `agent apply-task-update` и `agent apply-comment` удалены: полный plan нельзя
+безопасно повторно проиграть. Вместо переноса старого payload создайте новую операцию через
+`prepare-task-update` или `prepare-comment`, проверьте preview и после подтверждения вызовите
+`agent apply --operation-id UUID`. Отказ возвращает machine-readable details:
+
+```json
+{
+  "reason": "legacy-plan-apply-removed",
+  "replacement_action": "apply",
+  "required_input": { "operation_id": "UUID" }
+}
+```
+
+Та же migration information (включая полную replacement-команду) публикуется в
+`asana-cli agent capabilities` → `deprecated_commands`. Это изменение не затрагивает совместимый
+v0.2 read-ввод: через `--input -` по-прежнему принимается ровно один strict JSON object.
+
 Обе prepare-команды создают durable record с TTL, immutable payload и guard по
 `modified_at`/текущему пользователю. `apply` никогда не принимает payload повторно. Agent writes
 разрешены только для задач, назначенных текущему пользователю, и изменяют одну задачу за invocation.

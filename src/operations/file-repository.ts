@@ -123,6 +123,13 @@ export class FileOperationRepository implements OperationRepository {
     });
   }
 
+  async inspect(idValue: string): Promise<OperationRecord | null> {
+    const id = z.uuid().parse(idValue);
+    if (!await this.#inspectDirectory()) return null;
+    const record = await this.#readRecord(id);
+    return record ? cloneOperationRecord(record) : null;
+  }
+
   async compareAndSet(transitionValue: OperationTransition): Promise<OperationCompareAndSetResult> {
     await this.#ensureDirectory();
     const transition = operationTransitionSchema.parse(transitionValue);
@@ -166,6 +173,24 @@ export class FileOperationRepository implements OperationRepository {
       if (error instanceof OperationJournalError) throw error;
       throw storageError("Unable to initialize operation journal directory", error);
     }
+  }
+
+  async #inspectDirectory(): Promise<boolean> {
+    let stats;
+    try {
+      stats = await lstat(this.baseDirectory);
+    } catch (error: unknown) {
+      if (nodeErrorCode(error) === "ENOENT") return false;
+      throw storageError("Unable to inspect operation journal directory", error);
+    }
+    if (stats.isSymbolicLink() || !stats.isDirectory()) {
+      throw new OperationJournalError("INSECURE_STORAGE", "Operation journal path is not a real directory");
+    }
+    this.#assertOwner(stats.uid, "Operation journal directory");
+    if (this.#isPosix && (stats.mode & 0o077) !== 0) {
+      throw new OperationJournalError("INSECURE_STORAGE", "Operation journal directory has insecure permissions");
+    }
+    return true;
   }
 
   #assertOwner(owner: number, label: string): void {

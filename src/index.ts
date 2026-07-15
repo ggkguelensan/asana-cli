@@ -12,24 +12,37 @@ const entryEnvironmentSchema = z.object({
   ASANA_ACCESS_TOKEN: z.string().optional(),
 });
 
+function isOperationStatusInvocation(argv: readonly string[]): boolean {
+  return argv.length === 4 &&
+    argv[0] === "agent" &&
+    argv[1] === "operation" &&
+    argv[2] === "status" &&
+    z.uuid().safeParse(argv[3]).success;
+}
+
+const argv = process.argv.slice(2);
+const operationStatusInvocation = isOperationStatusInvocation(argv);
+
 try {
-  hardenRuntime();
-  const result = await runCli(process.argv.slice(2));
+  hardenRuntime({ registerSecrets: !operationStatusInvocation });
+  const result = await runCli(argv);
   if (result.text !== undefined) {
     process.stdout.write(`${result.text}\n`);
   } else if (result.value !== undefined) {
-    const environment = entryEnvironmentSchema.parse(process.env);
     const agentMode = result.agentMode ?? (
-      process.argv.includes("--agent") || environment.ASANA_CLI_AGENT === "1"
+      operationStatusInvocation ||
+      argv.includes("--agent") ||
+      entryEnvironmentSchema.parse(process.env).ASANA_CLI_AGENT === "1"
     );
     printJson(agentMode ? secureAgentEnvelope(result.value) : protectOutput(result.value).value, result.compact);
   }
 } catch (error) {
-  const environment = entryEnvironmentSchema.parse(process.env);
-  const normalized = normalizeError(error, environment.ASANA_PAT ?? environment.ASANA_ACCESS_TOKEN);
-  const agentMode = process.argv.includes("--agent") ||
-    process.argv.slice(2)[0] === "agent" ||
-    environment.ASANA_CLI_AGENT === "1";
+  const environment = operationStatusInvocation ? undefined : entryEnvironmentSchema.parse(process.env);
+  const normalized = normalizeError(error, environment?.ASANA_PAT ?? environment?.ASANA_ACCESS_TOKEN);
+  const agentMode = operationStatusInvocation ||
+    argv.includes("--agent") ||
+    argv[0] === "agent" ||
+    environment?.ASANA_CLI_AGENT === "1";
   const payload = agentMode
     ? secureAgentEnvelope(errorPayload(normalized))
     : protectOutput(errorPayload(normalized)).value;

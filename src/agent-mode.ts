@@ -1,9 +1,9 @@
 import { booleanFlag, type ParsedArgs } from "./args";
-import { agentActionDescriptor, agentActionDescriptors } from "./agent-contract";
+import { agentActionDescriptor, agentActionDescriptors, agentActionInvocation } from "./agent-contract";
+import { legacyAgentApplyDeprecationManifest } from "./agent-deprecations";
 import { CliError } from "./errors";
 import { z } from "zod";
 import { AGENT_PROTOCOL_VERSION, CLI_VERSION } from "./version";
-
 const agentModeEnvironmentSchema = z.object({
   ASANA_CLI_AGENT: z.enum(["0", "1"]).optional().catch(undefined),
   ASANA_CLI_AGENT_POLICY: z.enum(["read", "read-write"]).optional().catch(undefined),
@@ -58,12 +58,12 @@ export const AGENT_MANIFEST = {
     "Direct flags for reads/comment prepare/apply; one strict JSON object on stdin via --input - remains supported",
   safe_commands: actionDescriptors
     .filter((descriptor) => descriptor.effect !== "write")
-    .map((descriptor) => `asana-cli agent ${descriptor.action}`),
+    .map(agentActionInvocation),
   guarded_commands: Object.fromEntries(
     actionDescriptors
       .filter((descriptor) => descriptor.effect === "write")
       .map((descriptor) => [
-        `asana-cli agent ${descriptor.action}`,
+        agentActionInvocation(descriptor),
         "ASANA_CLI_AGENT_POLICY=read-write + external host approval",
       ]),
   ),
@@ -73,16 +73,7 @@ export const AGENT_MANIFEST = {
     "asana-cli auth pat set",
     "asana-cli auth pat delete",
   ],
-  deprecated_commands: {
-    "asana-cli agent apply-task-update": {
-      reason: "legacy-plan-apply-removed",
-      replacement: "asana-cli agent apply --operation-id UUID",
-    },
-    "asana-cli agent apply-comment": {
-      reason: "legacy-plan-apply-removed",
-      replacement: "asana-cli agent apply --operation-id UUID",
-    },
-  },
+  deprecated_commands: legacyAgentApplyDeprecationManifest(),
   actions: actionDescriptors,
   output_security: {
     active_credential_exact_redaction: true,

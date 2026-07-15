@@ -13,7 +13,14 @@ import {
   STORY_FIELDS,
   updateTask,
 } from "./asana-commands";
+import { FileMetadataAuditStore } from "./audit/file-repository";
+import type { MetadataAuditStore } from "./audit/repository";
+import type { CreateMetadataAuditEventInput } from "./audit/schemas";
 import { CliError } from "./errors";
+import {
+  FixedFileHostScopedWritePolicyProvider,
+  type HostScopedWritePolicyProvider,
+} from "./host-write-policy";
 import type { OperationRepository } from "./operations/repository";
 import type { OperationRecord } from "./operations/schemas";
 import {
@@ -24,6 +31,11 @@ import {
 } from "./schemas";
 import type { AsanaClient } from "./sdk";
 import { containsRegisteredSecret } from "./security";
+import {
+  describeTaskCommentWrite,
+  describeTaskUpdateWrite,
+  evaluateScopedWritePolicy,
+} from "./write-policy";
 
 const ownedTaskSchema = taskSchema.extend({
   modified_at: z.iso.datetime({ offset: true }),
@@ -31,6 +43,14 @@ const ownedTaskSchema = taskSchema.extend({
     gid: z.string().min(1),
     name: z.string().optional(),
   }).nullable().optional(),
+  workspace: z.looseObject({
+    gid: z.string().regex(/^\d{1,64}$/),
+  }).optional(),
+  memberships: z.array(z.looseObject({
+    project: z.looseObject({
+      gid: z.string().regex(/^\d{1,64}$/),
+    }).optional(),
+  })).optional(),
 });
 
 const targetPreviewSchema = z.strictObject({
@@ -105,7 +125,7 @@ async function currentTaskContext(
     getTask(
       client,
       taskGid,
-      "gid,name,modified_at,completed,due_on,due_at,start_on,assignee,assignee.gid,assignee.name,permalink_url",
+      "gid,name,modified_at,completed,due_on,due_at,start_on,assignee,assignee.gid,assignee.name,permalink_url,workspace,workspace.gid,memberships,memberships.project,memberships.project.gid",
     ),
   ]);
   return {
@@ -204,32 +224,48 @@ function unknownResultError(record: OperationRecord): CliError {
 async function bestEffortMarkUnknown(
   repository: OperationRepository,
   record: OperationRecord,
-): Promise<void> {
+): Promise<OperationRecord | undefined> {
   try {
-    await repository.compareAndSet({
+    const result = await repository.compareAndSet({
       id: record.id,
       expected_state: "applying",
       next_state: "unknown",
       metadata: { error_code: "APPLY_FAILED" },
     });
+    return result.updated ? result.record : undefined;
   } catch {
     // The remote request already began. A storage failure cannot make retry safe.
+    return undefined;
   }
 }
+
+export type AgentOperationServiceOptions = Readonly<{
+  writePolicy?: HostScopedWritePolicyProvider;
+  audit?: MetadataAuditStore;
+}>;
 
 export class AgentOperationService {
   readonly #client: AsanaClient;
   readonly #repository: OperationRepository;
+  readonly #writePolicy: HostScopedWritePolicyProvider;
+  readonly #audit: MetadataAuditStore;
 
-  constructor(client: AsanaClient, repository: OperationRepository) {
+  constructor(
+    client: AsanaClient,
+    repository: OperationRepository,
+    options: AgentOperationServiceOptions = {},
+  ) {
     this.#client = client;
     this.#repository = repository;
+    this.#writePolicy = options.writePolicy ?? new FixedFileHostScopedWritePolicyProvider();
+    this.#audit = options.audit ?? new FileMetadataAuditStore();
   }
 
   async prepareTaskUpdate(input: PrepareTaskUpdateInput): Promise<PreparedOperationView> {
     ensureNoRegisteredSecret(input.patch, "Update");
     const { user, task } = await currentTaskContext(this.#client, input.task_gid);
     assertTaskOwnedByCurrentUser(user.gid, task.assignee?.gid);
+    await this.#assertWriteAllowed(task, "task.update", input.patch);
     const record = await this.#repository.create({
       operation: "task.update",
       target: { task_gid: input.task_gid },
@@ -239,6 +275,7 @@ export class AgentOperationService {
         prepared_by_gid: user.gid,
       },
     });
+    await this.#appendAudit(record, { outcome: "prepared" });
     return preparedOperationViewSchema.parse({
       operation_id: record.id,
       operation: record.operation,
@@ -255,6 +292,7 @@ export class AgentOperationService {
     ensureNoRegisteredSecret(input.text, "Comment");
     const { user, task } = await currentTaskContext(this.#client, input.task_gid);
     assertTaskOwnedByCurrentUser(user.gid, task.assignee?.gid);
+    await this.#assertWriteAllowed(task, "task.comment");
     const record = await this.#repository.create({
       operation: "task.comment",
       target: { task_gid: input.task_gid },
@@ -264,6 +302,7 @@ export class AgentOperationService {
         prepared_by_gid: user.gid,
       },
     });
+    await this.#appendAudit(record, { outcome: "prepared" });
     return preparedOperationViewSchema.parse({
       operation_id: record.id,
       operation: record.operation,
@@ -281,6 +320,11 @@ export class AgentOperationService {
     ensureNoRegisteredSecret(record.payload, "Apply");
     const { user, task } = await currentTaskContext(this.#client, record.target.task_gid);
     assertApplyGuards(record, user.gid, task);
+    await this.#assertWriteAllowed(
+      task,
+      record.operation,
+      record.operation === "task.update" ? record.payload.changes : undefined,
+    );
 
     const claim = await this.#repository.compareAndSet({
       id: record.id,
@@ -288,6 +332,7 @@ export class AgentOperationService {
       next_state: "applying",
     });
     if (!claim.updated) throw operationStateError(claim.record);
+    await this.#appendApplyingAuditBeforeRemote(claim.record);
 
     try {
       const result = await this.#invoke(record);
@@ -308,10 +353,110 @@ export class AgentOperationService {
         },
       });
       if (!completed.updated) throw operationStateError(completed.record);
+      await this.#appendAuditAfterRemote(completed.record, {
+        outcome: "applied",
+        resource_gid: result.resource_gid,
+        resource_modified_at: result.resource_modified_at,
+      });
       return candidate;
     } catch {
-      await bestEffortMarkUnknown(this.#repository, record);
+      const unknown = await bestEffortMarkUnknown(this.#repository, record);
+      if (unknown?.state === "unknown") {
+        await this.#appendAuditAfterRemote(unknown, { outcome: "unknown" });
+      }
       throw unknownResultError(record);
+    }
+  }
+
+  async #assertWriteAllowed(
+    task: z.output<typeof ownedTaskSchema>,
+    action: "task.update" | "task.comment",
+    patch?: unknown,
+  ): Promise<void> {
+    try {
+      const target = {
+        workspace_gid: task.workspace?.gid,
+        project_gids: [...new Set(
+          (task.memberships ?? []).flatMap((membership) =>
+            membership.project === undefined ? [] : [membership.project.gid]
+          ),
+        )],
+      };
+      const candidate = action === "task.update"
+        ? describeTaskUpdateWrite(target, patch)
+        : describeTaskCommentWrite(target);
+      const decision = evaluateScopedWritePolicy(await this.#writePolicy.load(), candidate);
+      if (decision.allowed) return;
+    } catch {
+      // Malformed policy, malformed authoritative scope, and storage failures deny writes alike.
+    }
+    throw new CliError("policy-denied", "The host write policy does not permit this task operation");
+  }
+
+  async #appendApplyingAuditBeforeRemote(record: OperationRecord): Promise<void> {
+    try {
+      await this.#appendAudit(record, { outcome: "applying" });
+    } catch (error) {
+      try {
+        const rollback = await this.#repository.compareAndSet({
+          id: record.id,
+          expected_state: "applying",
+          next_state: "prepared",
+        });
+        if (
+          !rollback.updated
+          || rollback.record.state !== "prepared"
+          || rollback.record.attempt_started_at !== undefined
+          || rollback.record.result !== undefined
+        ) {
+          throw new Error("Operation claim rollback did not restore prepared state");
+        }
+      } catch {
+        throw new CliError(
+          "storage-invalid",
+          "Unable to restore the operation after required audit metadata persistence failed",
+        );
+      }
+      throw error;
+    }
+  }
+
+  async #appendAudit(
+    record: OperationRecord,
+    result: CreateMetadataAuditEventInput["result"],
+  ): Promise<void> {
+    try {
+      await this.#audit.append({
+        operation_id: record.id,
+        target_task_gid: record.target.task_gid,
+        action: record.operation,
+        plan_hash: record.plan_hash,
+        record_hash: record.record_hash,
+        result,
+      });
+    } catch {
+      throw new CliError(
+        "storage-invalid",
+        "Unable to persist required audit metadata; the remote write was not started",
+      );
+    }
+  }
+
+  async #appendAuditAfterRemote(
+    record: OperationRecord,
+    result: CreateMetadataAuditEventInput["result"],
+  ): Promise<void> {
+    try {
+      await this.#audit.append({
+        operation_id: record.id,
+        target_task_gid: record.target.task_gid,
+        action: record.operation,
+        plan_hash: record.plan_hash,
+        record_hash: record.record_hash,
+        result,
+      });
+    } catch {
+      // The remote call has already begun; reporting or retrying a storage failure is unsafe.
     }
   }
 

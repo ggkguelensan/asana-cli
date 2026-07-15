@@ -28,6 +28,7 @@ AGENT CLIENTS (DIRECT CLI, NO MCP)
   asana-cli agent prepare-task-update --input -
   asana-cli agent prepare-comment --task GID --text TEXT
   asana-cli agent apply --operation-id UUID
+  asana-cli agent operation status UUID      Read local operation metadata
 
 TASKS
   asana-cli tasks mine [options]         Tasks assigned to me

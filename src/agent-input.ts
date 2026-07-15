@@ -156,6 +156,21 @@ export async function readDirectAgentInput<Action extends DirectReadAction>(
   return parseAgentActionInput(raw, action);
 }
 
+export function readOperationStatusAgentInput(
+  args: ParsedArgs,
+): AgentActionInput<"operation-status"> {
+  if (args.positionals.length !== 4 || args.positionals[1] !== "operation") {
+    throw new CliError("usage", "Usage: asana-cli agent operation status UUID");
+  }
+  if (args.positionals[2] !== "status") {
+    throw new CliError("usage", "Usage: asana-cli agent operation status UUID");
+  }
+  if (Object.keys(args.flags).length > 0) {
+    throw new CliError("usage", "agent operation status does not accept options");
+  }
+  return parseAgentActionInput({ operation_id: args.positionals[3] }, "operation-status");
+}
+
 async function readDirectOrStdinInput<Action extends "apply" | "prepare-comment">(
   args: ParsedArgs,
   action: Action,

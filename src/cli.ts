@@ -46,7 +46,10 @@ import {
   storedPat,
 } from "./pat-store";
 import { AGENT_MANIFEST, enforceAgentPolicy, isAgentMode } from "./agent-mode";
-import { rejectLegacyAgentApply, runAgentCommand } from "./agent-cli";
+import { rejectDeprecatedLegacyAgentApply } from "./agent-deprecations";
+import { runAgentCommand, runLocalAgentCommand } from "./agent-cli";
+import { FileMetadataAuditStore } from "./audit/file-repository";
+import { FixedFileHostScopedWritePolicyProvider } from "./host-write-policy";
 import { FileOperationRepository } from "./operations/file-repository";
 import type { OperationRepository } from "./operations/repository";
 import {
@@ -78,6 +81,7 @@ function lazyFileOperationRepository(): OperationRepository {
   return {
     create: (input) => file().create(input),
     get: (id) => file().get(id),
+    inspect: (id) => file().inspect(id),
     compareAndSet: (transition) => file().compareAndSet(transition),
   };
 }
@@ -430,7 +434,7 @@ export async function runCli(argv: string[]): Promise<CliResult> {
       );
     }
   }
-  if (command === "agent") rejectLegacyAgentApply(args.positionals[1]);
+  if (command === "agent") rejectDeprecatedLegacyAgentApply(args.positionals[1]);
   enforceAgentPolicy(args);
   const compact = booleanFlag(args, "compact", false);
   if (flag(args, "version") === true || command === "version") return { text: CLI_VERSION };
@@ -447,6 +451,13 @@ export async function runCli(argv: string[]): Promise<CliResult> {
     (args.positionals[1] === undefined || ["manifest", "capabilities"].includes(args.positionals[1]))
   ) {
     return { value: AGENT_MANIFEST, compact, agentMode: true };
+  }
+  if (command === "agent" && args.positionals[1] === "operation") {
+    return {
+      value: await runLocalAgentCommand(args, { operations: lazyFileOperationRepository() }),
+      compact: true,
+      agentMode: true,
+    };
   }
   if (command === "auth" && (args.positionals[1] === undefined || args.positionals[1] === "help")) {
     return { text: AUTH_HELP };
@@ -479,6 +490,8 @@ export async function runCli(argv: string[]): Promise<CliResult> {
     return {
       value: await runAgentCommand(client, args, {
         operations: lazyFileOperationRepository(),
+        writePolicy: new FixedFileHostScopedWritePolicyProvider(),
+        audit: new FileMetadataAuditStore(),
       }),
       compact: true,
       agentMode: true,

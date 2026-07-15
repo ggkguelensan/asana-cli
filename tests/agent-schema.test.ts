@@ -66,6 +66,7 @@ const operationId = "00000000-0000-4000-8000-000000000001";
 
 const driftFixtures = {
   status: { valid: {}, invalid: { unexpected: true } },
+  "operation-status": { valid: { operation_id: operationId }, invalid: { operation_id: "invalid" } },
   "my-tasks": { valid: {}, invalid: { limit: 0 } },
   "get-task": { valid: { task_gid: "123" }, invalid: { task_gid: "not-a-gid" } },
   "list-comments": { valid: { task_gid: "123" }, invalid: { max_results: 501 } },
@@ -86,6 +87,7 @@ describe("agent capability and schema catalog", () => {
   test("describes every current action from one registry", () => {
     expect(AGENT_ACTION_NAMES).toEqual([
       "status",
+      "operation-status",
       "my-tasks",
       "get-task",
       "list-comments",
@@ -98,6 +100,7 @@ describe("agent capability and schema catalog", () => {
     expect(AGENT_MANIFEST.actions).toHaveLength(AGENT_ACTION_NAMES.length);
     expect(AGENT_MANIFEST.safe_commands).toEqual([
       "asana-cli agent status",
+      "asana-cli agent operation status UUID",
       "asana-cli agent my-tasks",
       "asana-cli agent get-task",
       "asana-cli agent list-comments",
@@ -119,14 +122,18 @@ describe("agent capability and schema catalog", () => {
       "asana-cli agent apply-task-update": {
         reason: "legacy-plan-apply-removed",
         replacement: "asana-cli agent apply --operation-id UUID",
+        replacement_action: "apply",
+        required_input: { operation_id: "UUID" },
       },
       "asana-cli agent apply-comment": {
         reason: "legacy-plan-apply-removed",
         replacement: "asana-cli agent apply --operation-id UUID",
+        replacement_action: "apply",
+        required_input: { operation_id: "UUID" },
       },
     });
     for (const descriptor of AGENT_MANIFEST.actions) {
-      const minimum = ["prepare-task-update", "prepare-comment", "apply"]
+      const minimum = ["operation-status", "prepare-task-update", "prepare-comment", "apply"]
         .includes(descriptor.action)
         ? AGENT_OPERATION_APPLY_MINIMUM_CLI_VERSION
         : AGENT_ACTION_MINIMUM_CLI_VERSION;
