@@ -57,7 +57,7 @@ export function protectOutput<T>(
   let truncations = 0;
   const untrustedTextPaths: string[] = [];
   const visited = new WeakSet<object>();
-  const maxStringLength = options.maxStringLength ?? (options.agentMode ? 8_000 : 100_000);
+  const maxStringLength = options.maxStringLength ?? 100_000;
 
   const sanitizeString = (inputString: string): string => {
     let value = inputString;

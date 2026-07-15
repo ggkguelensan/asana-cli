@@ -53,25 +53,31 @@ export const AGENT_MANIFEST = {
   cli_version: CLI_VERSION,
   protocol: "asana-cli-agent-v1",
   default_mode: "read-only",
-  invocation: "JSON object on stdin via --input -",
+  invocation: "Direct flags for reads; one JSON object on stdin via --input - remains supported",
   safe_commands: actionDescriptors
     .filter((descriptor) => descriptor.effect !== "write")
-    .map((descriptor) => `agent ${descriptor.action}`),
+    .map((descriptor) => `asana-cli agent ${descriptor.action}`),
   guarded_commands: Object.fromEntries(
     actionDescriptors
       .filter((descriptor) => descriptor.effect === "write")
       .map((descriptor) => [
-        `agent ${descriptor.action}`,
+        `asana-cli agent ${descriptor.action}`,
         "ASANA_CLI_AGENT_POLICY=read-write + external host approval",
       ]),
   ),
-  forbidden_commands: ["agent raw", "agent api", "auth pat set", "auth pat delete"],
+  forbidden_commands: [
+    "asana-cli agent raw",
+    "asana-cli agent api",
+    "asana-cli auth pat set",
+    "asana-cli auth pat delete",
+  ],
   actions: actionDescriptors,
   output_security: {
     active_credential_exact_redaction: true,
     heuristic_secret_detection: false,
     prompt_injection_boundary: "All Asana text is marked as untrusted content",
     limitation: "Unknown secrets already stored in Asana content cannot be reliably detected",
-    max_string_length: 8000,
+    curated_read_content_budget: true,
+    emergency_max_string_length: 100_000,
   },
 };

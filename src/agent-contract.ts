@@ -2,6 +2,7 @@ import { z } from "zod";
 import {
   applyCommentInputSchema,
   applyTaskUpdateInputSchema,
+  findGitInputSchema,
   getTaskInputSchema,
   listCommentsInputSchema,
   myTasksInputSchema,
@@ -12,7 +13,7 @@ import {
 } from "./agent-action-schemas";
 import { AGENT_ERROR_SCHEMA_ID, CliError, errorPayloadSchema } from "./errors";
 import { readAgentJsonInput } from "./io";
-import { jsonObjectSchema } from "./schemas";
+import { jsonObjectSchema, zodIssueSummary } from "./schemas";
 import { agentEnvelopeSchema } from "./security";
 import { AGENT_PROTOCOL_VERSION, CLI_VERSION } from "./version";
 
@@ -26,6 +27,7 @@ const approvalClassSchema = z.enum(["none", "external-host"]);
 const actionLimitsSchema = z.strictObject({
   max_input_bytes: z.number().int().min(0),
   max_result_items: z.number().int().positive().optional(),
+  max_content_bytes: z.number().int().nonnegative().optional(),
   max_text_chars: z.number().int().positive().optional(),
   max_custom_fields: z.number().int().positive().optional(),
 });
@@ -99,7 +101,7 @@ const statusAction = defineAction(
     operation: "auth.status",
     effect: "read",
     approval: "none",
-    limits: { max_input_bytes: 0 },
+    limits: { max_input_bytes: MAX_AGENT_INPUT_BYTES },
   },
   statusInputSchema,
 );
@@ -121,7 +123,10 @@ const getTaskAction = defineAction(
     operation: "task.get",
     effect: "read",
     approval: "none",
-    limits: { max_input_bytes: MAX_AGENT_INPUT_BYTES, max_text_chars: 8_000 },
+    limits: {
+      max_input_bytes: MAX_AGENT_INPUT_BYTES,
+      max_content_bytes: 65_536,
+    },
   },
   getTaskInputSchema,
 );
@@ -132,7 +137,11 @@ const listCommentsAction = defineAction(
     operation: "task.comments",
     effect: "read",
     approval: "none",
-    limits: { max_input_bytes: MAX_AGENT_INPUT_BYTES, max_result_items: 500 },
+    limits: {
+      max_input_bytes: MAX_AGENT_INPUT_BYTES,
+      max_result_items: 500,
+      max_content_bytes: 65_536,
+    },
   },
   listCommentsInputSchema,
 );
@@ -156,7 +165,7 @@ const findGitAction = defineAction(
     approval: "none",
     limits: { max_input_bytes: MAX_AGENT_INPUT_BYTES, max_result_items: 500 },
   },
-  searchInputSchema,
+  findGitInputSchema,
 );
 
 const prepareTaskUpdateAction = defineAction(
@@ -222,7 +231,7 @@ export const AGENT_ACTIONS = {
 
 export type AgentActionName = keyof typeof AGENT_ACTIONS;
 type AgentActionDefinition = (typeof AGENT_ACTIONS)[AgentActionName];
-type AgentActionInput<Action extends AgentActionName> =
+export type AgentActionInput<Action extends AgentActionName> =
   z.output<(typeof AGENT_ACTIONS)[Action]["inputSchema"]>;
 
 export const AGENT_ACTION_NAMES = Object.keys(AGENT_ACTIONS) as AgentActionName[];
@@ -254,6 +263,20 @@ export async function readAgentActionInput<Action extends AgentActionName>(
 ): Promise<AgentActionInput<Action>> {
   const parsed = await readAgentJsonInput(value, AGENT_ACTIONS[action].inputSchema);
   return parsed as AgentActionInput<Action>;
+}
+
+export function parseAgentActionInput<Action extends AgentActionName>(
+  value: unknown,
+  action: Action,
+): AgentActionInput<Action> {
+  const parsed = AGENT_ACTIONS[action].inputSchema.safeParse(value);
+  if (!parsed.success) {
+    throw new CliError(
+      "validation",
+      `Agent input validation failed: ${zodIssueSummary(parsed.error)}`,
+    );
+  }
+  return parsed.data as AgentActionInput<Action>;
 }
 
 export function createAgentActionResult(

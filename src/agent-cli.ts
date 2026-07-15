@@ -2,14 +2,18 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 import {
   commentPlanSchema,
+  DEFAULT_AGENT_CONTENT_BYTES,
+  getTaskInputSchema,
+  TASK_INCLUDE_SELECTORS,
   taskUpdatePlanSchema,
+  type TaskIncludeSelector,
 } from "./agent-action-schemas";
 import {
   createAgentActionResult,
-  readAgentActionInput,
   type AgentActionName,
 } from "./agent-contract";
-import { stringFlag, type ParsedArgs } from "./args";
+import { readDirectAgentInput, readStdinAgentInput } from "./agent-input";
+import { type ParsedArgs } from "./args";
 import {
   addTaskComment,
   AGENT_USER_FIELDS,
@@ -24,6 +28,13 @@ import {
   updateTask,
 } from "./asana-commands";
 import { CliError, errorStatus } from "./errors";
+import {
+  projectComments,
+  projectTaskCollection,
+  selectedTaskProjection,
+  taskMetadataProjection,
+} from "./agent-projections";
+import { ContentBudget } from "./content-budget";
 import {
   parseExternalData,
   storySchema,
@@ -157,11 +168,50 @@ function gitMatches(task: AsanaTask, query: string, contains: boolean): boolean 
 }
 
 function agentTaskProjection(task: AsanaTask): JsonObject {
-  const summary: JsonObject = { ...task };
-  delete summary.notes;
-  delete summary.html_notes;
-  delete summary.custom_fields;
-  return summary;
+  return taskMetadataProjection(task);
+}
+
+const taskIncludeFields = {
+  notes: ["notes"],
+  html_notes: ["html_notes"],
+  custom_fields: [
+    "custom_fields",
+    "custom_fields.gid",
+    "custom_fields.name",
+    "custom_fields.display_value",
+    "custom_fields.text_value",
+  ],
+  tags: ["tags", "tags.gid", "tags.name"],
+  parent: ["parent", "parent.gid", "parent.name"],
+  created_at: ["created_at"],
+} as const satisfies Record<TaskIncludeSelector, readonly string[]>;
+
+function selectedTaskFields(includes: readonly TaskIncludeSelector[]): string {
+  const fields = new Set(AGENT_TASK_FIELDS.split(","));
+  for (const include of includes) {
+    for (const field of taskIncludeFields[include]) fields.add(field);
+  }
+  return [...fields].join(",");
+}
+
+function normalizedTaskSelection(input: z.output<typeof getTaskInputSchema>): {
+  includes: TaskIncludeSelector[];
+  maximumContentBytes: number;
+  contentProfile: "metadata" | "selected-untrusted" | "full-untrusted";
+} {
+  if ("include_content" in input) {
+    return {
+      includes: input.include_content ? [...TASK_INCLUDE_SELECTORS] : [],
+      maximumContentBytes: input.max_content_bytes ?? DEFAULT_AGENT_CONTENT_BYTES,
+      contentProfile: input.include_content ? "full-untrusted" : "metadata",
+    };
+  }
+  const includes = [...new Set(input.include)];
+  return {
+    includes,
+    maximumContentBytes: input.max_content_bytes,
+    contentProfile: includes.length > 0 ? "selected-untrusted" : "metadata",
+  };
 }
 
 function taskList(value: unknown, context: string): AsanaTask[] {
@@ -181,9 +231,9 @@ export async function runAgentCommand(
 ): Promise<unknown> {
   const action = args.positionals[1];
   if (!action) throw new CliError("usage", "Missing agent action");
-  const inputFlag = stringFlag(args, "input");
 
   if (action === "status") {
+    await readDirectAgentInput(args, "status");
     const user = parseExternalData(
       await getMe(client, AGENT_USER_FIELDS),
       userSchema,
@@ -196,7 +246,7 @@ export async function runAgentCommand(
   }
 
   if (action === "my-tasks") {
-    const input = await readAgentActionInput(inputFlag, "my-tasks");
+    const input = await readDirectAgentInput(args, "my-tasks");
     const data = await getMyTasks(client, {
       workspace: input.workspace_gid,
       completed: input.completed,
@@ -205,24 +255,28 @@ export async function runAgentCommand(
       maxResults: input.max_results,
       fields: AGENT_TASK_FIELDS,
     });
-    return agentResult("my-tasks", data);
+    return agentResult("my-tasks", projectTaskCollection(data, "TasksApi.getTasks"));
   }
 
   if (action === "get-task") {
-    const input = await readAgentActionInput(inputFlag, "get-task");
+    const input = await readDirectAgentInput(args, "get-task");
+    const selection = normalizedTaskSelection(input);
     const data = await getTask(
       client,
       input.task_gid,
-      input.include_content ? TASK_FIELDS : AGENT_TASK_FIELDS,
+      selectedTaskFields(selection.includes),
     );
+    const task = parseExternalData(data, taskSchema, "TasksApi.getTask");
+    const budget = new ContentBudget(selection.maximumContentBytes);
     return agentResult("get-task", {
-      task: parseExternalData(data, taskSchema, "TasksApi.getTask"),
-      content_profile: input.include_content ? "full-untrusted" : "metadata",
+      task: selectedTaskProjection(task, selection.includes, budget),
+      content_profile: selection.contentProfile,
+      content_budget: budget.metadata(),
     });
   }
 
   if (action === "list-comments") {
-    const input = await readAgentActionInput(inputFlag, "list-comments");
+    const input = await readDirectAgentInput(args, "list-comments");
     const data = await getTaskComments(client, input.task_gid, {
       limit: input.limit,
       all: input.paginate,
@@ -230,12 +284,21 @@ export async function runAgentCommand(
       fields: STORY_FIELDS,
       allStories: false,
     });
-    return agentResult("list-comments", data);
+    return agentResult(
+      "list-comments",
+      projectComments(data, input.max_content_bytes),
+    );
   }
 
   if (action === "search-tasks" || action === "find-git") {
-    const input = await readAgentActionInput(inputFlag, action);
+    const input = action === "search-tasks"
+      ? await readDirectAgentInput(args, "search-tasks")
+      : await readDirectAgentInput(args, "find-git");
     const mine = !input.all_assignees;
+    const fieldGid = "field_gid" in input && typeof input.field_gid === "string"
+      ? input.field_gid
+      : undefined;
+    const contains = "contains" in input && input.contains === true;
     if (action === "search-tasks") {
       const data = await searchTasks(client, input.query, {
         workspace: input.workspace_gid,
@@ -245,7 +308,10 @@ export async function runAgentCommand(
         all: false,
         maxResults: input.max_results,
       });
-      return agentResult("search-tasks", data);
+      return agentResult(
+        "search-tasks",
+        projectTaskCollection(data, "TasksApi.searchTasksForWorkspace"),
+      );
     }
 
     try {
@@ -257,8 +323,8 @@ export async function runAgentCommand(
         all: false,
         maxResults: input.max_results,
       })];
-      if (input.field_gid) {
-        const operator = input.contains ? "contains" : "value";
+      if (fieldGid) {
+        const operator = contains ? "contains" : "value";
         results.push(await searchTasks(client, input.query, {
           workspace: input.workspace_gid,
           fields: TASK_FIELDS,
@@ -267,14 +333,21 @@ export async function runAgentCommand(
           all: false,
           maxResults: input.max_results,
           includeText: false,
-          extra: { [`custom_fields.${input.field_gid}.${operator}`]: input.query },
+          extra: { [`custom_fields.${fieldGid}.${operator}`]: input.query },
         }));
       }
       const found = new Map<string, JsonObject>();
-      for (const result of results) {
-        for (const task of taskList(result, "TasksApi.searchTasksForWorkspace")) {
-          if (gitMatches(task, input.query, input.contains)) {
-            found.set(task.gid, agentTaskProjection(task));
+      let reachedResultLimit = false;
+      findMatches: {
+        for (const result of results) {
+          for (const task of taskList(result, "TasksApi.searchTasksForWorkspace")) {
+            if (gitMatches(task, input.query, contains) && !found.has(task.gid)) {
+              found.set(task.gid, agentTaskProjection(task));
+              if (found.size >= input.max_results) {
+                reachedResultLimit = true;
+                break findMatches;
+              }
+            }
           }
         }
       }
@@ -282,9 +355,10 @@ export async function runAgentCommand(
         data: [...found.values()],
         meta: {
           query: input.query,
-          exact_match: !input.contains,
+          exact_match: !contains,
           mode: "asana-search",
           count: found.size,
+          truncated: reachedResultLimit,
         },
       });
     } catch (error) {
@@ -294,17 +368,17 @@ export async function runAgentCommand(
         completed: "all",
         limit: 100,
         all: true,
-        maxResults: 500,
+        maxResults: input.max_results,
         fields: TASK_FIELDS,
       });
       const found = taskList(scanned, "TasksApi.getTasks")
-        .filter((task) => gitMatches(task, input.query, input.contains))
+        .filter((task) => gitMatches(task, input.query, contains))
         .map(agentTaskProjection);
       return agentResult("find-git", {
         data: found,
         meta: {
           query: input.query,
-          exact_match: !input.contains,
+          exact_match: !contains,
           mode: "local-scan-fallback",
           count: found.length,
           reason: "Asana advanced search requires Premium",
@@ -314,7 +388,7 @@ export async function runAgentCommand(
   }
 
   if (action === "prepare-task-update") {
-    const input = await readAgentActionInput(inputFlag, "prepare-task-update");
+    const input = await readStdinAgentInput(args, "prepare-task-update");
     ensureNoRegisteredSecret(input.patch, "Update");
     const { user, task } = await ownTask(client, input.task_gid);
     const unsignedPlan = {
@@ -334,7 +408,7 @@ export async function runAgentCommand(
   }
 
   if (action === "apply-task-update") {
-    const { plan } = await readAgentActionInput(inputFlag, "apply-task-update");
+    const { plan } = await readStdinAgentInput(args, "apply-task-update");
     verifyPlanHash(plan);
     ensureNoRegisteredSecret(plan.changes, "Update");
     const { user, task } = await ownTask(client, plan.task_gid);
@@ -352,7 +426,7 @@ export async function runAgentCommand(
   }
 
   if (action === "prepare-comment") {
-    const input = await readAgentActionInput(inputFlag, "prepare-comment");
+    const input = await readStdinAgentInput(args, "prepare-comment");
     ensureNoRegisteredSecret(input.text, "Comment");
     const { user, task } = await ownTask(client, input.task_gid);
     const unsignedPlan = {
@@ -372,7 +446,7 @@ export async function runAgentCommand(
   }
 
   if (action === "apply-comment") {
-    const { plan } = await readAgentActionInput(inputFlag, "apply-comment");
+    const { plan } = await readStdinAgentInput(args, "apply-comment");
     verifyPlanHash(plan);
     ensureNoRegisteredSecret(plan.text, "Comment");
     const { user, task } = await ownTask(client, plan.task_gid);

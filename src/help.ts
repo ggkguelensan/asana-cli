@@ -20,7 +20,11 @@ AGENT CLIENTS (DIRECT CLI, NO MCP)
   asana-cli agent capabilities           Machine-readable safe command contract
   asana-cli agent schema [ACTION]        JSON Schema for agent actions
   asana-cli agent status                 Validate auth for Codex/Claude
-  asana-cli agent my-tasks --input -     Read using one JSON object from stdin
+  asana-cli agent my-tasks --max-results 20
+  asana-cli agent get-task --task GID [--include notes]
+  asana-cli agent list-comments --task GID [--max-content-bytes N]
+  asana-cli agent find-git --query ID [--field GID]
+  asana-cli agent my-tasks --input -     Compatible JSON stdin mode
   asana-cli agent prepare-task-update --input -
   asana-cli agent apply-task-update --input -
 

@@ -4,6 +4,28 @@ import { gidSchema } from "./schemas";
 const resultLimitSchema = (maximum: number, fallback: number) =>
   z.number().int().min(1).max(maximum).default(fallback);
 
+export const MAX_AGENT_CONTENT_BYTES = 65_536;
+export const DEFAULT_AGENT_CONTENT_BYTES = 16_384;
+
+const contentBudgetValueSchema = z.number()
+  .int()
+  .min(0)
+  .max(MAX_AGENT_CONTENT_BYTES);
+
+const contentBudgetSchema = contentBudgetValueSchema.default(DEFAULT_AGENT_CONTENT_BYTES);
+
+export const taskIncludeSelectorSchema = z.enum([
+  "notes",
+  "html_notes",
+  "custom_fields",
+  "tags",
+  "parent",
+  "created_at",
+]);
+
+export type TaskIncludeSelector = z.output<typeof taskIncludeSelectorSchema>;
+export const TASK_INCLUDE_SELECTORS = taskIncludeSelectorSchema.options;
+
 export const statusInputSchema = z.strictObject({});
 
 export const myTasksInputSchema = z.strictObject({
@@ -14,26 +36,50 @@ export const myTasksInputSchema = z.strictObject({
   max_results: resultLimitSchema(500, 100),
 });
 
-export const getTaskInputSchema = z.strictObject({
+export const selectedGetTaskInputSchema = z.strictObject({
+  task_gid: gidSchema,
+  include: z.array(taskIncludeSelectorSchema).max(TASK_INCLUDE_SELECTORS.length).default([]),
+  max_content_bytes: contentBudgetSchema,
+});
+
+export const legacyGetTaskInputSchema = z.strictObject({
   task_gid: gidSchema,
   include_content: z.boolean().default(false),
+  max_content_bytes: contentBudgetValueSchema.optional(),
 });
+
+// The second branch preserves the v0.2 stdin contract. Direct flags only produce
+// the selector branch and never expose --include-content.
+export const getTaskInputSchema = z.union([
+  legacyGetTaskInputSchema,
+  selectedGetTaskInputSchema,
+]);
 
 export const listCommentsInputSchema = z.strictObject({
   task_gid: gidSchema,
   limit: resultLimitSchema(100, 50),
   paginate: z.boolean().default(false),
   max_results: resultLimitSchema(500, 100),
+  max_content_bytes: contentBudgetSchema,
 });
 
+const searchFields = {
+    query: z.string().trim().min(1).max(500),
+    workspace_gid: gidSchema.optional(),
+    all_assignees: z.boolean().default(false),
+    completed: z.boolean().optional(),
+};
+
 export const searchInputSchema = z.strictObject({
-  query: z.string().trim().min(1).max(500),
-  workspace_gid: gidSchema.optional(),
-  all_assignees: z.boolean().default(false),
-  completed: z.boolean().optional(),
+  ...searchFields,
   max_results: resultLimitSchema(100, 100),
-  field_gid: gidSchema.optional(),
-  contains: z.boolean().default(false),
+});
+
+export const findGitInputSchema = z.strictObject({
+    ...searchFields,
+    max_results: resultLimitSchema(500, 100),
+    field_gid: gidSchema.optional(),
+    contains: z.boolean().default(false),
 });
 
 const customFieldValueSchema = z.union([

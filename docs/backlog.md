@@ -30,13 +30,13 @@ Issue ID следует сохранить в заголовке.
 | AP-002 | P0 | done | Расширить capability catalog метаданными action | AP-001 | Для каждой action заданы effect, approval class, input/output schema ID, limits и minimum CLI version |
 | AP-003 | P0 | done | Публиковать JSON Schema из runtime Zod-схем | AP-001 | `agent schema` и `agent schema ACTION` возвращают стабильный JSON; schema/runtime не расходятся в тестах |
 | AP-004 | P0 | done | Ввести стабильные machine error codes | AP-001 | Validation, auth, policy, stale, expired, conflict, unknown-result и API errors различимы без парсинга текста |
-| AP-005 | P0 | ready | Добавить flags для read actions | AP-002 | Canonical read command начинается с `asana-cli`; stdin JSON остаётся совместимым интерфейсом |
+| AP-005 | P0 | done | Добавить flags для read actions | AP-002 | Canonical read command начинается с `asana-cli`; stdin JSON остаётся совместимым интерфейсом |
 | AP-006 | P0 | done | Спроектировать Zod-валидируемый durable operation record | AP-001 | Record содержит ID, action, target, immutable payload, guards, timestamps, TTL, state и protocol version |
 | AP-007 | P0 | done | Реализовать atomic operation journal с restrictive permissions | AP-006 | Partial write не повреждает journal; чужие/невалидные records отклоняются; task/comment text не логируется отдельно |
 | AP-008 | P0 | ready | Перевести apply на `--operation-id` | AP-007 | Apply не принимает повторный payload; expired/stale/already-applied operations отклоняются стабильно |
 | AP-009 | P0 | blocked | Реализовать state machine ambiguous outcomes | AP-008 | Состояния `prepared/applying/applied/unknown/expired` покрыты тестами; `unknown` не ретраится автоматически |
 | AP-010 | P0 | blocked | Добавить `agent operation status` и recovery guidance | AP-009 | Пользователь видит безопасный статус и следующий шаг без вывода payload/credential |
-| AP-011 | P1 | ready | Заменить `include_content` на field selectors и byte budget | AP-003 | Клиент явно выбирает `notes`, `custom_fields` и лимит; превышение возвращает предсказуемый truncated result |
+| AP-011 | P1 | done | Заменить `include_content` на field selectors и byte budget | AP-003 | Клиент явно выбирает `notes`, `custom_fields` и лимит; превышение возвращает предсказуемый truncated result |
 | AP-012 | P1 | done | Минимизировать `agent status` и общие projections | — | Email и другие необязательные PII отсутствуют по умолчанию |
 | AP-013 | P1 | ready | Добавить protocol compatibility/deprecation tests | AP-001, AP-003 | Старый совместимый клиент получает корректный ответ; несовместимый — machine-readable upgrade guidance |
 
@@ -49,14 +49,14 @@ Issue ID следует сохранить в заголовке.
 | SEC-003 | P0 | ready | Проверять broad permission examples | INT-010 | Doctor/evals обнаруживают auto-allow для `api`, `request`, `auth` и apply |
 | SEC-004 | P1 | blocked | Workspace/project/custom-field/write-field allowlists | AP-008 | Prepare и apply независимо проверяют scope; policy file валидируется Zod и fail-closed |
 | SEC-005 | P1 | blocked | Metadata-only audit log | AP-009 | Записываются operation ID, target GID, action, timestamps, result и hashes; content/PAT отсутствуют |
-| SEC-006 | P1 | ready | Добавить output byte-budget tests | AP-011 | Большие API responses не обходят лимиты через nesting, Unicode или pagination |
+| SEC-006 | P1 | done | Добавить output byte-budget tests | AP-011 | Большие API responses не обходят лимиты через nesting, Unicode или pagination |
 | SEC-007 | P2 | research | Отдельный OS user/container deployment guide | — | Документированы credential, filesystem и network boundaries без ложных гарантий |
 
 ## Skill и integration manager
 
 | ID | P | Статус | Задача | Зависит от | Acceptance criteria |
 |---|---|---|---|---|---|
-| INT-001 | P0 | blocked | Создать canonical `asana` Agent Skill | AP-002, AP-005 | Skill вызывает только curated agent actions, не содержит PAT/raw API/install logic и укладывается в progressive disclosure |
+| INT-001 | P0 | ready | Создать canonical `asana` Agent Skill | AP-002, AP-005 | Skill вызывает только curated agent actions, не содержит PAT/raw API/install logic и укладывается в progressive disclosure |
 | INT-002 | P0 | blocked | Вынести workflows в короткие thematic references | INT-001 | Read, write, Git context, content trust и errors описаны без дублирования основного skill |
 | INT-003 | P0 | ready | Создать декларативный Zod-валидируемый client registry | — | Paths, scopes, manifests, support tier и protocol range валидируются на build/test |
 | INT-004 | P0 | blocked | Детерминированный generator client artifacts | INT-001, INT-003 | Повторная генерация даёт byte-identical output; CI обнаруживает drift |
