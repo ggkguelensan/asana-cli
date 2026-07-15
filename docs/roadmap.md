@@ -1,7 +1,8 @@
 # Roadmap asana-cli
 
-Актуально на 2026-07-15. Опубликованная стабильная версия: `v0.2.0`; текущая ветка
-разработки протокола и CLI: `v0.3.0`.
+Актуально на 2026-07-15. Последний опубликованный GitHub Release: `v0.2.0`.
+`main` объявляет версию `0.4.0`, но tag `v0.4.0` и опубликованный `v0.4.0` release отсутствуют.
+Следовательно, `v0.4` находится в состоянии code candidate на `main`, а не в состоянии released.
 
 Связанные документы:
 
@@ -9,6 +10,18 @@
 - [Implementation plan](implementation-plan.md) — порядок ближайших изменений и PR.
 - [Agent clients](agent-clients.md) — текущий контракт прямого использования из Codex CLI и Claude Code.
 - [Security model](../SECURITY.md) — гарантии, ограничения и threat model.
+
+## Состояние v0.4
+
+Снимок на 2026-07-15:
+
+- опубликован только `v0.2.0`; remote tags не содержат `v0.4.0`;
+- текущий `main` содержит изменения portable integrations и объявляет package version `0.4.0`;
+- `v0.4` нельзя называть release candidate, stable release или выполненным milestone до
+  документированных результатов всех release checks и client evals из
+  [implementation plan](implementation-plan.md#maintainer-release-procedure);
+- этот снимок не меняет статусы backlog: `done` по-прежнему требует merge в `main` **и** required
+  checks, а gate `v0.4` требует отдельного evidence.
 
 ## Целевая форма продукта
 
@@ -115,6 +128,10 @@ Gate выхода:
 - uninstall сохраняет все файлы и настройки, которыми `asana-cli` не владеет;
 - чистые сессии Codex и Claude находят skill и используют curated agent protocol;
 - plugin/skill никогда не устанавливает и не обновляет CLI самостоятельно.
+
+Статус gate: **не подтверждён**. Наличие кода `0.4.0` на `main` не является доказательством
+install/uninstall, discovery или behavioral/security evals; до их результатов milestone остаётся
+кандидатом без release tag.
 
 ## v0.5 — Developer context
 

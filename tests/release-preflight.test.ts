@@ -22,6 +22,13 @@ describe("release preflight", () => {
     )).toThrow("must exactly match package version v0.4.0");
   });
 
+  test("rejects a branch reference where release metadata requires an immutable Git object ID", () => {
+    expect(() => parseReleaseMetadata(
+      { GITHUB_REF_NAME: "v0.4.0", GITHUB_SHA: "refs/heads/main" },
+      { version: "0.4.0" },
+    )).toThrow("Invalid string: must match pattern");
+  });
+
   test("accepts a tag whose commit belongs to origin/main", () => {
     const calls: string[][] = [];
     const runGit: GitExecutor = (args) => {

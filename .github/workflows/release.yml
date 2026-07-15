@@ -25,25 +25,39 @@ jobs:
 
   build:
     needs: preflight
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - target: bun-darwin-arm64
             output: asana-cli-darwin-arm64
+            runner: macos-14
+            verify-package-content: true
           - target: bun-darwin-x64
             output: asana-cli-darwin-x64
+            runner: macos-13
+            verify-package-content: true
           - target: bun-linux-arm64
             output: asana-cli-linux-arm64
+            runner: ubuntu-24.04-arm
+            verify-package-content: true
           - target: bun-linux-x64-baseline
             output: asana-cli-linux-x64
+            runner: ubuntu-latest
+            verify-package-content: true
           - target: bun-linux-arm64-musl
             output: asana-cli-linux-arm64-musl
+            runner: ubuntu-24.04-arm
+            verify-package-content: true
           - target: bun-linux-x64-baseline-musl
             output: asana-cli-linux-x64-musl
+            runner: ubuntu-latest
+            verify-package-content: true
           - target: bun-windows-x64-baseline
             output: asana-cli-windows-x64.exe
+            runner: windows-latest
+            verify-package-content: true
     steps:
       - uses: actions/checkout@v7
       - uses: oven-sh/setup-bun@v2
@@ -51,6 +65,8 @@ jobs:
           bun-version: 1.3.14
       - run: bun install --frozen-lockfile
       - run: bun run --no-env-file scripts/build.ts ${{ matrix.target }} dist/${{ matrix.output }}
+      - if: matrix.verify-package-content
+        run: bun run check:package-content -- dist/${{ matrix.output }}
       - uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.output }}
