@@ -40,7 +40,7 @@ export function createClient(pat: string): AsanaClient {
   registerSecret(pat);
   const client = new AsanaModule.ApiClient();
   if (!client.authentications.token) {
-    throw new CliError("node-asana did not expose token authentication", 1);
+    throw new CliError("internal", "node-asana did not expose token authentication");
   }
   client.authentications.token.accessToken = pat;
   return client;
@@ -60,13 +60,13 @@ export function resolveApiClass(name: string): { name: string; constructor: ApiC
   );
   if (!actual) {
     throw new CliError(
+      "usage",
       `Unknown Asana API class: ${name}. Run \`asana-cli api list\` to see available classes.`,
-      2,
     );
   }
   const exported = asanaExports.find(([exportName]) => exportName === actual)?.[1];
   if (typeof exported !== "function") {
-    throw new CliError(`Asana API export ${actual} is not constructable`, 1);
+    throw new CliError("internal", `Asana API export ${actual} is not constructable`);
   }
   return { name: actual, constructor: exported as unknown as ApiConstructor };
 }
@@ -98,13 +98,13 @@ export async function invokeApiMethod(
     typeof instance[actualMethod] !== "function"
   ) {
     throw new CliError(
+      "usage",
       `Unknown method ${resolved.name}.${methodName}. Run \`asana-cli api list ${resolved.name}\`.`,
-      2,
     );
   }
   const method = instance[actualMethod];
   if (typeof method !== "function") {
-    throw new CliError(`Asana method ${resolved.name}.${actualMethod} is not callable`, 1);
+    throw new CliError("internal", `Asana method ${resolved.name}.${actualMethod} is not callable`);
   }
   const result: unknown = await Reflect.apply(method, instance, args);
   return result;
@@ -139,8 +139,8 @@ export async function collectPages<T>(
     const parsedItems = z.array(itemSchema).safeParse(page.data.slice(0, remaining));
     if (!parsedItems.success) {
       throw new CliError(
+        "internal",
         `Invalid response data from ${context}: ${zodIssueSummary(parsedItems.error)}`,
-        1,
       );
     }
     data.push(...parsedItems.data);
@@ -156,7 +156,7 @@ export async function collectPages<T>(
 
 export function asCollection(value: unknown, context: string): CollectionLike {
   if (!isCollection(value)) {
-    throw new CliError(`Unexpected non-collection response from ${context}`, 1);
+    throw new CliError("internal", `Unexpected non-collection response from ${context}`);
   }
   return value;
 }

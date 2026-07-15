@@ -10,7 +10,7 @@ import {
   searchInputSchema,
   statusInputSchema,
 } from "./agent-action-schemas";
-import { CliError } from "./errors";
+import { AGENT_ERROR_SCHEMA_ID, CliError, errorPayloadSchema } from "./errors";
 import { readAgentJsonInput } from "./io";
 import { jsonObjectSchema } from "./schemas";
 import { agentEnvelopeSchema } from "./security";
@@ -240,7 +240,7 @@ export function agentActionDescriptor(
 
 function requireAgentAction(action: string): AgentActionDefinition {
   const definition = agentActionDefinition(action);
-  if (!definition) throw new CliError(`Unknown agent action: ${action}`, 2);
+  if (!definition) throw new CliError("usage", `Unknown agent action: ${action}`);
   return definition;
 }
 
@@ -275,6 +275,12 @@ function jsonSchemaDocument(id: string, schema: z.ZodType, io: "input" | "output
   return jsonObjectSchema.parse({ ...generated, $id: id });
 }
 
+const publishedAgentErrorSchema = jsonSchemaDocument(
+  AGENT_ERROR_SCHEMA_ID,
+  agentEnvelopeSchema(errorPayloadSchema),
+  "output",
+);
+
 const publishedActionSchema = z.strictObject({
   descriptor: agentActionDescriptorSchema,
   input: jsonObjectSchema,
@@ -285,6 +291,8 @@ const schemaCatalogSchema = z.strictObject({
   agent_protocol_version: z.literal(AGENT_PROTOCOL_VERSION),
   cli_version: z.literal(CLI_VERSION),
   schema: z.literal("asana-cli.agent.schema-catalog.v1"),
+  error_schema_id: z.literal(AGENT_ERROR_SCHEMA_ID),
+  error_schema: jsonObjectSchema,
   actions: z.array(publishedActionSchema),
 });
 
@@ -292,6 +300,8 @@ const singleActionSchema = z.strictObject({
   agent_protocol_version: z.literal(AGENT_PROTOCOL_VERSION),
   cli_version: z.literal(CLI_VERSION),
   schema: z.literal("asana-cli.agent.action-schema.v1"),
+  error_schema_id: z.literal(AGENT_ERROR_SCHEMA_ID),
+  error_schema: jsonObjectSchema,
   action: publishedActionSchema,
 });
 
@@ -317,6 +327,8 @@ export function publishAgentSchemas(action?: string): unknown {
       agent_protocol_version: AGENT_PROTOCOL_VERSION,
       cli_version: CLI_VERSION,
       schema: "asana-cli.agent.action-schema.v1",
+      error_schema_id: AGENT_ERROR_SCHEMA_ID,
+      error_schema: publishedAgentErrorSchema,
       action: publishAction(requireAgentAction(action)),
     });
   }
@@ -324,6 +336,8 @@ export function publishAgentSchemas(action?: string): unknown {
     agent_protocol_version: AGENT_PROTOCOL_VERSION,
     cli_version: CLI_VERSION,
     schema: "asana-cli.agent.schema-catalog.v1",
+    error_schema_id: AGENT_ERROR_SCHEMA_ID,
+    error_schema: publishedAgentErrorSchema,
     actions: AGENT_ACTION_NAMES.map((name) => publishAction(AGENT_ACTIONS[name])),
   });
 }

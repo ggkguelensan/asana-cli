@@ -32,7 +32,9 @@ function envPat(env: Record<string, string | undefined>): ResolvedPat | undefine
 
 export function validatePat(value: string): string {
   const parsed = patSchema.safeParse(value);
-  if (!parsed.success) throw new CliError(parsed.error.issues[0]?.message ?? "Invalid PAT", 2);
+  if (!parsed.success) {
+    throw new CliError("validation", parsed.error.issues[0]?.message ?? "Invalid PAT");
+  }
   return parsed.data;
 }
 
@@ -49,22 +51,23 @@ export async function storedPat(): Promise<string | null> {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     throw new CliError(
+      "storage-invalid",
       `Cannot access the OS credential store: ${message}. Use ASANA_ACCESS_TOKEN as a fallback.`,
-      3,
     );
   }
 }
 
 export async function resolvePatWithSource(
   env: Record<string, string | undefined> = process.env,
+  readStoredPat: () => Promise<string | null> = storedPat,
 ): Promise<ResolvedPat> {
   const fromEnvironment = envPat(env);
   if (fromEnvironment) return fromEnvironment;
-  const stored = await storedPat();
+  const stored = await readStoredPat();
   if (stored) return { pat: validatePat(stored), source: "os-credential-store" };
   throw new CliError(
+    "auth-required",
     "No Asana PAT found. Run `asana-cli auth pat set` or export ASANA_ACCESS_TOKEN.",
-    3,
   );
 }
 
@@ -74,7 +77,7 @@ export async function savePat(pat: string): Promise<void> {
     await Bun.secrets.set({ service: SERVICE, name: NAME, value: pat });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    throw new CliError(`Cannot store PAT in the OS credential store: ${message}`, 3);
+    throw new CliError("storage-invalid", `Cannot store PAT in the OS credential store: ${message}`);
   }
 }
 
@@ -85,7 +88,7 @@ export async function deleteStoredPat(): Promise<boolean> {
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    throw new CliError(`Cannot delete PAT from the OS credential store: ${message}`, 3);
+    throw new CliError("storage-invalid", `Cannot delete PAT from the OS credential store: ${message}`);
   }
 }
 
@@ -94,7 +97,7 @@ export async function readPatInteractively(): Promise<string> {
     return patFromStdin(await Bun.stdin.text());
   }
   if (!process.stdin.setRawMode) {
-    throw new CliError("Hidden input is unavailable; pipe the PAT with --stdin instead", 2);
+    throw new CliError("usage", "Hidden input is unavailable; pipe the PAT with --stdin instead");
   }
 
   process.stderr.write("Asana PAT (input hidden): ");
@@ -110,13 +113,13 @@ export async function readPatInteractively(): Promise<string> {
       process.stdin.pause();
       process.stderr.write("\n");
       if (error) reject(error);
-      else if (!value) reject(new CliError("PAT must not be empty", 2));
+      else if (!value) reject(new CliError("validation", "PAT must not be empty"));
       else resolve(validatePat(value));
     };
     const onData = (chunk: string) => {
       for (const character of chunk) {
         if (character === "\u0003") {
-          finish(new CliError("Interrupted", 130));
+          finish(new CliError("interrupted", "Interrupted"));
           return;
         }
         if (character === "\r" || character === "\n" || character === "\u0004") {

@@ -39,6 +39,12 @@ Codex CLI and Claude Code must use only `asana-cli agent ...`, not the human/dev
 
 Prepare/hash/policy flags prevent mistakes and stale writes. They do not prove human approval. Codex/Claude permissions and sandboxing must keep `apply-*` behind an external confirmation.
 
+The operation journal is currently an internal, unwired core: `apply-*` still accepts a complete plan,
+there is no operation-status command, and the journal does not yet prevent duplicate apply. Never
+retry `apply-comment` after an ambiguous failure. The
+[operation recovery design constraints](docs/operation-recovery.md) define required fail-closed
+semantics for future AP-008/AP-010 wiring; they are not a currently available recovery workflow.
+
 ## Recommended deployment
 
 1. Prefer a dedicated least-privileged Asana account whose workspace/project membership is limited to the tasks the agent needs.

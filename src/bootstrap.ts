@@ -12,8 +12,8 @@ export function hardenRuntime(): void {
   const environment = runtimeEnvironmentSchema.parse(process.env);
   if (environment.NODE_TLS_REJECT_UNAUTHORIZED === "0") {
     throw new CliError(
+      "policy-denied",
       "Refusing to run with NODE_TLS_REJECT_UNAUTHORIZED=0 because it exposes the Asana credential to interception.",
-      2,
     );
   }
 }

@@ -54,7 +54,7 @@ export function parseArgs(argv: string[]): ParsedArgs {
         continue;
       }
       const name = token.slice(2);
-      if (!name) throw new CliError("Invalid empty option", 2);
+      if (!name) throw new CliError("usage", "Invalid empty option");
       const next = tokens[index + 1];
       if (next !== undefined && (!next.startsWith("-") || next === "-")) {
         addFlag(flags, name, next);
@@ -65,7 +65,7 @@ export function parseArgs(argv: string[]): ParsedArgs {
       continue;
     }
     if (token.startsWith("-") && token !== "-") {
-      throw new CliError(`Unknown short option: ${token}`, 2);
+      throw new CliError("usage", `Unknown short option: ${token}`);
     }
     positionals.push(token);
   }
@@ -88,7 +88,7 @@ export function stringFlag(args: ParsedArgs, name: string): string | undefined {
   const value = flag(args, name);
   if (value === undefined) return undefined;
   if (typeof value !== "string") {
-    throw new CliError(`--${name} requires a value`, 2);
+    throw new CliError("usage", `--${name} requires a value`);
   }
   return value;
 }
@@ -103,7 +103,7 @@ export function booleanFlag(
   if (typeof value === "boolean") return value;
   if (["true", "1", "yes", "on"].includes(value.toLowerCase())) return true;
   if (["false", "0", "no", "off"].includes(value.toLowerCase())) return false;
-  throw new CliError(`--${name} must be true or false`, 2);
+  throw new CliError("validation", `--${name} must be true or false`);
 }
 
 export function integerFlag(
@@ -117,7 +117,7 @@ export function integerFlag(
   if (raw === undefined) return defaultValue;
   const value = Number(raw);
   if (!Number.isInteger(value) || value < minimum || value > maximum) {
-    throw new CliError(`--${name} must be an integer between ${minimum} and ${maximum}`, 2);
+    throw new CliError("validation", `--${name} must be an integer between ${minimum} and ${maximum}`);
   }
   return value;
 }
@@ -128,6 +128,6 @@ export function requirePositional(
   description: string,
 ): string {
   const value = args.positionals[index];
-  if (!value) throw new CliError(`Missing ${description}`, 2);
+  if (!value) throw new CliError("usage", `Missing ${description}`);
   return value;
 }
