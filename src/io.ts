@@ -1,0 +1,61 @@
+import { CliError } from "./errors";
+import { createReadStream, existsSync, statSync } from "node:fs";
+
+export async function readTextInput(value: string, label: string): Promise<string> {
+  if (value === "-") return Bun.stdin.text();
+  if (value.startsWith("@")) {
+    const path = value.slice(1);
+    if (!path) throw new CliError(`${label}: missing path after @`, 2);
+    const file = Bun.file(path);
+    if (!(await file.exists())) throw new CliError(`${label}: file not found: ${path}`, 2);
+    return file.text();
+  }
+  return value;
+}
+
+export async function readJsonInput<T = unknown>(value: string, label: string): Promise<T> {
+  const text = await readTextInput(value, label);
+  try {
+    return JSON.parse(text) as T;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new CliError(`${label}: invalid JSON: ${message}`, 2);
+  }
+}
+
+export async function readAgentJsonInput<T = unknown>(value: string | undefined): Promise<T> {
+  if (value !== "-") {
+    throw new CliError("Agent commands require JSON on stdin via --input -", 2);
+  }
+  const text = await Bun.stdin.text();
+  if (new TextEncoder().encode(text).byteLength > 65_536) {
+    throw new CliError("Agent input exceeds the 64 KiB limit", 2);
+  }
+  if (!text.trim()) throw new CliError("Agent input is empty", 2);
+  try {
+    return JSON.parse(text) as T;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new CliError(`Agent input is not valid JSON: ${message}`, 2);
+  }
+}
+
+export function printJson(value: unknown, compact = false): void {
+  process.stdout.write(`${JSON.stringify(value, null, compact ? 0 : 2)}\n`);
+}
+
+export function materializeFileReferences(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(materializeFileReferences);
+  if (!value || typeof value !== "object") return value;
+  const record = value as Record<string, unknown>;
+  if (Object.keys(record).length === 1 && typeof record.$file === "string") {
+    const path = record.$file;
+    if (!existsSync(path) || !statSync(path).isFile()) {
+      throw new CliError(`File reference does not point to a regular file: ${path}`, 2);
+    }
+    return createReadStream(path);
+  }
+  return Object.fromEntries(
+    Object.entries(record).map(([key, entry]) => [key, materializeFileReferences(entry)]),
+  );
+}
