@@ -117,6 +117,9 @@ describe("agent capability and schema catalog", () => {
       "asana-cli agent api",
       "asana-cli auth pat set",
       "asana-cli auth pat delete",
+      "asana-cli integrations install --apply",
+      "asana-cli integrations update --apply",
+      "asana-cli integrations uninstall --apply",
     ]);
     expect(AGENT_MANIFEST.deprecated_commands).toEqual({
       "asana-cli agent apply-task-update": {
