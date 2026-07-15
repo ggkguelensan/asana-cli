@@ -1,7 +1,7 @@
 import { CliError } from "./errors";
 import { z } from "zod";
 import { jsonObjectSchema, jsonValueSchema } from "./schemas";
-import { VERSION } from "./help";
+import { CLI_VERSION } from "./version";
 
 const BASE_URL = "https://app.asana.com/api/1.0";
 const METHODS = new Set(["GET", "POST", "PUT", "PATCH", "DELETE"]);
@@ -51,7 +51,7 @@ export async function rawRequest(pat: string, options: RawRequestOptions): Promi
     headers: {
       Accept: "application/json",
       Authorization: `Bearer ${pat}`,
-      "User-Agent": `asana-cli/${VERSION}`,
+      "User-Agent": `asana-cli/${CLI_VERSION}`,
       ...(hasBody ? { "Content-Type": "application/json" } : {}),
     },
     ...(hasBody ? { body: JSON.stringify(options.data) } : {}),

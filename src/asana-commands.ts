@@ -86,6 +86,14 @@ export const AGENT_TASK_FIELDS = [
   "modified_at",
 ].join(",");
 
+export const AGENT_USER_FIELDS = [
+  "gid",
+  "name",
+  "workspaces",
+  "workspaces.gid",
+  "workspaces.name",
+].join(",");
+
 interface CommandPageOptions {
   all: boolean;
   maxResults: number;
@@ -108,9 +116,12 @@ async function selectedWorkspaces(client: AsanaClient, workspaceGid?: string): P
   return workspaces;
 }
 
-export async function getMe(client: AsanaClient): Promise<unknown> {
+export async function getMe(
+  client: AsanaClient,
+  fields = "gid,name,email,photo,workspaces,workspaces.gid,workspaces.name",
+): Promise<unknown> {
   return invokeApiMethod(client, "UsersApi", "getUser", ["me", {
-    opt_fields: "gid,name,email,photo,workspaces,workspaces.gid,workspaces.name",
+    opt_fields: fields,
   }]);
 }
 

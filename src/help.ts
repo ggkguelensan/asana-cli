@@ -1,6 +1,6 @@
-export const VERSION = "0.2.0";
+import { CLI_VERSION } from "./version";
 
-export const HELP = `asana-cli ${VERSION} — Asana API from one executable
+export const HELP = `asana-cli ${CLI_VERSION} — Asana API from one executable
 
 USAGE
   asana-cli <command> [arguments] [options]
