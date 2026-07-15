@@ -1,4 +1,5 @@
 import { CliError } from "./errors";
+import { z } from "zod";
 
 export type FlagValue = string | boolean | string[];
 
@@ -19,12 +20,13 @@ function addFlag(flags: Record<string, FlagValue>, name: string, value: string |
 }
 
 export function parseArgs(argv: string[]): ParsedArgs {
+  const tokens = z.array(z.string()).parse(argv);
   const positionals: string[] = [];
   const flags: Record<string, FlagValue> = {};
   let positionalOnly = false;
 
-  for (let index = 0; index < argv.length; index += 1) {
-    const token = argv[index]!;
+  for (let index = 0; index < tokens.length; index += 1) {
+    const token = tokens[index]!;
     if (positionalOnly) {
       positionals.push(token);
       continue;
@@ -53,7 +55,7 @@ export function parseArgs(argv: string[]): ParsedArgs {
       }
       const name = token.slice(2);
       if (!name) throw new CliError("Invalid empty option", 2);
-      const next = argv[index + 1];
+      const next = tokens[index + 1];
       if (next !== undefined && (!next.startsWith("-") || next === "-")) {
         addFlag(flags, name, next);
         index += 1;

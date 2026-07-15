@@ -11,6 +11,11 @@
 - локальное хранение PAT в системном credential manager;
 - standalone-сборку через Bun: для запуска готового бинарника Bun и Node.js не нужны.
 
+Внешние JSON-границы валидируются Zod: stdin/файлы, agent actions, raw REST payloads,
+типизированные Asana DTO, environment-настройки и результаты credential manager. Универсальная
+поверхность `node-asana` изолирована как `unknown` внутри SDK-адаптера и не распространяет `any`
+по приложению.
+
 ## Установка
 
 ### Готовый бинарник
@@ -215,6 +220,9 @@ bun test
 bun run build
 bun run check
 ```
+
+`bun run typecheck` запускает строгий TypeScript и отдельный guard, запрещающий явные `any`
+в `src`, `tests` и `scripts`.
 
 ## License
 

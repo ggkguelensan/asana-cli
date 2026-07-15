@@ -1,8 +1,10 @@
 import { describe, expect, test } from "bun:test";
+import { z } from "zod";
 import {
   apiClassNames,
   apiMethodNames,
   collectPages,
+  createClient,
   invokeApiMethod,
   normalizeSdkResult,
 } from "../src/sdk";
@@ -15,9 +17,9 @@ describe("node-asana boundary", () => {
   });
 
   test("forbids invoking a WithHttpInfo method", async () => {
-    await expect(invokeApiMethod({}, "TasksApi", "getTaskWithHttpInfo", [])).rejects.toThrow(
-      "Unknown method",
-    );
+    await expect(
+      invokeApiMethod(createClient("SDK_TEST_CANARY"), "TasksApi", "getTaskWithHttpInfo", []),
+    ).rejects.toThrow("Unknown method");
   });
 
   test("normalizes Collection without serializing its API client", () => {
@@ -43,7 +45,7 @@ describe("node-asana boundary", () => {
       _response: { next_page: { offset: "next" } },
       nextPage: async () => second,
     };
-    expect(await collectPages(first, true, 10)).toEqual({
+    expect(await collectPages(first, true, 10, z.looseObject({ gid: z.string() }))).toEqual({
       data: [{ gid: "1" }, { gid: "2" }],
       next_page: null,
     });

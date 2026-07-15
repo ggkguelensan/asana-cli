@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { z } from "zod";
 import { stringFlag, type ParsedArgs } from "./args";
 import {
   addTaskComment,
@@ -12,329 +13,371 @@ import {
   TASK_FIELDS,
   updateTask,
 } from "./asana-commands";
-import { CliError } from "./errors";
-import { errorStatus } from "./errors";
+import { CliError, errorStatus } from "./errors";
 import { readAgentJsonInput } from "./io";
+import {
+  gidSchema,
+  parseExternalData,
+  storySchema,
+  taskListEnvelopeSchema,
+  taskSchema,
+  userSchema,
+  zodIssueSummary,
+  type AsanaTask,
+  type AsanaUser,
+} from "./schemas";
+import { type AsanaClient } from "./sdk";
 import { containsRegisteredSecret } from "./security";
 
 type JsonObject = Record<string, unknown>;
 
-const POLICY = () => process.env.ASANA_CLI_AGENT_POLICY === "read-write" ? "read-write" : "read";
+const agentEnvironmentSchema = z.object({
+  ASANA_CLI_AGENT_POLICY: z.enum(["read", "read-write"]).optional().catch(undefined),
+});
 
-function object(value: unknown, label: string): JsonObject {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    throw new CliError(`${label} must be a JSON object`, 2);
-  }
-  return value as JsonObject;
-}
+const resultLimitSchema = (maximum: number, fallback: number) =>
+  z.number().int().min(1).max(maximum).default(fallback);
 
-function onlyKeys(value: JsonObject, allowed: string[], label: string): void {
-  const unknown = Object.keys(value).filter((key) => !allowed.includes(key));
-  if (unknown.length) throw new CliError(`${label} contains unknown fields: ${unknown.join(", ")}`, 2);
-}
+const myTasksInputSchema = z.strictObject({
+  workspace_gid: gidSchema.optional(),
+  completed: z.enum(["false", "true", "all"]).default("false"),
+  limit: resultLimitSchema(100, 50),
+  paginate: z.boolean().default(false),
+  max_results: resultLimitSchema(500, 100),
+});
 
-function requiredString(value: JsonObject, key: string, maximum = 10_000): string {
-  const result = value[key];
-  if (typeof result !== "string" || !result.trim()) {
-    throw new CliError(`${key} must be a non-empty string`, 2);
-  }
-  if (result.length > maximum) throw new CliError(`${key} exceeds ${maximum} characters`, 2);
-  return result;
-}
+const getTaskInputSchema = z.strictObject({
+  task_gid: gidSchema,
+  include_content: z.boolean().default(false),
+});
 
-function optionalString(value: JsonObject, key: string, maximum = 10_000): string | undefined {
-  const result = value[key];
-  if (result === undefined) return undefined;
-  if (typeof result !== "string" || result.length > maximum) {
-    throw new CliError(`${key} must be a string of at most ${maximum} characters`, 2);
-  }
-  return result;
-}
+const listCommentsInputSchema = z.strictObject({
+  task_gid: gidSchema,
+  limit: resultLimitSchema(100, 50),
+  paginate: z.boolean().default(false),
+  max_results: resultLimitSchema(500, 100),
+});
 
-function gid(value: JsonObject, key: string): string {
-  const result = requiredString(value, key, 64);
-  if (!/^\d{1,64}$/.test(result)) throw new CliError(`${key} must be a numeric Asana GID`, 2);
-  return result;
-}
+const searchInputSchema = z.strictObject({
+  query: z.string().trim().min(1).max(500),
+  workspace_gid: gidSchema.optional(),
+  all_assignees: z.boolean().default(false),
+  completed: z.boolean().optional(),
+  max_results: resultLimitSchema(100, 100),
+  field_gid: gidSchema.optional(),
+  contains: z.boolean().default(false),
+});
 
-function optionalGid(value: JsonObject, key: string): string | undefined {
-  if (value[key] === undefined) return undefined;
-  return gid(value, key);
-}
+const customFieldValueSchema = z.union([
+  z.string(),
+  z.number(),
+  z.boolean(),
+  z.null(),
+  z.array(z.string()),
+]);
 
-function positiveInteger(value: JsonObject, key: string, fallback: number, maximum: number): number {
-  const result = value[key] ?? fallback;
-  if (!Number.isInteger(result) || Number(result) < 1 || Number(result) > maximum) {
-    throw new CliError(`${key} must be an integer between 1 and ${maximum}`, 2);
-  }
-  return Number(result);
-}
+const customFieldsPatchSchema = z.record(gidSchema, customFieldValueSchema)
+  .refine((fields) => Object.keys(fields).length <= 50, "Too many custom field updates");
 
-function boolean(value: JsonObject, key: string, fallback = false): boolean {
-  const result = value[key] ?? fallback;
-  if (typeof result !== "boolean") throw new CliError(`${key} must be a boolean`, 2);
-  return result;
-}
+const taskPatchSchema = z.strictObject({
+  name: z.string().max(500).optional(),
+  notes: z.string().max(8_000).optional(),
+  completed: z.boolean().optional(),
+  assignee: z.literal("me").optional(),
+  due_on: z.string().nullable().optional(),
+  due_at: z.string().nullable().optional(),
+  start_on: z.string().nullable().optional(),
+  custom_fields: customFieldsPatchSchema.optional(),
+}).refine((patch) => Object.keys(patch).length > 0, "patch must not be empty")
+  .refine((patch) => patch.due_on == null || patch.due_at == null, {
+    message: "patch cannot set due_on and due_at together",
+  });
 
-function envelopeData(value: unknown, label: string): any {
-  if (!value || typeof value !== "object" || !("data" in value)) {
-    throw new CliError(`Unexpected response from ${label}`, 1);
-  }
-  return (value as any).data;
+const prepareTaskUpdateInputSchema = z.strictObject({
+  task_gid: gidSchema,
+  patch: taskPatchSchema,
+});
+
+const planTargetSchema = z.strictObject({
+  gid: gidSchema,
+  name: z.string().optional(),
+  permalink_url: z.string().optional(),
+});
+
+const taskUpdatePlanSchema = z.strictObject({
+  version: z.literal(1),
+  operation: z.literal("task.update"),
+  task_gid: gidSchema,
+  expected_modified_at: z.string().min(1),
+  prepared_by: z.string().min(1),
+  target: planTargetSchema,
+  changes: taskPatchSchema,
+  hash: z.string().regex(/^sha256:[0-9a-f]{64}$/),
+});
+
+const applyTaskUpdateInputSchema = z.strictObject({ plan: taskUpdatePlanSchema });
+
+const prepareCommentInputSchema = z.strictObject({
+  task_gid: gidSchema,
+  text: z.string().min(1).max(8_000),
+});
+
+const commentPlanSchema = z.strictObject({
+  version: z.literal(1),
+  operation: z.literal("task.comment"),
+  task_gid: gidSchema,
+  expected_modified_at: z.string().min(1),
+  prepared_by: z.string().min(1),
+  target: planTargetSchema,
+  text: z.string().min(1).max(8_000),
+  hash: z.string().regex(/^sha256:[0-9a-f]{64}$/),
+});
+
+const applyCommentInputSchema = z.strictObject({ plan: commentPlanSchema });
+
+const ownedTaskSchema = taskSchema.extend({
+  modified_at: z.string().min(1),
+  assignee: z.looseObject({
+    gid: z.string(),
+    name: z.string().optional(),
+  }),
+});
+
+function policy(): "read" | "read-write" {
+  return agentEnvironmentSchema.parse(process.env).ASANA_CLI_AGENT_POLICY ?? "read";
 }
 
 function stable(value: unknown): string {
   if (value === undefined) return "null";
   if (Array.isArray(value)) return `[${value.map((entry) => stable(entry)).join(",")}]`;
   if (value && typeof value === "object") {
-    return `{${Object.keys(value as JsonObject).filter((key) => (value as JsonObject)[key] !== undefined).sort().map((key) =>
-      `${JSON.stringify(key)}:${stable((value as JsonObject)[key])}`,
-    ).join(",")}}`;
+    const record = z.looseObject({}).parse(value);
+    return `{${Object.keys(record)
+      .filter((key) => record[key] !== undefined)
+      .sort()
+      .map((key) => `${JSON.stringify(key)}:${stable(record[key])}`)
+      .join(",")}}`;
   }
   return JSON.stringify(value);
 }
 
-function planHash(plan: JsonObject): string {
-  const unsigned = Object.fromEntries(Object.entries(plan).filter(([key]) => key !== "hash"));
+function planHash(plan: unknown): string {
+  const parsed = z.looseObject({}).parse(plan);
+  const unsigned = Object.fromEntries(Object.entries(parsed).filter(([key]) => key !== "hash"));
   return `sha256:${createHash("sha256").update(stable(unsigned)).digest("hex")}`;
 }
 
-function verifyPlan(plan: JsonObject, operation: string): void {
-  if (plan.version !== 1 || plan.operation !== operation || typeof plan.hash !== "string") {
-    throw new CliError(`Invalid ${operation} plan`, 2);
-  }
+function verifyPlanHash(plan: { hash: string }): void {
   if (plan.hash !== planHash(plan)) throw new CliError("Plan hash mismatch", 2);
-  if (typeof plan.task_gid !== "string" || !/^\d{1,64}$/.test(plan.task_gid)) {
-    throw new CliError("Plan contains an invalid task GID", 2);
-  }
-  if (typeof plan.prepared_by !== "string" || typeof plan.expected_modified_at !== "string") {
-    throw new CliError("Plan is missing concurrency guard fields", 2);
+}
+
+function ensureNoRegisteredSecret(value: unknown, operation: string): void {
+  if (containsRegisteredSecret(value)) {
+    throw new CliError(
+      `${operation} blocked because it contains a credential from the local environment`,
+      2,
+    );
   }
 }
 
-function validatePatch(value: unknown): JsonObject {
-  const patch = object(value, "patch");
-  onlyKeys(
-    patch,
-    ["name", "notes", "completed", "assignee", "due_on", "due_at", "start_on", "custom_fields"],
-    "patch",
-  );
-  if (!Object.keys(patch).length) throw new CliError("patch must not be empty", 2);
-  if (patch.name !== undefined && (typeof patch.name !== "string" || patch.name.length > 500)) {
-    throw new CliError("patch.name must be a string of at most 500 characters", 2);
-  }
-  if (patch.notes !== undefined && (typeof patch.notes !== "string" || patch.notes.length > 8_000)) {
-    throw new CliError("patch.notes must be a string of at most 8000 characters", 2);
-  }
-  if (patch.completed !== undefined && typeof patch.completed !== "boolean") {
-    throw new CliError("patch.completed must be a boolean", 2);
-  }
-  if (patch.assignee !== undefined && patch.assignee !== "me") {
-    throw new CliError("Agent contract permits only assignee='me'", 2);
-  }
-  for (const key of ["due_on", "due_at", "start_on"]) {
-    if (patch[key] !== undefined && patch[key] !== null && typeof patch[key] !== "string") {
-      throw new CliError(`patch.${key} must be a string or null`, 2);
-    }
-  }
-  if (patch.due_on != null && patch.due_at != null) {
-    throw new CliError("patch cannot set due_on and due_at together", 2);
-  }
-  if (patch.custom_fields !== undefined) {
-    const customFields = object(patch.custom_fields, "patch.custom_fields");
-    if (Object.keys(customFields).length > 50) throw new CliError("Too many custom field updates", 2);
-    for (const [fieldGid, fieldValue] of Object.entries(customFields)) {
-      if (!/^\d{1,64}$/.test(fieldGid)) throw new CliError(`Invalid custom field GID: ${fieldGid}`, 2);
-      const valid = fieldValue === null || ["string", "number", "boolean"].includes(typeof fieldValue) ||
-        Array.isArray(fieldValue) && fieldValue.every((entry) => typeof entry === "string");
-      if (!valid) throw new CliError(`Unsupported value for custom field ${fieldGid}`, 2);
-    }
-  }
-  if (containsRegisteredSecret(patch)) {
-    throw new CliError("Update blocked because it contains a credential from the local environment", 2);
-  }
-  return patch;
-}
-
-async function ownTask(client: any, taskGid: string): Promise<{ user: any; task: any }> {
+async function ownTask(
+  client: AsanaClient,
+  taskGid: string,
+): Promise<{ user: AsanaUser; task: z.infer<typeof ownedTaskSchema> }> {
   const [userResult, taskResult] = await Promise.all([
     getMe(client),
-    getTask(client, taskGid, "gid,name,modified_at,completed,due_on,due_at,start_on,assignee,assignee.gid,assignee.name,permalink_url"),
+    getTask(
+      client,
+      taskGid,
+      "gid,name,modified_at,completed,due_on,due_at,start_on,assignee,assignee.gid,assignee.name,permalink_url",
+    ),
   ]);
-  const user = envelopeData(userResult, "UsersApi.getUser");
-  const task = envelopeData(taskResult, "TasksApi.getTask");
-  if (task?.assignee?.gid !== user?.gid) {
-    throw new CliError("Agent contract may update only tasks assigned to the authenticated user", 2);
+  const user = parseExternalData(userResult, userSchema, "UsersApi.getUser");
+  const task = parseExternalData(taskResult, ownedTaskSchema, "TasksApi.getTask");
+  if (task.assignee.gid !== user.gid) {
+    throw new CliError(
+      "Agent contract may update only tasks assigned to the authenticated user",
+      2,
+    );
   }
   return { user, task };
 }
 
-function agentResult(operation: string, effect: "read" | "prepare" | "write", data: unknown): unknown {
+function agentResult(
+  operation: string,
+  effect: "read" | "prepare" | "write",
+  data: unknown,
+): unknown {
+  return { operation, effect, policy: policy(), data };
+}
+
+function agentUserProjection(user: AsanaUser): JsonObject {
   return {
-    operation,
-    effect,
-    policy: POLICY(),
-    data,
+    gid: user.gid,
+    name: user.name,
+    email: user.email,
+    workspaces: user.workspaces,
   };
 }
 
-function agentUserProjection(user: any): any {
-  return {
-    gid: user?.gid,
-    name: user?.name,
-    email: user?.email,
-    workspaces: user?.workspaces,
-  };
+function gitSearchText(task: AsanaTask): string {
+  const customFields = task.custom_fields?.map((field) =>
+    field.display_value ?? field.text_value ?? ""
+  ) ?? [];
+  return [task.name, task.notes, ...customFields]
+    .filter((entry): entry is string => typeof entry === "string")
+    .join("\n");
 }
 
-function gitSearchText(task: any): string {
-  const customFields = Array.isArray(task?.custom_fields)
-    ? task.custom_fields.map((field: any) => field?.display_value ?? field?.text_value ?? "")
-    : [];
-  return [task?.name, task?.notes, ...customFields].filter((entry) => typeof entry === "string").join("\n");
-}
-
-function gitMatches(task: any, query: string, contains: boolean): boolean {
+function gitMatches(task: AsanaTask, query: string, contains: boolean): boolean {
   const text = gitSearchText(task);
   if (contains) return text.toLowerCase().includes(query.toLowerCase());
   const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   return new RegExp(`(^|[^A-Za-z0-9])${escaped}($|[^A-Za-z0-9])`, "i").test(text);
 }
 
-function agentTaskProjection(task: any): any {
-  const { notes: _notes, html_notes: _htmlNotes, custom_fields: _customFields, ...summary } = task;
+function agentTaskProjection(task: AsanaTask): JsonObject {
+  const summary: JsonObject = { ...task };
+  delete summary.notes;
+  delete summary.html_notes;
+  delete summary.custom_fields;
   return summary;
 }
 
+function taskList(value: unknown, context: string): AsanaTask[] {
+  const parsed = taskListEnvelopeSchema.safeParse(value);
+  if (!parsed.success) {
+    throw new CliError(`Invalid task list from ${context}: ${zodIssueSummary(parsed.error)}`, 1);
+  }
+  return parsed.data.data;
+}
+
 export async function runAgentCommand(
-  client: any,
+  client: AsanaClient,
   args: ParsedArgs,
 ): Promise<unknown> {
   const action = args.positionals[1];
   if (!action) throw new CliError("Missing agent action", 2);
-  const input = action === "status"
-    ? {}
-    : object(await readAgentJsonInput(stringFlag(args, "input")), "agent input");
+  const inputFlag = stringFlag(args, "input");
 
   if (action === "status") {
-    const user = envelopeData(await getMe(client), "UsersApi.getUser");
+    const user = parseExternalData(await getMe(client), userSchema, "UsersApi.getUser");
     return agentResult("auth.status", "read", {
       authenticated: true,
       user: agentUserProjection(user),
     });
   }
+
   if (action === "my-tasks") {
-    onlyKeys(input, ["workspace_gid", "completed", "limit", "paginate", "max_results"], "input");
-    const completed = input.completed ?? "false";
-    if (!["false", "true", "all"].includes(String(completed))) {
-      throw new CliError("completed must be false, true, or all", 2);
-    }
+    const input = await readAgentJsonInput(inputFlag, myTasksInputSchema);
     const data = await getMyTasks(client, {
-      workspace: optionalGid(input, "workspace_gid"),
-      completed: String(completed) as "false" | "true" | "all",
-      limit: positiveInteger(input, "limit", 50, 100),
-      all: boolean(input, "paginate", false),
-      maxResults: positiveInteger(input, "max_results", 100, 500),
+      workspace: input.workspace_gid,
+      completed: input.completed,
+      limit: input.limit,
+      all: input.paginate,
+      maxResults: input.max_results,
       fields: AGENT_TASK_FIELDS,
     });
     return agentResult("tasks.mine", "read", data);
   }
+
   if (action === "get-task") {
-    onlyKeys(input, ["task_gid", "include_content"], "input");
-    const includeContent = boolean(input, "include_content", false);
-    const data = await getTask(client, gid(input, "task_gid"), includeContent ? TASK_FIELDS : AGENT_TASK_FIELDS);
+    const input = await readAgentJsonInput(inputFlag, getTaskInputSchema);
+    const data = await getTask(
+      client,
+      input.task_gid,
+      input.include_content ? TASK_FIELDS : AGENT_TASK_FIELDS,
+    );
     return agentResult("task.get", "read", {
-      task: envelopeData(data, "TasksApi.getTask"),
-      content_profile: includeContent ? "full-untrusted" : "metadata",
+      task: parseExternalData(data, taskSchema, "TasksApi.getTask"),
+      content_profile: input.include_content ? "full-untrusted" : "metadata",
     });
   }
+
   if (action === "list-comments") {
-    onlyKeys(input, ["task_gid", "limit", "paginate", "max_results"], "input");
-    const data = await getTaskComments(client, gid(input, "task_gid"), {
-      limit: positiveInteger(input, "limit", 50, 100),
-      all: boolean(input, "paginate", false),
-      maxResults: positiveInteger(input, "max_results", 100, 500),
+    const input = await readAgentJsonInput(inputFlag, listCommentsInputSchema);
+    const data = await getTaskComments(client, input.task_gid, {
+      limit: input.limit,
+      all: input.paginate,
+      maxResults: input.max_results,
       fields: STORY_FIELDS,
       allStories: false,
     });
     return agentResult("task.comments", "read", data);
   }
+
   if (action === "search-tasks" || action === "find-git") {
-    onlyKeys(
-      input,
-      ["query", "workspace_gid", "all_assignees", "completed", "max_results", "field_gid", "contains"],
-      "input",
-    );
-    const completed = input.completed;
-    if (completed !== undefined && typeof completed !== "boolean") {
-      throw new CliError("completed must be a boolean", 2);
-    }
-    const query = requiredString(input, "query", 500);
-    const workspace = optionalGid(input, "workspace_gid");
-    const mine = !boolean(input, "all_assignees", false);
-    const maxResults = positiveInteger(input, "max_results", 100, 100);
+    const input = await readAgentJsonInput(inputFlag, searchInputSchema);
+    const mine = !input.all_assignees;
     if (action === "search-tasks") {
-      const data = await searchTasks(client, query, {
-        workspace,
+      const data = await searchTasks(client, input.query, {
+        workspace: input.workspace_gid,
         fields: AGENT_TASK_FIELDS,
         mine,
-        completed,
+        completed: input.completed,
         all: false,
-        maxResults,
+        maxResults: input.max_results,
       });
       return agentResult("task.search", "read", data);
     }
 
-    const contains = boolean(input, "contains", false);
-    const fieldGid = optionalGid(input, "field_gid");
     try {
-      const results = [await searchTasks(client, query, {
-        workspace,
+      const results = [await searchTasks(client, input.query, {
+        workspace: input.workspace_gid,
         fields: TASK_FIELDS,
         mine,
-        completed,
+        completed: input.completed,
         all: false,
-        maxResults,
+        maxResults: input.max_results,
       })];
-      if (fieldGid) {
-        results.push(await searchTasks(client, query, {
-          workspace,
+      if (input.field_gid) {
+        const operator = input.contains ? "contains" : "value";
+        results.push(await searchTasks(client, input.query, {
+          workspace: input.workspace_gid,
           fields: TASK_FIELDS,
           mine,
-          completed,
+          completed: input.completed,
           all: false,
-          maxResults,
+          maxResults: input.max_results,
           includeText: false,
-          extra: { [`custom_fields.${fieldGid}.${contains ? "contains" : "value"}`]: query },
+          extra: { [`custom_fields.${input.field_gid}.${operator}`]: input.query },
         }));
       }
-      const found = new Map<string, any>();
+      const found = new Map<string, JsonObject>();
       for (const result of results) {
-        for (const task of Array.isArray((result as any)?.data) ? (result as any).data : []) {
-          if (gitMatches(task, query, contains)) found.set(String(task.gid), agentTaskProjection(task));
+        for (const task of taskList(result, "TasksApi.searchTasksForWorkspace")) {
+          if (gitMatches(task, input.query, input.contains)) {
+            found.set(task.gid, agentTaskProjection(task));
+          }
         }
       }
       return agentResult("task.find-git", "read", {
         data: [...found.values()],
-        meta: { query, exact_match: !contains, mode: "asana-search", count: found.size },
+        meta: {
+          query: input.query,
+          exact_match: !input.contains,
+          mode: "asana-search",
+          count: found.size,
+        },
       });
     } catch (error) {
       if (errorStatus(error) !== 402 || !mine) throw error;
       const scanned = await getMyTasks(client, {
-        workspace,
+        workspace: input.workspace_gid,
         completed: "all",
         limit: 100,
         all: true,
         maxResults: 500,
         fields: TASK_FIELDS,
       });
-      const tasks = Array.isArray((scanned as any)?.data) ? (scanned as any).data : [];
-      const found = tasks.filter((task: any) => gitMatches(task, query, contains)).map(agentTaskProjection);
+      const found = taskList(scanned, "TasksApi.getTasks")
+        .filter((task) => gitMatches(task, input.query, input.contains))
+        .map(agentTaskProjection);
       return agentResult("task.find-git", "read", {
         data: found,
         meta: {
-          query,
-          exact_match: !contains,
+          query: input.query,
+          exact_match: !input.contains,
           mode: "local-scan-fallback",
           count: found.length,
           reason: "Asana advanced search requires Premium",
@@ -342,78 +385,77 @@ export async function runAgentCommand(
       });
     }
   }
+
   if (action === "prepare-task-update") {
-    onlyKeys(input, ["task_gid", "patch"], "input");
-    const taskGid = gid(input, "task_gid");
-    const changes = validatePatch(input.patch);
-    const { user, task } = await ownTask(client, taskGid);
-    const plan: JsonObject = {
-      version: 1,
-      operation: "task.update",
-      task_gid: taskGid,
+    const input = await readAgentJsonInput(inputFlag, prepareTaskUpdateInputSchema);
+    ensureNoRegisteredSecret(input.patch, "Update");
+    const { user, task } = await ownTask(client, input.task_gid);
+    const unsignedPlan = {
+      version: 1 as const,
+      operation: "task.update" as const,
+      task_gid: input.task_gid,
       expected_modified_at: task.modified_at,
       prepared_by: user.gid,
       target: { gid: task.gid, name: task.name, permalink_url: task.permalink_url },
-      changes,
+      changes: input.patch,
     };
-    plan.hash = planHash(plan);
+    const plan = taskUpdatePlanSchema.parse({ ...unsignedPlan, hash: planHash(unsignedPlan) });
     return agentResult("task.update.prepare", "prepare", {
       plan,
       approval: { required: true, reason: "This plan modifies one Asana task." },
     });
   }
+
   if (action === "apply-task-update") {
-    onlyKeys(input, ["plan"], "input");
-    const plan = object(input.plan, "plan");
-    verifyPlan(plan, "task.update");
-    const taskGid = String(plan.task_gid);
-    const { user, task } = await ownTask(client, taskGid);
+    const { plan } = await readAgentJsonInput(inputFlag, applyTaskUpdateInputSchema);
+    verifyPlanHash(plan);
+    ensureNoRegisteredSecret(plan.changes, "Update");
+    const { user, task } = await ownTask(client, plan.task_gid);
     if (user.gid !== plan.prepared_by || task.modified_at !== plan.expected_modified_at) {
       throw new CliError("Task changed after the plan was prepared; prepare a new plan", 4);
     }
-    const changes = validatePatch(plan.changes);
-    const result = await updateTask(client, taskGid, changes, AGENT_TASK_FIELDS);
-    return agentResult("task.update.apply", "write", envelopeData(result, "TasksApi.updateTask"));
+    const result = await updateTask(client, plan.task_gid, plan.changes, AGENT_TASK_FIELDS);
+    return agentResult(
+      "task.update.apply",
+      "write",
+      parseExternalData(result, taskSchema, "TasksApi.updateTask"),
+    );
   }
+
   if (action === "prepare-comment") {
-    onlyKeys(input, ["task_gid", "text"], "input");
-    const taskGid = gid(input, "task_gid");
-    const text = requiredString(input, "text", 8_000);
-    if (containsRegisteredSecret(text)) {
-      throw new CliError("Comment blocked because it contains a credential from the local environment", 2);
-    }
-    const { user, task } = await ownTask(client, taskGid);
-    const plan: JsonObject = {
-      version: 1,
-      operation: "task.comment",
-      task_gid: taskGid,
+    const input = await readAgentJsonInput(inputFlag, prepareCommentInputSchema);
+    ensureNoRegisteredSecret(input.text, "Comment");
+    const { user, task } = await ownTask(client, input.task_gid);
+    const unsignedPlan = {
+      version: 1 as const,
+      operation: "task.comment" as const,
+      task_gid: input.task_gid,
       expected_modified_at: task.modified_at,
       prepared_by: user.gid,
       target: { gid: task.gid, name: task.name, permalink_url: task.permalink_url },
-      text,
+      text: input.text,
     };
-    plan.hash = planHash(plan);
+    const plan = commentPlanSchema.parse({ ...unsignedPlan, hash: planHash(unsignedPlan) });
     return agentResult("task.comment.prepare", "prepare", {
       plan,
       approval: { required: true, reason: "This plan posts one Asana comment." },
     });
   }
+
   if (action === "apply-comment") {
-    onlyKeys(input, ["plan"], "input");
-    const plan = object(input.plan, "plan");
-    verifyPlan(plan, "task.comment");
-    const taskGid = String(plan.task_gid);
-    const { user, task } = await ownTask(client, taskGid);
+    const { plan } = await readAgentJsonInput(inputFlag, applyCommentInputSchema);
+    verifyPlanHash(plan);
+    ensureNoRegisteredSecret(plan.text, "Comment");
+    const { user, task } = await ownTask(client, plan.task_gid);
     if (user.gid !== plan.prepared_by || task.modified_at !== plan.expected_modified_at) {
       throw new CliError("Task changed after the plan was prepared; prepare a new plan", 4);
     }
-    const text = typeof plan.text === "string" ? plan.text : "";
-    if (!text || text.length > 8_000) throw new CliError("Invalid comment text in plan", 2);
-    if (containsRegisteredSecret(text)) {
-      throw new CliError("Comment blocked because it contains a credential from the local environment", 2);
-    }
-    const result = await addTaskComment(client, taskGid, { text }, STORY_FIELDS);
-    return agentResult("task.comment.apply", "write", envelopeData(result, "StoriesApi.createStoryForTask"));
+    const result = await addTaskComment(client, plan.task_gid, { text: plan.text }, STORY_FIELDS);
+    return agentResult(
+      "task.comment.apply",
+      "write",
+      parseExternalData(result, storySchema, "StoriesApi.createStoryForTask"),
+    );
   }
 
   throw new CliError(`Unknown agent action: ${action}`, 2);

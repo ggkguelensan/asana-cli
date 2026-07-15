@@ -1,15 +1,34 @@
 import * as AsanaModule from "asana";
+import { z } from "zod";
 import { CliError } from "./errors";
 import { resolvePatWithSource } from "./pat-store";
 import { registerSecret } from "./security";
+import { zodIssueSummary } from "./schemas";
 
-const Asana = AsanaModule as unknown as Record<string, any>;
+export type AsanaClient = InstanceType<typeof AsanaModule.ApiClient>;
 
-export interface CollectionLike<T = unknown> {
-  data: T[] | null;
-  _response?: { next_page?: unknown };
-  nextPage?: () => Promise<CollectionLike<T>>;
+interface ApiInstance {
+  [methodName: string]: unknown;
 }
+
+interface ApiConstructor {
+  new(client?: AsanaClient): ApiInstance;
+  readonly prototype: ApiInstance;
+}
+
+export interface CollectionLike {
+  data: unknown[] | null;
+  _response?: { next_page?: unknown };
+  nextPage?: () => Promise<CollectionLike>;
+}
+
+const collectionBoundarySchema = z.looseObject({
+  data: z.array(z.unknown()).nullable(),
+  _response: z.looseObject({ next_page: z.unknown().optional() }).optional(),
+  nextPage: z.function().optional(),
+});
+
+const asanaExports = Object.entries(AsanaModule) as Array<[string, unknown]>;
 
 export async function resolvePat(
   env: Record<string, string | undefined> = process.env,
@@ -17,21 +36,24 @@ export async function resolvePat(
   return (await resolvePatWithSource(env)).pat;
 }
 
-export function createClient(pat: string): any {
+export function createClient(pat: string): AsanaClient {
   registerSecret(pat);
-  const client = new Asana.ApiClient();
+  const client = new AsanaModule.ApiClient();
+  if (!client.authentications.token) {
+    throw new CliError("node-asana did not expose token authentication", 1);
+  }
   client.authentications.token.accessToken = pat;
   return client;
 }
 
 export function apiClassNames(): string[] {
-  return Object.entries(Asana)
+  return asanaExports
     .filter(([name, value]) => name.endsWith("Api") && typeof value === "function")
     .map(([name]) => name)
     .sort();
 }
 
-export function resolveApiClass(name: string): { name: string; constructor: any } {
+export function resolveApiClass(name: string): { name: string; constructor: ApiConstructor } {
   const requested = name.endsWith("Api") ? name : `${name}Api`;
   const actual = apiClassNames().find(
     (candidate) => candidate.toLowerCase() === requested.toLowerCase(),
@@ -42,7 +64,11 @@ export function resolveApiClass(name: string): { name: string; constructor: any 
       2,
     );
   }
-  return { name: actual, constructor: Asana[actual] };
+  const exported = asanaExports.find(([exportName]) => exportName === actual)?.[1];
+  if (typeof exported !== "function") {
+    throw new CliError(`Asana API export ${actual} is not constructable`, 1);
+  }
+  return { name: actual, constructor: exported as unknown as ApiConstructor };
 }
 
 export function apiMethodNames(className: string, includeHttpInfo = false): string[] {
@@ -55,7 +81,7 @@ export function apiMethodNames(className: string, includeHttpInfo = false): stri
 }
 
 export async function invokeApiMethod(
-  client: any,
+  client: AsanaClient,
   className: string,
   methodName: string,
   args: unknown[],
@@ -76,16 +102,17 @@ export async function invokeApiMethod(
       2,
     );
   }
-  return instance[actualMethod](...args);
+  const method = instance[actualMethod];
+  if (typeof method !== "function") {
+    throw new CliError(`Asana method ${resolved.name}.${actualMethod} is not callable`, 1);
+  }
+  const result: unknown = await Reflect.apply(method, instance, args);
+  return result;
 }
 
 export function isCollection(value: unknown): value is CollectionLike {
-  return Boolean(
-    value &&
-      typeof value === "object" &&
-      Array.isArray((value as CollectionLike).data) &&
-      typeof (value as CollectionLike).nextPage === "function",
-  );
+  const parsed = collectionBoundarySchema.safeParse(value);
+  return parsed.success && Array.isArray(parsed.data.data) && typeof parsed.data.nextPage === "function";
 }
 
 export function normalizeSdkResult(value: unknown): unknown {
@@ -97,17 +124,26 @@ export function normalizeSdkResult(value: unknown): unknown {
 }
 
 export async function collectPages<T>(
-  first: CollectionLike<T>,
+  first: CollectionLike,
   all: boolean,
   maxResults: number,
+  itemSchema: z.ZodType<T>,
+  context = "Asana collection",
 ): Promise<{ data: T[]; next_page: unknown }> {
   const data: T[] = [];
-  let page: CollectionLike<T> | undefined = first;
+  let page: CollectionLike | undefined = first;
 
   while (page && Array.isArray(page.data)) {
     const remaining = maxResults - data.length;
     if (remaining <= 0) break;
-    data.push(...page.data.slice(0, remaining));
+    const parsedItems = z.array(itemSchema).safeParse(page.data.slice(0, remaining));
+    if (!parsedItems.success) {
+      throw new CliError(
+        `Invalid response data from ${context}: ${zodIssueSummary(parsedItems.error)}`,
+        1,
+      );
+    }
+    data.push(...parsedItems.data);
     const nextPage = page._response?.next_page ?? null;
     if (!all || !nextPage || data.length >= maxResults || !page.nextPage) {
       return { data, next_page: nextPage };

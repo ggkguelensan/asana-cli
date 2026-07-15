@@ -8,6 +8,7 @@ import {
   stringFlag,
   type ParsedArgs,
 } from "./args";
+import { z } from "zod";
 import {
   addTaskComment,
   getMe,
@@ -34,6 +35,7 @@ import {
   isCollection,
   normalizeSdkResult,
   resolveApiClass,
+  type AsanaClient,
 } from "./sdk";
 import {
   deleteStoredPat,
@@ -45,6 +47,23 @@ import {
 } from "./pat-store";
 import { AGENT_MANIFEST, enforceAgentPolicy, isAgentMode } from "./agent-mode";
 import { runAgentCommand } from "./agent-cli";
+import {
+  jsonArraySchema,
+  jsonObjectSchema,
+  jsonValueSchema,
+  parseExternalData,
+  taskListEnvelopeSchema,
+  userSchema,
+  zodIssueSummary,
+  type AsanaTask,
+} from "./schemas";
+
+const completedModeSchema = z.enum(["false", "true", "all"]);
+const cliEnvironmentSchema = z.object({
+  ASANA_ACCESS_TOKEN: z.string().optional(),
+  ASANA_PAT: z.string().optional(),
+  ASANA_GIT_FIELD_GID: z.string().optional(),
+});
 
 export interface CliResult {
   value?: unknown;
@@ -86,7 +105,8 @@ function completedMode(args: ParsedArgs): "false" | "true" | "all" {
   if (value === undefined || value === false) return "false";
   if (value === true) return "true";
   const normalized = value.toLowerCase();
-  if (["false", "true", "all"].includes(normalized)) return normalized as any;
+  const parsed = completedModeSchema.safeParse(normalized);
+  if (parsed.success) return parsed.data;
   throw new CliError("--completed must be false, true, or all", 2);
 }
 
@@ -94,19 +114,18 @@ function nullable(value: string): string | null {
   return value.toLowerCase() === "null" ? null : value;
 }
 
-function ensureObject(value: unknown, label: string): Record<string, unknown> {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    throw new CliError(`${label} must be a JSON object`, 2);
-  }
-  return value as Record<string, unknown>;
-}
-
 async function updateData(args: ParsedArgs): Promise<Record<string, unknown>> {
   const json = stringFlag(args, "data") ?? stringFlag(args, "input");
   let data: Record<string, unknown> = {};
   if (json !== undefined) {
-    const parsed = ensureObject(await readJsonInput(json, "--data"), "--data");
-    data = "data" in parsed ? ensureObject(parsed.data, "--data.data") : parsed;
+    const parsed = await readJsonInput(json, "--data", jsonObjectSchema);
+    if ("data" in parsed) {
+      const nested = jsonObjectSchema.safeParse(parsed.data);
+      if (!nested.success) throw new CliError("--data.data must be a JSON object", 2);
+      data = nested.data;
+    } else {
+      data = parsed;
+    }
   }
 
   const stringFields: Array<[string, string]> = [
@@ -137,11 +156,15 @@ async function updateData(args: ParsedArgs): Promise<Record<string, unknown>> {
   return data;
 }
 
-function extractTasks(result: unknown): any[] {
-  return Array.isArray((result as any)?.data) ? (result as any).data : [];
+function extractTasks(result: unknown): AsanaTask[] {
+  const parsed = taskListEnvelopeSchema.safeParse(result);
+  if (!parsed.success) {
+    throw new CliError(`Invalid task list response: ${zodIssueSummary(parsed.error)}`, 1);
+  }
+  return parsed.data.data;
 }
 
-function deduplicateTasks(tasks: any[]): any[] {
+function deduplicateTasks(tasks: AsanaTask[]): AsanaTask[] {
   const seen = new Set<string>();
   return tasks.filter((task) => {
     const key = String(task?.gid ?? JSON.stringify(task));
@@ -151,31 +174,32 @@ function deduplicateTasks(tasks: any[]): any[] {
   });
 }
 
-function taskSearchText(task: any): string {
+function taskSearchText(task: AsanaTask): string {
   const customFields = Array.isArray(task?.custom_fields)
-    ? task.custom_fields.map((field: any) => field?.display_value ?? field?.text_value ?? "")
+    ? task.custom_fields.map((field) => field.display_value ?? field.text_value ?? "")
     : [];
   return [task?.name, task?.notes, task?.html_notes, ...customFields]
     .filter((value) => typeof value === "string")
     .join("\n");
 }
 
-function matchesGitReference(task: any, reference: string, contains: boolean): boolean {
+function matchesGitReference(task: AsanaTask, reference: string, contains: boolean): boolean {
   const haystack = taskSearchText(task);
   if (contains) return haystack.toLowerCase().includes(reference.toLowerCase());
   const escaped = reference.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   return new RegExp(`(^|[^A-Za-z0-9])${escaped}($|[^A-Za-z0-9])`, "i").test(haystack);
 }
 
-async function findGitTasks(client: any, args: ParsedArgs, reference: string): Promise<unknown> {
+async function findGitTasks(client: AsanaClient, args: ParsedArgs, reference: string): Promise<unknown> {
   const page = pageOptions(args);
   const workspace = stringFlag(args, "workspace");
   const selectedFields = fields(args, TASK_FIELDS);
   const mine = !booleanFlag(args, "all-assignees", false);
   const contains = booleanFlag(args, "contains", false);
+  const environment = cliEnvironmentSchema.parse(process.env);
   const configuredFields = [
     ...flagStrings(args, "field"),
-    ...(process.env.ASANA_GIT_FIELD_GID ?? "").split(",").filter(Boolean),
+    ...(environment.ASANA_GIT_FIELD_GID ?? "").split(",").filter(Boolean),
   ];
 
   try {
@@ -241,7 +265,7 @@ async function findGitTasks(client: any, args: ParsedArgs, reference: string): P
   }
 }
 
-async function apiCommand(client: any | undefined, args: ParsedArgs): Promise<CliResult> {
+async function apiCommand(client: AsanaClient | undefined, args: ParsedArgs): Promise<CliResult> {
   const action = requirePositional(args, 1, "api action (list, docs, or call)");
   if (action === "list" || action === "methods") {
     const className = args.positionals[2];
@@ -271,16 +295,25 @@ async function apiCommand(client: any | undefined, args: ParsedArgs): Promise<Cl
   const className = requirePositional(args, 2, "API class");
   const method = requirePositional(args, 3, "API method");
   const rawArgs = stringFlag(args, "args") ?? "[]";
-  const callArgs = await readJsonInput(rawArgs, "--args");
-  if (!Array.isArray(callArgs)) throw new CliError("--args must be a JSON array", 2);
+  const callArgs = await readJsonInput(rawArgs, "--args", jsonArraySchema);
+  const materialized = materializeFileReferences(callArgs);
+  if (!Array.isArray(materialized)) throw new CliError("--args must be a JSON array", 2);
   const result = await invokeApiMethod(
     client,
     className,
     method,
-    materializeFileReferences(callArgs) as unknown[],
+    materialized,
   );
   if (isCollection(result) && pageOptions(args).all) {
-    return { value: await collectPages(asCollection(result, `${className}.${method}`), true, pageOptions(args).maxResults) };
+    return {
+      value: await collectPages(
+        asCollection(result, `${className}.${method}`),
+        true,
+        pageOptions(args).maxResults,
+        z.unknown(),
+        `${className}.${method}`,
+      ),
+    };
   }
   return { value: normalizeSdkResult(result) };
 }
@@ -299,7 +332,8 @@ async function patCommand(args: ParsedArgs): Promise<CliResult> {
     }
     let pat: string;
     if (fromEnv) {
-      pat = process.env.ASANA_ACCESS_TOKEN || process.env.ASANA_PAT || "";
+      const environment = cliEnvironmentSchema.parse(process.env);
+      pat = environment.ASANA_ACCESS_TOKEN || environment.ASANA_PAT || "";
       if (!pat) throw new CliError("--from-env requires ASANA_PAT or ASANA_ACCESS_TOKEN", 3);
     } else if (booleanFlag(args, "stdin", false)) {
       pat = patFromStdin(await Bun.stdin.text());
@@ -310,7 +344,7 @@ async function patCommand(args: ParsedArgs): Promise<CliResult> {
     let user: unknown;
     if (!booleanFlag(args, "no-verify", false)) {
       const me = await getMe(createClient(pat));
-      user = (me as any)?.data;
+      user = parseExternalData(me, userSchema, "UsersApi.getUser");
     }
     await savePat(pat);
     return {
@@ -336,7 +370,7 @@ async function patCommand(args: ParsedArgs): Promise<CliResult> {
         valid: true,
         source: resolved.source,
         os_credential_stored: Boolean(local),
-        user: (me as any)?.data,
+        user: parseExternalData(me, userSchema, "UsersApi.getUser"),
       },
       compact,
     };
@@ -399,7 +433,7 @@ export async function runCli(argv: string[]): Promise<CliResult> {
       value: {
         authenticated: true,
         source: resolvedPat.source,
-        user: (me as any)?.data,
+        user: parseExternalData(me, userSchema, "UsersApi.getUser"),
       },
       compact,
     };
@@ -419,9 +453,9 @@ export async function runCli(argv: string[]): Promise<CliResult> {
     const queryInput = stringFlag(args, "query");
     const dataInput = stringFlag(args, "data") ?? stringFlag(args, "body");
     const query = queryInput
-      ? ensureObject(await readJsonInput(queryInput, "--query"), "--query")
+      ? await readJsonInput(queryInput, "--query", jsonObjectSchema)
       : undefined;
-    const data = dataInput ? await readJsonInput(dataInput, "--data") : undefined;
+    const data = dataInput ? await readJsonInput(dataInput, "--data", jsonValueSchema) : undefined;
     return { value: await rawRequest(pat, { method, path, query, data }), compact };
   }
 
@@ -487,7 +521,7 @@ export async function runCli(argv: string[]): Promise<CliResult> {
       if (action !== "search") return { value: await findGitTasks(client, args, query), compact };
       const filtersInput = stringFlag(args, "filters");
       const extra = filtersInput
-        ? ensureObject(await readJsonInput(filtersInput, "--filters"), "--filters")
+        ? await readJsonInput(filtersInput, "--filters", jsonObjectSchema)
         : undefined;
       const completed = flag(args, "completed") === undefined
         ? undefined

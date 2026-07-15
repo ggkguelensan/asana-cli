@@ -3,6 +3,8 @@
 ## What this CLI guarantees
 
 - PAT is accepted only from `ASANA_ACCESS_TOKEN`, `ASANA_PAT`, or the OS credential store.
+- External JSON, agent input, selected environment values, credential-store results and typed
+  Asana DTOs are validated with Zod before they enter trusted application logic.
 - PAT is never accepted in argv and is never intentionally printed.
 - The active PAT and other credential-looking environment values known to the process are redacted by exact value before stdout/stderr serialization.
 - SDK `Collection` objects are converted to plain DTOs using only `data` and `next_page`; `_apiClient` is never serialized.

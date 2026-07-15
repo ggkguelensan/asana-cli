@@ -1,9 +1,19 @@
 import { booleanFlag, type ParsedArgs } from "./args";
 import { CliError } from "./errors";
+import { z } from "zod";
+
+const agentModeEnvironmentSchema = z.object({
+  ASANA_CLI_AGENT: z.enum(["0", "1"]).optional().catch(undefined),
+  ASANA_CLI_AGENT_POLICY: z.enum(["read", "read-write"]).optional().catch(undefined),
+});
+
+function agentEnvironment(): z.infer<typeof agentModeEnvironmentSchema> {
+  return agentModeEnvironmentSchema.parse(process.env);
+}
 
 export function isAgentMode(args: ParsedArgs): boolean {
   return args.positionals[0] === "agent" ||
-    booleanFlag(args, "agent", process.env.ASANA_CLI_AGENT === "1");
+    booleanFlag(args, "agent", agentEnvironment().ASANA_CLI_AGENT === "1");
 }
 
 export function enforceAgentPolicy(args: ParsedArgs): void {
@@ -24,7 +34,7 @@ export function enforceAgentPolicy(args: ParsedArgs): void {
     );
   }
   const agentApply = command === "agent" && ["apply-task-update", "apply-comment"].includes(action ?? "");
-  if (agentApply && process.env.ASANA_CLI_AGENT_POLICY !== "read-write") {
+  if (agentApply && agentEnvironment().ASANA_CLI_AGENT_POLICY !== "read-write") {
     throw new CliError(
       "Agent writes are disabled. Start the agent host with ASANA_CLI_AGENT_POLICY=read-write; host approval is still required.",
       2,

@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 const knownSecrets = new Set<string>();
 
 const SENSITIVE_KEY = /^(authorization|proxy-authorization|cookie|set-cookie|password|passwd|secret|client_secret|private_key|access_token|refresh_token|token)$/i;
@@ -14,7 +16,8 @@ export function registerSecret(value: string | undefined | null): void {
 export function registerEnvironmentSecrets(
   env: Record<string, string | undefined> = process.env,
 ): void {
-  for (const [name, value] of Object.entries(env)) {
+  const parsed = z.record(z.string(), z.string().optional()).parse(env);
+  for (const [name, value] of Object.entries(parsed)) {
     if (/(?:KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL|AUTH)/i.test(name)) {
       registerSecret(value);
     }
@@ -27,7 +30,8 @@ export function containsRegisteredSecret(value: unknown): boolean {
   }
   if (Array.isArray(value)) return value.some(containsRegisteredSecret);
   if (value && typeof value === "object") {
-    return Object.values(value).some(containsRegisteredSecret);
+    const parsed = z.looseObject({}).safeParse(value);
+    return parsed.success && Object.values(parsed.data).some(containsRegisteredSecret);
   }
   return false;
 }
@@ -88,8 +92,10 @@ export function protectOutput<T>(
     if (Array.isArray(value)) {
       return value.map((entry, index) => walk(entry, `${path}[${index}]`, depth + 1));
     }
+    const parsed = z.looseObject({}).safeParse(value);
+    if (!parsed.success) return "[REDACTED:UNSUPPORTED_OBJECT]";
     const result: Record<string, unknown> = {};
-    for (const [key, entry] of Object.entries(value)) {
+    for (const [key, entry] of Object.entries(parsed.data)) {
       const childPath = path ? `${path}.${key}` : key;
       if (SENSITIVE_KEY.test(key)) {
         if (entry !== undefined && entry !== null) redactions += 1;

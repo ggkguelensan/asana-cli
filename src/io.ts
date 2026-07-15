@@ -1,5 +1,7 @@
 import { CliError } from "./errors";
 import { createReadStream, existsSync, statSync } from "node:fs";
+import { z } from "zod";
+import { zodIssueSummary } from "./schemas";
 
 export async function readTextInput(value: string, label: string): Promise<string> {
   if (value === "-") return Bun.stdin.text();
@@ -13,17 +15,30 @@ export async function readTextInput(value: string, label: string): Promise<strin
   return value;
 }
 
-export async function readJsonInput<T = unknown>(value: string, label: string): Promise<T> {
+export async function readJsonInput<S extends z.ZodType>(
+  value: string,
+  label: string,
+  schema: S,
+): Promise<z.output<S>> {
   const text = await readTextInput(value, label);
   try {
-    return JSON.parse(text) as T;
+    const decoded: unknown = JSON.parse(text);
+    const parsed = schema.safeParse(decoded);
+    if (!parsed.success) {
+      throw new CliError(`${label}: invalid value: ${zodIssueSummary(parsed.error)}`, 2);
+    }
+    return parsed.data;
   } catch (error) {
+    if (error instanceof CliError) throw error;
     const message = error instanceof Error ? error.message : String(error);
     throw new CliError(`${label}: invalid JSON: ${message}`, 2);
   }
 }
 
-export async function readAgentJsonInput<T = unknown>(value: string | undefined): Promise<T> {
+export async function readAgentJsonInput<S extends z.ZodType>(
+  value: string | undefined,
+  schema: S,
+): Promise<z.output<S>> {
   if (value !== "-") {
     throw new CliError("Agent commands require JSON on stdin via --input -", 2);
   }
@@ -33,8 +48,14 @@ export async function readAgentJsonInput<T = unknown>(value: string | undefined)
   }
   if (!text.trim()) throw new CliError("Agent input is empty", 2);
   try {
-    return JSON.parse(text) as T;
+    const decoded: unknown = JSON.parse(text);
+    const parsed = schema.safeParse(decoded);
+    if (!parsed.success) {
+      throw new CliError(`Agent input validation failed: ${zodIssueSummary(parsed.error)}`, 2);
+    }
+    return parsed.data;
   } catch (error) {
+    if (error instanceof CliError) throw error;
     const message = error instanceof Error ? error.message : String(error);
     throw new CliError(`Agent input is not valid JSON: ${message}`, 2);
   }
@@ -47,7 +68,9 @@ export function printJson(value: unknown, compact = false): void {
 export function materializeFileReferences(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(materializeFileReferences);
   if (!value || typeof value !== "object") return value;
-  const record = value as Record<string, unknown>;
+  const parsed = z.record(z.string(), z.unknown()).safeParse(value);
+  if (!parsed.success) throw new CliError("File reference container must be an object", 2);
+  const record = parsed.data;
   if (Object.keys(record).length === 1 && typeof record.$file === "string") {
     const path = record.$file;
     if (!existsSync(path) || !statSync(path).isFile()) {

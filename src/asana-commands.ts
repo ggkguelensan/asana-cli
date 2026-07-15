@@ -3,8 +3,17 @@ import {
   asCollection,
   collectPages,
   invokeApiMethod,
-  type CollectionLike,
+  type AsanaClient,
 } from "./sdk";
+import {
+  parseExternalData,
+  storySchema,
+  taskSchema,
+  userSchema,
+  workspaceSchema,
+  type AsanaUser,
+  type Workspace,
+} from "./schemas";
 
 export const TASK_FIELDS = [
   "gid",
@@ -77,31 +86,19 @@ export const AGENT_TASK_FIELDS = [
   "modified_at",
 ].join(",");
 
-interface Workspace {
-  gid: string;
-  name?: string;
-}
-
 interface CommandPageOptions {
   all: boolean;
   maxResults: number;
 }
 
-function envelopeData<T>(result: unknown, context: string): T {
-  if (!result || typeof result !== "object" || !("data" in result)) {
-    throw new CliError(`Unexpected response from ${context}`, 1);
-  }
-  return (result as { data: T }).data;
-}
-
-async function currentUser(client: any): Promise<any> {
+async function currentUser(client: AsanaClient): Promise<AsanaUser> {
   const result = await invokeApiMethod(client, "UsersApi", "getUser", ["me", {
     opt_fields: "gid,name,email,workspaces,workspaces.gid,workspaces.name",
   }]);
-  return envelopeData(result, "UsersApi.getUser");
+  return parseExternalData(result, userSchema, "UsersApi.getUser");
 }
 
-async function selectedWorkspaces(client: any, workspaceGid?: string): Promise<Workspace[]> {
+async function selectedWorkspaces(client: AsanaClient, workspaceGid?: string): Promise<Workspace[]> {
   if (workspaceGid) return [{ gid: workspaceGid }];
   const user = await currentUser(client);
   const workspaces = Array.isArray(user?.workspaces) ? user.workspaces : [];
@@ -111,25 +108,31 @@ async function selectedWorkspaces(client: any, workspaceGid?: string): Promise<W
   return workspaces;
 }
 
-export async function getMe(client: any): Promise<unknown> {
+export async function getMe(client: AsanaClient): Promise<unknown> {
   return invokeApiMethod(client, "UsersApi", "getUser", ["me", {
     opt_fields: "gid,name,email,photo,workspaces,workspaces.gid,workspaces.name",
   }]);
 }
 
 export async function getWorkspaces(
-  client: any,
+  client: AsanaClient,
   page: CommandPageOptions,
 ): Promise<unknown> {
   const result = await invokeApiMethod(client, "WorkspacesApi", "getWorkspaces", [{
     limit: Math.min(page.maxResults, 100),
     opt_fields: "gid,name,is_organization,email_domains",
   }]);
-  return collectPages(asCollection(result, "WorkspacesApi.getWorkspaces"), page.all, page.maxResults);
+  return collectPages(
+    asCollection(result, "WorkspacesApi.getWorkspaces"),
+    page.all,
+    page.maxResults,
+    workspaceSchema,
+    "WorkspacesApi.getWorkspaces",
+  );
 }
 
 export async function getMyTasks(
-  client: any,
+  client: AsanaClient,
   options: CommandPageOptions & {
     workspace?: string;
     completed: "false" | "true" | "all";
@@ -161,9 +164,11 @@ export async function getMyTasks(
       asCollection(result, "TasksApi task listing"),
       options.all || options.completed === "true",
       remaining,
+      taskSchema,
+      "TasksApi.getTasks",
     );
     const selected = options.completed === "true"
-      ? collected.data.filter((task: any) => task?.completed === true)
+      ? collected.data.filter((task) => task.completed === true)
       : collected.data;
     data.push(...selected);
     pages.push({
@@ -185,12 +190,12 @@ export async function getMyTasks(
   };
 }
 
-export async function getTask(client: any, gid: string, fields: string): Promise<unknown> {
+export async function getTask(client: AsanaClient, gid: string, fields: string): Promise<unknown> {
   return invokeApiMethod(client, "TasksApi", "getTask", [gid, { opt_fields: fields }]);
 }
 
 export async function getTaskComments(
-  client: any,
+  client: AsanaClient,
   gid: string,
   options: CommandPageOptions & { limit: number; fields: string; allStories: boolean },
 ): Promise<unknown> {
@@ -202,11 +207,13 @@ export async function getTaskComments(
     asCollection(result, "StoriesApi.getStoriesForTask"),
     options.all,
     options.maxResults,
+    storySchema,
+    "StoriesApi.getStoriesForTask",
   );
   const stories = options.allStories
     ? collected.data
-    : collected.data.filter((story: any) =>
-        story?.type === "comment" || String(story?.resource_subtype ?? "").includes("comment"),
+    : collected.data.filter((story) =>
+        story.type === "comment" || String(story.resource_subtype ?? "").includes("comment"),
       );
   return {
     data: stories,
@@ -216,7 +223,7 @@ export async function getTaskComments(
 }
 
 export async function updateTask(
-  client: any,
+  client: AsanaClient,
   gid: string,
   data: Record<string, unknown>,
   fields: string,
@@ -235,7 +242,7 @@ export async function updateTask(
 }
 
 export async function addTaskComment(
-  client: any,
+  client: AsanaClient,
   gid: string,
   content: { text?: string; html_text?: string },
   fields: string,
@@ -250,7 +257,7 @@ export async function addTaskComment(
 }
 
 export async function searchTasks(
-  client: any,
+  client: AsanaClient,
   query: string,
   options: CommandPageOptions & {
     workspace?: string;
@@ -283,6 +290,8 @@ export async function searchTasks(
       asCollection(result, "TasksApi.searchTasksForWorkspace"),
       options.all,
       remaining,
+      taskSchema,
+      "TasksApi.searchTasksForWorkspace",
     );
     data.push(...collected.data);
     pages.push({
@@ -303,8 +312,4 @@ export async function searchTasks(
       truncated: data.length >= options.maxResults,
     },
   };
-}
-
-export function collectionResponse(value: unknown): value is CollectionLike {
-  return Boolean(value && typeof value === "object" && Array.isArray((value as any).data));
 }

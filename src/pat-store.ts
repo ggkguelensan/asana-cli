@@ -1,4 +1,5 @@
 import { CliError } from "./errors";
+import { z } from "zod";
 
 const SERVICE = "com.github.ggkguelensan.asana-cli";
 const NAME = "asana-pat";
@@ -10,21 +11,29 @@ export interface ResolvedPat {
   source: PatSource;
 }
 
+const credentialEnvironmentSchema = z.object({
+  ASANA_ACCESS_TOKEN: z.string().optional(),
+  ASANA_PAT: z.string().optional(),
+});
+
+const patSchema = z.string()
+  .min(1, "PAT must not be empty")
+  .max(8_192, "PAT exceeds the 8 KiB safety limit")
+  .refine((value) => !/[\r\n\0]/.test(value), "PAT must not contain line breaks or NUL bytes");
+
 function envPat(env: Record<string, string | undefined>): ResolvedPat | undefined {
-  if (env.ASANA_ACCESS_TOKEN) {
-    return { pat: validatePat(env.ASANA_ACCESS_TOKEN), source: "ASANA_ACCESS_TOKEN" };
+  const parsed = credentialEnvironmentSchema.parse(env);
+  if (parsed.ASANA_ACCESS_TOKEN) {
+    return { pat: validatePat(parsed.ASANA_ACCESS_TOKEN), source: "ASANA_ACCESS_TOKEN" };
   }
-  if (env.ASANA_PAT) return { pat: validatePat(env.ASANA_PAT), source: "ASANA_PAT" };
+  if (parsed.ASANA_PAT) return { pat: validatePat(parsed.ASANA_PAT), source: "ASANA_PAT" };
   return undefined;
 }
 
 export function validatePat(value: string): string {
-  if (!value) throw new CliError("PAT must not be empty", 2);
-  if (value.length > 8_192) throw new CliError("PAT exceeds the 8 KiB safety limit", 2);
-  if (/[\r\n\0]/.test(value)) {
-    throw new CliError("PAT must not contain line breaks or NUL bytes", 2);
-  }
-  return value;
+  const parsed = patSchema.safeParse(value);
+  if (!parsed.success) throw new CliError(parsed.error.issues[0]?.message ?? "Invalid PAT", 2);
+  return parsed.data;
 }
 
 export function patFromStdin(text: string): string {
@@ -34,7 +43,9 @@ export function patFromStdin(text: string): string {
 
 export async function storedPat(): Promise<string | null> {
   try {
-    return await Bun.secrets.get({ service: SERVICE, name: NAME });
+    return z.string().nullable().parse(
+      await Bun.secrets.get({ service: SERVICE, name: NAME }),
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     throw new CliError(
@@ -69,7 +80,9 @@ export async function savePat(pat: string): Promise<void> {
 
 export async function deleteStoredPat(): Promise<boolean> {
   try {
-    return await Bun.secrets.delete({ service: SERVICE, name: NAME });
+    return z.boolean().parse(
+      await Bun.secrets.delete({ service: SERVICE, name: NAME }),
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     throw new CliError(`Cannot delete PAT from the OS credential store: ${message}`, 3);
