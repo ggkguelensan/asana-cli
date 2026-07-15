@@ -1,6 +1,5 @@
 import { describe, expect, test } from "bun:test";
 import { z } from "zod";
-import { assertPreparedTaskIsCurrent } from "../src/agent-cli";
 import { runCli } from "../src/cli";
 import {
   AGENT_ERROR_SCHEMA_ID,
@@ -104,7 +103,12 @@ describe("stable machine error codes", () => {
     expect(missing.code).toBe("auth-required");
     expect(missing.exitCode).toBe(3);
 
-    const denied = await runAgentFailure(["agent", "apply-comment", "--input", "-"], {
+    const denied = await runAgentFailure([
+      "agent",
+      "apply",
+      "--operation-id",
+      "00000000-0000-4000-8000-000000000001",
+    ], {
       env: {
         ASANA_ACCESS_TOKEN: "ERROR_CODE_POLICY_TEST",
         ASANA_CLI_AGENT_POLICY: "read",
@@ -112,18 +116,6 @@ describe("stable machine error codes", () => {
     });
     expect(denied.exitCode).toBe(2);
     expect(denied.payload.result.error.code).toBe("policy-denied");
-  });
-
-  test("classifies optimistic task conflicts as stale", () => {
-    expect(() => assertPreparedTaskIsCurrent("1", "new", "1", "old"))
-      .toThrow(CliError);
-    try {
-      assertPreparedTaskIsCurrent("1", "new", "1", "old");
-    } catch (error) {
-      const normalized = normalizeError(error);
-      expect(normalized.code).toBe("stale");
-      expect(normalized.exitCode).toBe(4);
-    }
   });
 
   test("maps Asana 4xx categories without parsing messages", () => {

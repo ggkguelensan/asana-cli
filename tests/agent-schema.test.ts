@@ -115,6 +115,16 @@ describe("agent capability and schema catalog", () => {
       "asana-cli auth pat set",
       "asana-cli auth pat delete",
     ]);
+    expect(AGENT_MANIFEST.deprecated_commands).toEqual({
+      "asana-cli agent apply-task-update": {
+        reason: "legacy-plan-apply-removed",
+        replacement: "asana-cli agent apply --operation-id UUID",
+      },
+      "asana-cli agent apply-comment": {
+        reason: "legacy-plan-apply-removed",
+        replacement: "asana-cli agent apply --operation-id UUID",
+      },
+    });
     for (const descriptor of AGENT_MANIFEST.actions) {
       const minimum = ["prepare-task-update", "prepare-comment", "apply"]
         .includes(descriptor.action)

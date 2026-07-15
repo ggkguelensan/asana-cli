@@ -30,7 +30,7 @@ const ownedTaskSchema = taskSchema.extend({
   assignee: z.looseObject({
     gid: z.string().min(1),
     name: z.string().optional(),
-  }),
+  }).nullable().optional(),
 });
 
 const targetPreviewSchema = z.strictObject({
@@ -116,7 +116,7 @@ async function currentTaskContext(
 
 function assertTaskOwnedByCurrentUser(
   userGid: string,
-  assigneeGid: string,
+  assigneeGid: string | undefined,
 ): void {
   if (assigneeGid !== userGid) {
     throw new CliError(
@@ -137,7 +137,7 @@ function assertApplyGuards(
       "Operation was prepared by a different authenticated Asana user",
     );
   }
-  assertTaskOwnedByCurrentUser(userGid, task.assignee.gid);
+  assertTaskOwnedByCurrentUser(userGid, task.assignee?.gid);
   if (task.modified_at !== record.guards.expected_modified_at) {
     throw new CliError(
       "stale",
@@ -229,7 +229,7 @@ export class AgentOperationService {
   async prepareTaskUpdate(input: PrepareTaskUpdateInput): Promise<PreparedOperationView> {
     ensureNoRegisteredSecret(input.patch, "Update");
     const { user, task } = await currentTaskContext(this.#client, input.task_gid);
-    assertTaskOwnedByCurrentUser(user.gid, task.assignee.gid);
+    assertTaskOwnedByCurrentUser(user.gid, task.assignee?.gid);
     const record = await this.#repository.create({
       operation: "task.update",
       target: { task_gid: input.task_gid },
@@ -254,7 +254,7 @@ export class AgentOperationService {
   async prepareComment(input: PrepareCommentInput): Promise<PreparedOperationView> {
     ensureNoRegisteredSecret(input.text, "Comment");
     const { user, task } = await currentTaskContext(this.#client, input.task_gid);
-    assertTaskOwnedByCurrentUser(user.gid, task.assignee.gid);
+    assertTaskOwnedByCurrentUser(user.gid, task.assignee?.gid);
     const record = await this.#repository.create({
       operation: "task.comment",
       target: { task_gid: input.task_gid },

@@ -188,18 +188,25 @@ budget для task/comment content (по умолчанию 16 KiB, максим
 Запись разделена на prepare/apply:
 
 ```sh
-# 1. Ничего не изменяет; возвращает target, changes, modified_at guard и hash
+# 1. Ничего не изменяет; сохраняет payload в локальный journal и возвращает operation_id
 printf '%s' '{"task_gid":"1200123456789","patch":{"completed":true}}' |
   asana-cli agent prepare-task-update --input -
 
-# 2. После внешнего подтверждения в Codex/Claude передайте plan без изменений
-printf '%s' '{"plan":{...}}' |
-  ASANA_CLI_AGENT_POLICY=read-write asana-cli agent apply-task-update --input -
+# Для комментария доступны безопасные прямые flags
+asana-cli agent prepare-comment --task 1200123456789 --text 'Готово в PR-418'
+
+# 2. После внешнего подтверждения передайте только UUID из operation_id
+ASANA_CLI_AGENT_POLICY=read-write \
+  asana-cli agent apply --operation-id 00000000-0000-4000-8000-000000000000
 ```
 
-Аналогично: `prepare-comment` → `apply-comment`. Agent writes разрешены только для задач, назначенных текущему пользователю, используют optimistic concurrency guard и изменяют одну задачу за invocation.
+Обе prepare-команды создают durable record с TTL, immutable payload и guard по
+`modified_at`/текущему пользователю. `apply` никогда не принимает payload повторно. Agent writes
+разрешены только для задач, назначенных текущему пользователю, и изменяют одну задачу за invocation.
+Повторный apply состояния `applied`, `applying` или `unknown` не отправляет второй API request.
+После `unknown-result` команду нельзя повторять автоматически: запись могла дойти до Asana.
 
-`ASANA_CLI_AGENT_POLICY=read-write` — защита от случайного запуска, но не авторизация: агент технически способен сформировать environment сам. Настоящая граница записи — permission/approval policy Codex или Claude. Не разрешайте общую маску `asana-cli *`; auto-allow должен охватывать только конкретные read/prepare-команды, а `apply-*` должен всегда спрашивать человека.
+`ASANA_CLI_AGENT_POLICY=read-write` — защита от случайного запуска, но не авторизация: агент технически способен сформировать environment сам. Настоящая граница записи — permission/approval policy Codex или Claude. Не разрешайте общую маску `asana-cli *`; auto-allow должен охватывать только конкретные read/prepare-команды, а `agent apply` должен всегда спрашивать человека.
 
 Полная инструкция: [docs/agent-clients.md](docs/agent-clients.md). Threat model: [SECURITY.md](SECURITY.md).
 

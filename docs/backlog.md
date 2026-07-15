@@ -33,9 +33,9 @@ Issue ID следует сохранить в заголовке.
 | AP-005 | P0 | done | Добавить flags для read actions | AP-002 | Canonical read command начинается с `asana-cli`; stdin JSON остаётся совместимым интерфейсом |
 | AP-006 | P0 | done | Спроектировать Zod-валидируемый durable operation record | AP-001 | Record содержит ID, action, target, immutable payload, guards, timestamps, TTL, state и protocol version |
 | AP-007 | P0 | done | Реализовать atomic operation journal с restrictive permissions | AP-006 | Partial write не повреждает journal; чужие/невалидные records отклоняются; task/comment text не логируется отдельно |
-| AP-008 | P0 | ready | Перевести apply на `--operation-id` | AP-007 | Apply не принимает повторный payload; expired/stale/already-applied operations отклоняются стабильно |
-| AP-009 | P0 | blocked | Реализовать state machine ambiguous outcomes | AP-008 | Состояния `prepared/applying/applied/unknown/expired` покрыты тестами; `unknown` не ретраится автоматически |
-| AP-010 | P0 | blocked | Добавить `agent operation status` и recovery guidance | AP-009 | Пользователь видит безопасный статус и следующий шаг без вывода payload/credential |
+| AP-008 | P0 | done | Перевести apply на `--operation-id` | AP-007 | Apply не принимает повторный payload; expired/stale/already-applied operations отклоняются стабильно |
+| AP-009 | P0 | done | Реализовать state machine ambiguous outcomes | AP-008 | Состояния `prepared/applying/applied/unknown/expired` покрыты тестами; `unknown` не ретраится автоматически |
+| AP-010 | P0 | ready | Добавить `agent operation status` и recovery guidance | AP-009 | Пользователь видит безопасный статус и следующий шаг без вывода payload/credential |
 | AP-011 | P1 | done | Заменить `include_content` на field selectors и byte budget | AP-003 | Клиент явно выбирает `notes`, `custom_fields` и лимит; превышение возвращает предсказуемый truncated result |
 | AP-012 | P1 | done | Минимизировать `agent status` и общие projections | — | Email и другие необязательные PII отсутствуют по умолчанию |
 | AP-013 | P1 | ready | Добавить protocol compatibility/deprecation tests | AP-001, AP-003 | Старый совместимый клиент получает корректный ответ; несовместимый — machine-readable upgrade guidance |

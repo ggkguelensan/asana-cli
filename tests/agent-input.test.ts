@@ -1,7 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import { z } from "zod";
 import { runAgentCommand } from "../src/agent-cli";
-import { readDirectAgentInput } from "../src/agent-input";
+import {
+  readApplyAgentInput,
+  readDirectAgentInput,
+  readPrepareCommentAgentInput,
+} from "../src/agent-input";
 import { parseArgs } from "../src/args";
 import { CliError } from "../src/errors";
 import { MemoryOperationRepository } from "../src/operations/memory-repository";
@@ -208,5 +212,47 @@ describe("agent direct read input", () => {
       parseArgs(["agent", "status", "--input", "-"]),
       "status",
     ))).toEqual({});
+  });
+});
+
+describe("agent durable write input", () => {
+  test("maps canonical prepare/apply flags and compatible stdin into the same Zod inputs", async () => {
+    const operationId = "00000000-0000-4000-8000-000000000001";
+    expect(await readApplyAgentInput(parseArgs([
+      "agent",
+      "apply",
+      "--operation-id",
+      operationId,
+    ]))).toEqual(await withAgentStdin(
+      { operation_id: operationId },
+      () => readApplyAgentInput(parseArgs(["agent", "apply", "--input", "-"])),
+    ));
+    expect(await readPrepareCommentAgentInput(parseArgs([
+      "agent",
+      "prepare-comment",
+      "--task",
+      "123",
+      "--text",
+      "Comment",
+    ]))).toEqual(await withAgentStdin(
+      { task_gid: "123", text: "Comment" },
+      () => readPrepareCommentAgentInput(parseArgs([
+        "agent",
+        "prepare-comment",
+        "--input",
+        "-",
+      ])),
+    ));
+  });
+
+  test("fails closed when operation ID flags conflict with stdin", async () => {
+    expect(await errorCode(() => readApplyAgentInput(parseArgs([
+      "agent",
+      "apply",
+      "--operation-id",
+      "00000000-0000-4000-8000-000000000001",
+      "--input",
+      "-",
+    ])))).toBe("usage");
   });
 });

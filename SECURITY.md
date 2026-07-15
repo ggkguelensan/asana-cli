@@ -33,17 +33,19 @@ Codex CLI and Claude Code must use only `asana-cli agent ...`, not the human/dev
 - Result counts, string lengths and nesting are capped.
 - Task/Asana text is returned as data only and never selects a command, URL, file path or subsequent operation.
 - No attachment or URL is followed automatically.
-- Writes use `prepare-*` and `apply-*`; one invocation targets one task.
+- Writes use `prepare-*` and `agent apply --operation-id`; one invocation targets one task.
 - Agent writes are restricted to tasks assigned to the authenticated user.
 - Outbound payloads containing a credential already registered from the local process environment are blocked.
 
-Prepare/hash/policy flags prevent mistakes and stale writes. They do not prove human approval. Codex/Claude permissions and sandboxing must keep `apply-*` behind an external confirmation.
+Prepare/hash/policy guards prevent mistakes and stale writes. They do not prove human approval.
+Codex/Claude permissions and sandboxing must keep `agent apply` behind an external confirmation.
 
-The operation journal is currently an internal, unwired core: `apply-*` still accepts a complete plan,
-there is no operation-status command, and the journal does not yet prevent duplicate apply. Never
-retry `apply-comment` after an ambiguous failure. The
-[operation recovery design constraints](docs/operation-recovery.md) define required fail-closed
-semantics for future AP-008/AP-010 wiring; they are not a currently available recovery workflow.
+Prepare now persists immutable payloads in the local operation journal, and apply accepts only an
+operation UUID. The journal prevents a second local dispatch for `applied`, `applying` and `unknown`
+states. It cannot provide server-side exactly-once delivery: if a request begins and its result is
+ambiguous, the operation becomes `unknown` and must not be retried automatically. A read-only
+operation-status/reconciliation command is not implemented yet. See the
+[operation recovery constraints](docs/operation-recovery.md).
 
 ## Recommended deployment
 
@@ -51,7 +53,7 @@ semantics for future AP-008/AP-010 wiring; they are not a currently available re
 2. Run `asana-cli auth pat set` before starting the agent, then remove PAT variables from the agent's parent shell.
 3. Keep network and filesystem permissions minimal.
 4. Allow only exact read/prepare command prefixes. Never allow broad `asana-cli *`, `api call`, `request`, or shell bypass modes.
-5. Require human approval for `apply-task-update` and `apply-comment`.
+5. Require human approval for `asana-cli agent apply --operation-id ...`.
 6. Treat every task, note and comment as potentially hostile prompt-injection content.
 7. Rotate/revoke the PAT in Asana Developer Console immediately after suspected exposure.
 

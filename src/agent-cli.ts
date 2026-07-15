@@ -58,20 +58,6 @@ function policy(): "read" | "read-write" {
   return agentEnvironmentSchema.parse(process.env).ASANA_CLI_AGENT_POLICY ?? "read";
 }
 
-export function assertPreparedTaskIsCurrent(
-  currentUserGid: string,
-  currentModifiedAt: string,
-  preparedBy: string,
-  expectedModifiedAt: string,
-): void {
-  if (currentUserGid !== preparedBy || currentModifiedAt !== expectedModifiedAt) {
-    throw new CliError(
-      "stale",
-      "Task changed after the plan was prepared; prepare a new plan",
-    );
-  }
-}
-
 function agentResult(
   action: AgentActionName,
   data: unknown,
@@ -168,19 +154,7 @@ export async function runAgentCommand(
 ): Promise<unknown> {
   const action = args.positionals[1];
   if (!action) throw new CliError("usage", "Missing agent action");
-
-  if (action === "apply-task-update" || action === "apply-comment") {
-    throw new CliError(
-      "usage",
-      `agent ${action} was removed because complete plans are unsafe to replay`,
-      undefined,
-      {
-        reason: "legacy-plan-apply-removed",
-        replacement_action: "apply",
-        required_input: { operation_id: "UUID" },
-      },
-    );
-  }
+  rejectLegacyAgentApply(action);
 
   if (action === "status") {
     await readDirectAgentInput(args, "status");
@@ -366,4 +340,18 @@ export async function runAgentCommand(
 
 export interface AgentCommandRuntime {
   operations: OperationRepository;
+}
+
+export function rejectLegacyAgentApply(action: string | undefined): void {
+  if (action !== "apply-task-update" && action !== "apply-comment") return;
+  throw new CliError(
+    "usage",
+    `agent ${action} was removed because complete plans are unsafe to replay`,
+    undefined,
+    {
+      reason: "legacy-plan-apply-removed",
+      replacement_action: "apply",
+      required_input: { operation_id: "UUID" },
+    },
+  );
 }

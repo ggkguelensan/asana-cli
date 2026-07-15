@@ -49,8 +49,12 @@ describe("CLI security contract", () => {
   });
 
   test("agent write is denied by default before auth or network", async () => {
-    const result = await run(["agent", "apply-comment", "--input", "-"], {
-      stdin: '{"plan":{}}',
+    const result = await run([
+      "agent",
+      "apply",
+      "--operation-id",
+      "00000000-0000-4000-8000-000000000001",
+    ], {
       env: { ASANA_ACCESS_TOKEN: "", ASANA_PAT: "", ASANA_CLI_AGENT_POLICY: "read" },
     });
     expect(result.exitCode).toBe(2);
