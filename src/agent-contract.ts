@@ -101,7 +101,7 @@ const statusAction = defineAction(
     operation: "auth.status",
     effect: "read",
     approval: "none",
-    limits: { max_input_bytes: 0 },
+    limits: { max_input_bytes: MAX_AGENT_INPUT_BYTES },
   },
   statusInputSchema,
 );

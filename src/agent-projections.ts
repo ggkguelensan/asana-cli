@@ -33,6 +33,34 @@ function resourcesProjection(value: unknown): Projection[] | undefined {
     .filter((entry): entry is Projection => entry !== undefined && entry !== null);
 }
 
+function budgetedResourceProjection(
+  value: unknown,
+  budget: ContentBudget,
+  path: string,
+): Projection | null | undefined {
+  if (value === null) return null;
+  const parsed = z.looseObject({
+    gid: z.string(),
+    name: z.string().optional(),
+  }).safeParse(value);
+  if (!parsed.success) return undefined;
+  return compactObject([
+    ["gid", parsed.data.gid],
+    ["name", parsed.data.name === undefined ? undefined : budget.take(parsed.data.name, `${path}.name`)],
+  ]);
+}
+
+function budgetedResourcesProjection(
+  value: unknown,
+  budget: ContentBudget,
+  path: string,
+): Projection[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  return value
+    .map((entry, index) => budgetedResourceProjection(entry, budget, `${path}[${index}]`))
+    .filter((entry): entry is Projection => entry !== undefined && entry !== null);
+}
+
 function membershipProjection(value: unknown): Projection[] | undefined {
   if (!Array.isArray(value)) return undefined;
   return value.flatMap((entry) => {
@@ -78,7 +106,12 @@ function customFieldsProjection(
     if (!parsed.success) return [];
     return [compactObject([
       ["gid", parsed.data.gid],
-      ["name", parsed.data.name],
+      [
+        "name",
+        parsed.data.name === undefined
+          ? undefined
+          : budget.take(parsed.data.name, `${path}[${index}].name`),
+      ],
       [
         "display_value",
         parsed.data.display_value === undefined
@@ -138,10 +171,12 @@ export function selectedTaskProjection(
     if (fields !== undefined) result.custom_fields = fields;
   }
   if (selected.has("tags")) {
-    const tags = resourcesProjection(task.tags);
+    const tags = budgetedResourcesProjection(task.tags, budget, "task.tags");
     if (tags !== undefined) result.tags = tags;
   }
-  if (selected.has("parent")) result.parent = resourceProjection(task.parent);
+  if (selected.has("parent")) {
+    result.parent = budgetedResourceProjection(task.parent, budget, "task.parent");
+  }
   if (selected.has("created_at") && task.created_at !== undefined) {
     result.created_at = task.created_at;
   }

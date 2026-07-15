@@ -1,8 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import { z } from "zod";
+import { runAgentCommand } from "../src/agent-cli";
 import { readDirectAgentInput } from "../src/agent-input";
 import { parseArgs } from "../src/args";
 import { CliError } from "../src/errors";
+import { createClient } from "../src/sdk";
 
 async function withAgentStdin<Result>(
   input: unknown,
@@ -61,6 +63,16 @@ describe("agent direct read input", () => {
       "get-task",
       "--task",
       "1201",
+    ]), "get-task")).toEqual({
+      task_gid: "1201",
+      include: [],
+      max_content_bytes: 16_384,
+    });
+    expect(await readDirectAgentInput(parseArgs([
+      "agent",
+      "get-task",
+      "--task",
+      "1201",
       "--include",
       "notes",
       "--include",
@@ -71,6 +83,63 @@ describe("agent direct read input", () => {
       task_gid: "1201",
       include: ["notes", "custom_fields"],
       max_content_bytes: 12_000,
+    });
+  });
+
+  test("maps every remaining canonical read flag set", async () => {
+    expect(await readDirectAgentInput(parseArgs([
+      "agent",
+      "list-comments",
+      "--task",
+      "1201",
+      "--limit",
+      "10",
+      "--no-paginate",
+      "--max-results",
+      "25",
+      "--max-content-bytes",
+      "2048",
+    ]), "list-comments")).toEqual({
+      task_gid: "1201",
+      limit: 10,
+      paginate: false,
+      max_results: 25,
+      max_content_bytes: 2048,
+    });
+    expect(await readDirectAgentInput(parseArgs([
+      "agent",
+      "search-tasks",
+      "--query",
+      "repo#1",
+      "--workspace",
+      "1200",
+      "--all-assignees",
+      "--no-completed",
+      "--max-results",
+      "30",
+    ]), "search-tasks")).toEqual({
+      query: "repo#1",
+      workspace_gid: "1200",
+      all_assignees: true,
+      completed: false,
+      max_results: 30,
+    });
+    expect(await readDirectAgentInput(parseArgs([
+      "agent",
+      "find-git",
+      "--query",
+      "PR-418",
+      "--field",
+      "999",
+      "--contains",
+      "--max-results",
+      "300",
+    ]), "find-git")).toEqual({
+      query: "PR-418",
+      all_assignees: false,
+      max_results: 300,
+      field_gid: "999",
+      contains: true,
     });
   });
 
@@ -99,16 +168,38 @@ describe("agent direct read input", () => {
       parseArgs(["agent", "list-comments", "--task", "123", "--max-content-bytes", "65537"]),
       "list-comments",
     ))).toBe("validation");
+    expect(await errorCode(() => readDirectAgentInput(
+      parseArgs(["agent", "list-comments", "--task", "123", "--max-content-bytes="]),
+      "list-comments",
+    ))).toBe("validation");
   });
 
-  test("status has no input mode or action flags", async () => {
+  test("rejects invalid direct input before any API request can start", async () => {
+    const client = createClient("VALIDATION_BEFORE_NETWORK_TOKEN");
+    client.basePath = "http://127.0.0.1:1/api/1.0";
+    expect(await errorCode(() => runAgentCommand(client, parseArgs([
+      "agent",
+      "list-comments",
+      "--task",
+      "invalid",
+    ])))).toBe("validation");
+    expect(await errorCode(() => runAgentCommand(client, parseArgs([
+      "agent",
+      "find-git",
+      "--query",
+      "PR-1",
+      "--unknown",
+    ])))).toBe("usage");
+  });
+
+  test("status supports direct invocation and the compatible empty stdin object", async () => {
     expect(await readDirectAgentInput(
       parseArgs(["agent", "status"]),
       "status",
     )).toEqual({});
-    expect(await errorCode(() => readDirectAgentInput(
+    expect(await withAgentStdin({}, () => readDirectAgentInput(
       parseArgs(["agent", "status", "--input", "-"]),
       "status",
-    ))).toBe("usage");
+    ))).toEqual({});
   });
 });

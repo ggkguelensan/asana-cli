@@ -179,6 +179,7 @@ const taskIncludeFields = {
     "custom_fields.gid",
     "custom_fields.name",
     "custom_fields.display_value",
+    "custom_fields.text_value",
   ],
   tags: ["tags", "tags.gid", "tags.name"],
   parent: ["parent", "parent.gid", "parent.name"],
@@ -359,7 +360,7 @@ export async function runAgentCommand(
         completed: "all",
         limit: 100,
         all: true,
-        maxResults: 500,
+        maxResults: input.max_results,
         fields: TASK_FIELDS,
       });
       const found = taskList(scanned, "TasksApi.getTasks")

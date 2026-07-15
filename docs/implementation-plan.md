@@ -62,7 +62,7 @@ Backlog: `AP-001`–`AP-004`, `AP-012`.
 - секреты и raw errors не попадают в новые metadata/error envelopes;
 - существующие stdin invocations остаются рабочими.
 
-## Этап 2 — Agent-friendly read invocation
+## Этап 2 — Agent-friendly read invocation (завершён)
 
 Backlog: `AP-005`, `AP-011`, `SEC-006`.
 

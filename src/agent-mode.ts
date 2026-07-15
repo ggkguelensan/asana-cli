@@ -65,7 +65,12 @@ export const AGENT_MANIFEST = {
         "ASANA_CLI_AGENT_POLICY=read-write + external host approval",
       ]),
   ),
-  forbidden_commands: ["agent raw", "agent api", "auth pat set", "auth pat delete"],
+  forbidden_commands: [
+    "asana-cli agent raw",
+    "asana-cli agent api",
+    "asana-cli auth pat set",
+    "asana-cli auth pat delete",
+  ],
   actions: actionDescriptors,
   output_security: {
     active_credential_exact_redaction: true,

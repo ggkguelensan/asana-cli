@@ -57,7 +57,7 @@ function stringValue(args: ParsedArgs, name: string): string | undefined {
 
 function integerValue(args: ParsedArgs, name: string): number | undefined {
   const value = stringValue(args, name);
-  return value === undefined ? undefined : Number(value);
+  return value === undefined ? undefined : value.trim() ? Number(value) : Number.NaN;
 }
 
 function booleanValue(args: ParsedArgs, name: string): boolean | undefined {
@@ -87,10 +87,7 @@ function assertKnownFlags(
   args: ParsedArgs,
   action: DirectReadAction,
 ): { input: string | undefined } {
-  const allowed = new Set<string>([
-    ...(action === "status" ? [] : ["input"]),
-    ...directFlags[action],
-  ]);
+  const allowed = new Set<string>(["input", ...directFlags[action]]);
   for (const name of Object.keys(args.flags)) {
     if (!allowed.has(name)) {
       throw new CliError("usage", `Unknown option for agent ${action}: --${name}`);
@@ -137,7 +134,7 @@ export async function readDirectAgentInput<Action extends DirectReadAction>(
     assignIfDefined(raw, "max_results", integerValue(args, "max-results"));
   } else if (action === "get-task") {
     raw.task_gid = requireValue(stringValue(args, "task"), "task");
-    assignIfDefined(raw, "include", includeValues(args));
+    raw.include = includeValues(args) ?? [];
     assignIfDefined(raw, "max_content_bytes", integerValue(args, "max-content-bytes"));
   } else if (action === "list-comments") {
     raw.task_gid = requireValue(stringValue(args, "task"), "task");
