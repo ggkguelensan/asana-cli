@@ -26,7 +26,8 @@ AGENT CLIENTS (DIRECT CLI, NO MCP)
   asana-cli agent find-git --query ID [--field GID]
   asana-cli agent my-tasks --input -     Compatible JSON stdin mode
   asana-cli agent prepare-task-update --input -
-  asana-cli agent apply-task-update --input -
+  asana-cli agent prepare-comment --task GID --text TEXT
+  asana-cli agent apply --operation-id UUID
 
 TASKS
   asana-cli tasks mine [options]         Tasks assigned to me

@@ -2,8 +2,11 @@ import { describe, expect, test } from "bun:test";
 import { z } from "zod";
 import { runAgentCommand } from "../src/agent-cli";
 import { parseArgs } from "../src/args";
+import { MemoryOperationRepository } from "../src/operations/memory-repository";
 import { createClient } from "../src/sdk";
 import { secureAgentEnvelope } from "../src/security";
+
+const agentRuntime = { operations: new MemoryOperationRepository() };
 
 async function withAgentStdin<Result>(
   input: unknown,
@@ -56,7 +59,7 @@ describe("agent read integration", () => {
         "2",
         "--max-content-bytes",
         "9",
-      ]));
+      ]), agentRuntime);
       const stdin = await withAgentStdin({
         task_gid: "123",
         limit: 1,
@@ -68,7 +71,7 @@ describe("agent read integration", () => {
         "list-comments",
         "--input",
         "-",
-      ])));
+      ]), agentRuntime));
       expect(direct).toEqual(stdin);
       expect(direct).toMatchObject({
         operation: "task.comments",
@@ -146,12 +149,16 @@ describe("agent read integration", () => {
         "custom_fields",
         "--max-content-bytes",
         "12000",
-      ]));
+      ]), agentRuntime);
       const stdinTask = await withAgentStdin({
         task_gid: "123",
         include: ["notes", "custom_fields"],
         max_content_bytes: 12_000,
-      }, () => runAgentCommand(client, parseArgs(["agent", "get-task", "--input", "-"])));
+      }, () => runAgentCommand(
+        client,
+        parseArgs(["agent", "get-task", "--input", "-"]),
+        agentRuntime,
+      ));
       expect(directTask).toEqual(stdinTask);
 
       const taskRequests = requests.filter((url) => url.pathname.endsWith("/tasks/123"));
@@ -182,12 +189,16 @@ describe("agent read integration", () => {
         "1200",
         "--max-results",
         "2",
-      ]));
+      ]), agentRuntime);
       const stdinSearch = await withAgentStdin({
         query: "PR-1",
         workspace_gid: "1200",
         max_results: 2,
-      }, () => runAgentCommand(client, parseArgs(["agent", "search-tasks", "--input", "-"])));
+      }, () => runAgentCommand(
+        client,
+        parseArgs(["agent", "search-tasks", "--input", "-"]),
+        agentRuntime,
+      ));
       expect(directSearch).toEqual(stdinSearch);
 
       const directFind = await runAgentCommand(client, parseArgs([
@@ -201,13 +212,17 @@ describe("agent read integration", () => {
         "999",
         "--max-results",
         "2",
-      ]));
+      ]), agentRuntime);
       const stdinFind = await withAgentStdin({
         query: "PR-1",
         workspace_gid: "1200",
         field_gid: "999",
         max_results: 2,
-      }, () => runAgentCommand(client, parseArgs(["agent", "find-git", "--input", "-"])));
+      }, () => runAgentCommand(
+        client,
+        parseArgs(["agent", "find-git", "--input", "-"]),
+        agentRuntime,
+      ));
       expect(directFind).toEqual(stdinFind);
       const findResult = z.looseObject({
         data: z.looseObject({

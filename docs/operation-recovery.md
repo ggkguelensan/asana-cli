@@ -1,11 +1,11 @@
 # Operation recovery safety
 
-> **CURRENT STATUS — NOT WIRED:** The operation journal core exists, but AP-008 and AP-010 are not
-> implemented. Current `agent apply-task-update` and `agent apply-comment` still accept the complete
-> plan and perform a direct write. There is no `agent operation status` command, and the journal does
-> not currently prevent a duplicate apply. Never retry `apply-comment` after an ambiguous failure;
-> it may create a duplicate comment. This document defines required semantics for future wiring. It
-> is not a recovery procedure available in the current CLI.
+> **CURRENT STATUS:** AP-008/AP-009 journal wiring is active. Prepare stores an immutable operation;
+> `agent apply --operation-id UUID` claims it with compare-and-set before one remote write. Applied,
+> applying, unknown and expired operations are not dispatched again. AP-010 read-only operation
+> status and reconciliation tooling are not implemented. After `unknown-result`, do not retry: a
+> comment may already have been created. This document describes the safety boundary, not a manual
+> recovery procedure.
 
 Once wired, the local operation journal is intended to prevent the CLI from casually starting the
 same prepared write twice. It will not provide server-side exactly-once delivery, and it will not be
@@ -13,7 +13,7 @@ an authorization boundary against another process running as the same OS user.
 
 ## Read-only status
 
-A future status implementation may read a complete, non-expired atomic snapshot without acquiring
+The future status implementation may read a complete, non-expired atomic snapshot without acquiring
 its mutation lock, including when a stale lock file exists. It must return only operation metadata
 needed for diagnosis; it must not print the task update payload, comment text, credentials, request
 headers, raw HTTP bodies or error stacks.
@@ -47,9 +47,9 @@ CLI must not retry it automatically. Future recovery tooling may support read-on
 but if the effect cannot be established, the operation must remain `unknown`; repeating a comment
 may create a duplicate.
 
-Today, because journal wiring and operation status are absent, an ambiguous `apply-comment` failure
-has no safe automated recovery path. Do not retry the command. Inspect Asana separately and obtain
-explicit human direction before considering any new write.
+Today an ambiguous `agent apply` has no safe automated recovery path even though its operation is
+persisted as `unknown`. Do not retry the command. Inspect Asana separately and obtain explicit human
+direction before considering a separately prepared new write.
 
 ## Integrity and platform limits
 

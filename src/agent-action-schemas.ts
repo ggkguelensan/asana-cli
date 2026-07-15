@@ -123,39 +123,11 @@ export const prepareTaskUpdateInputSchema = z.strictObject({
   patch: taskPatchSchema,
 });
 
-const planTargetSchema = z.strictObject({
-  gid: gidSchema,
-  name: z.string().optional(),
-  permalink_url: z.string().optional(),
-});
-
-export const taskUpdatePlanSchema = z.strictObject({
-  version: z.literal(1),
-  operation: z.literal("task.update"),
-  task_gid: gidSchema,
-  expected_modified_at: z.string().min(1),
-  prepared_by: z.string().min(1),
-  target: planTargetSchema,
-  changes: taskPatchSchema,
-  hash: z.string().regex(/^sha256:[0-9a-f]{64}$/),
-});
-
-export const applyTaskUpdateInputSchema = z.strictObject({ plan: taskUpdatePlanSchema });
-
 export const prepareCommentInputSchema = z.strictObject({
   task_gid: gidSchema,
   text: z.string().min(1).max(8_000),
 });
 
-export const commentPlanSchema = z.strictObject({
-  version: z.literal(1),
-  operation: z.literal("task.comment"),
-  task_gid: gidSchema,
-  expected_modified_at: z.string().min(1),
-  prepared_by: z.string().min(1),
-  target: planTargetSchema,
-  text: z.string().min(1).max(8_000),
-  hash: z.string().regex(/^sha256:[0-9a-f]{64}$/),
+export const applyOperationInputSchema = z.strictObject({
+  operation_id: z.uuid(),
 });
-
-export const applyCommentInputSchema = z.strictObject({ plan: commentPlanSchema });

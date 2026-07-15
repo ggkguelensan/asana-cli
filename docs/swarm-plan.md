@@ -215,7 +215,7 @@ Gate: error responses имеют code, не содержат raw transport/secre
 
 ### Wave 5 — завершение v0.3
 
-- Luna: `AP-009`, `AP-010` — state machine wiring, status и explicit stale-lock/ambiguous recovery.
+- Luna: `AP-010` — read-only operation status и explicit stale-lock/ambiguous recovery.
 - Sol: `AP-013` — compatibility/deprecation fixtures и migration guidance.
 - Luna: `SEC-004`, `SEC-005` — scoped policy и metadata-only audit.
 

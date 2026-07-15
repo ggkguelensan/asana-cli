@@ -46,7 +46,9 @@ import {
   storedPat,
 } from "./pat-store";
 import { AGENT_MANIFEST, enforceAgentPolicy, isAgentMode } from "./agent-mode";
-import { runAgentCommand } from "./agent-cli";
+import { rejectLegacyAgentApply, runAgentCommand } from "./agent-cli";
+import { FileOperationRepository } from "./operations/file-repository";
+import type { OperationRepository } from "./operations/repository";
 import {
   jsonArraySchema,
   jsonObjectSchema,
@@ -66,6 +68,19 @@ const cliEnvironmentSchema = z.object({
   ASANA_PAT: z.string().optional(),
   ASANA_GIT_FIELD_GID: z.string().optional(),
 });
+
+function lazyFileOperationRepository(): OperationRepository {
+  let fileRepository: FileOperationRepository | undefined;
+  const file = (): FileOperationRepository => {
+    fileRepository ??= new FileOperationRepository();
+    return fileRepository;
+  };
+  return {
+    create: (input) => file().create(input),
+    get: (id) => file().get(id),
+    compareAndSet: (transition) => file().compareAndSet(transition),
+  };
+}
 
 export interface CliResult {
   value?: unknown;
@@ -406,6 +421,7 @@ async function patCommand(args: ParsedArgs): Promise<CliResult> {
 
 export async function runCli(argv: string[]): Promise<CliResult> {
   const args = parseArgs(argv);
+  const command = args.positionals[0];
   for (const forbidden of ["token", "pat", "password", "access-token"]) {
     if (Object.hasOwn(args.flags, forbidden)) {
       throw new CliError(
@@ -414,8 +430,8 @@ export async function runCli(argv: string[]): Promise<CliResult> {
       );
     }
   }
+  if (command === "agent") rejectLegacyAgentApply(args.positionals[1]);
   enforceAgentPolicy(args);
-  const command = args.positionals[0];
   const compact = booleanFlag(args, "compact", false);
   if (flag(args, "version") === true || command === "version") return { text: CLI_VERSION };
   if (!command || flag(args, "help") === true || command === "help") return { text: HELP };
@@ -432,7 +448,6 @@ export async function runCli(argv: string[]): Promise<CliResult> {
   ) {
     return { value: AGENT_MANIFEST, compact, agentMode: true };
   }
-
   if (command === "auth" && (args.positionals[1] === undefined || args.positionals[1] === "help")) {
     return { text: AUTH_HELP };
   }
@@ -461,7 +476,13 @@ export async function runCli(argv: string[]): Promise<CliResult> {
     };
   }
   if (command === "agent") {
-    return { value: await runAgentCommand(client, args), compact: true, agentMode: true };
+    return {
+      value: await runAgentCommand(client, args, {
+        operations: lazyFileOperationRepository(),
+      }),
+      compact: true,
+      agentMode: true,
+    };
   }
   if (command === "me") return { value: await getMe(client), compact };
   if (command === "workspaces" || (command === "workspace" && args.positionals[1] === "list")) {

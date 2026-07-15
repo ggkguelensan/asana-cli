@@ -4,9 +4,12 @@ import { runAgentCommand } from "../src/agent-cli";
 import { AGENT_MANIFEST } from "../src/agent-mode";
 import { parseArgs } from "../src/args";
 import { runCli } from "../src/cli";
+import { MemoryOperationRepository } from "../src/operations/memory-repository";
 import { createClient } from "../src/sdk";
 import { secureAgentEnvelope } from "../src/security";
 import { AGENT_PROTOCOL_VERSION, CLI_VERSION } from "../src/version";
+
+const agentRuntime = { operations: new MemoryOperationRepository() };
 
 const protocolIdentitySchema = z.looseObject({
   agent_protocol_version: z.literal(AGENT_PROTOCOL_VERSION),
@@ -14,7 +17,7 @@ const protocolIdentitySchema = z.looseObject({
 });
 
 const compatibleEnvelopeSchema = protocolIdentitySchema.extend({
-  schema: z.literal("asana-cli.agent.v1"),
+  schema: z.literal("asana-cli.agent.v2"),
   content_trust: z.literal("external-untrusted"),
   result: z.unknown(),
   _meta: z.looseObject({
@@ -25,7 +28,7 @@ const compatibleEnvelopeSchema = protocolIdentitySchema.extend({
 });
 
 const compatibleManifestSchema = protocolIdentitySchema.extend({
-  protocol: z.literal("asana-cli-agent-v1"),
+  protocol: z.literal("asana-cli-agent-v2"),
   default_mode: z.literal("read-only"),
   invocation: z.string(),
   safe_commands: z.array(z.string()),
@@ -54,7 +57,7 @@ describe("agent protocol compatibility", () => {
     );
     expect(envelope.agent_protocol_version).toBe(AGENT_PROTOCOL_VERSION);
     expect(envelope.cli_version).toBe(CLI_VERSION);
-    expect(envelope.schema).toBe("asana-cli.agent.v1");
+    expect(envelope.schema).toBe("asana-cli.agent.v2");
     expect(envelope.content_trust).toBe("external-untrusted");
     expect(envelope._meta.security.untrusted_content).toBe(true);
   });
@@ -88,7 +91,7 @@ describe("agent protocol compatibility", () => {
             workspaces: z.array(z.looseObject({ gid: z.string() })).optional(),
           }),
         }),
-      }).parse(await runAgentCommand(client, parseArgs(["agent", "status"])));
+      }).parse(await runAgentCommand(client, parseArgs(["agent", "status"]), agentRuntime));
       expect(result.data.user).toEqual({
         gid: "123",
         name: "Developer",

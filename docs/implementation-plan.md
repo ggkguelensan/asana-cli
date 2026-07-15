@@ -105,7 +105,7 @@ Backlog: `AP-006`–`AP-010`, `SEC-001`, затем `SEC-004` и `SEC-005`.
 Canonical workflow после этапа:
 
 ```sh
-asana-cli agent prepare-comment --task 1201 --input -
+asana-cli agent prepare-comment --task 1201 --text 'Implemented in PR-418'
 asana-cli agent apply --operation-id 018f...
 asana-cli agent operation status 018f...
 ```
@@ -184,7 +184,7 @@ Manifest минимум:
 {
   "installer": "asana-cli",
   "cli_version": "0.4.0",
-  "agent_protocol_version": 1,
+  "agent_protocol_version": 2,
   "client": "generic-agent-skills",
   "scope": "project",
   "files": {

@@ -156,6 +156,53 @@ export async function readDirectAgentInput<Action extends DirectReadAction>(
   return parseAgentActionInput(raw, action);
 }
 
+async function readDirectOrStdinInput<Action extends "apply" | "prepare-comment">(
+  args: ParsedArgs,
+  action: Action,
+  directFlagNames: readonly string[],
+  directValue: () => Record<string, unknown>,
+): Promise<AgentActionInput<Action>> {
+  assertPositionalShape(args, action);
+  const allowed = new Set(["input", ...directFlagNames]);
+  for (const name of Object.keys(args.flags)) {
+    if (!allowed.has(name)) {
+      throw new CliError("usage", `Unknown option for agent ${action}: --${name}`);
+    }
+  }
+  const input = stringValue(args, "input");
+  if (input !== undefined) {
+    if (input !== "-") {
+      throw new CliError("usage", "Agent --input must be the stdin marker: --input -");
+    }
+    const conflicting = Object.keys(args.flags).filter((name) => name !== "input");
+    if (conflicting.length > 0) {
+      throw new CliError(
+        "usage",
+        `--input cannot be combined with direct action flags: --${conflicting[0]}`,
+      );
+    }
+    return readAgentActionInput(input, action);
+  }
+  return parseAgentActionInput(directValue(), action);
+}
+
+export function readApplyAgentInput(
+  args: ParsedArgs,
+): Promise<AgentActionInput<"apply">> {
+  return readDirectOrStdinInput(args, "apply", ["operation-id"], () => ({
+    operation_id: requireValue(stringValue(args, "operation-id"), "operation-id"),
+  }));
+}
+
+export function readPrepareCommentAgentInput(
+  args: ParsedArgs,
+): Promise<AgentActionInput<"prepare-comment">> {
+  return readDirectOrStdinInput(args, "prepare-comment", ["task", "text"], () => ({
+    task_gid: requireValue(stringValue(args, "task"), "task"),
+    text: requireValue(stringValue(args, "text"), "text"),
+  }));
+}
+
 export async function readStdinAgentInput<Action extends AgentActionName>(
   args: ParsedArgs,
   action: Action,

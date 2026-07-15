@@ -139,7 +139,7 @@ export function agentEnvelopeSchema<ResultSchema extends z.ZodType>(
   return z.strictObject({
     agent_protocol_version: z.literal(AGENT_PROTOCOL_VERSION),
     cli_version: z.literal(CLI_VERSION),
-    schema: z.literal("asana-cli.agent.v1"),
+    schema: z.literal("asana-cli.agent.v2"),
     content_trust: z.literal("external-untrusted"),
     result: resultSchema,
     _meta: z.strictObject({
@@ -155,7 +155,7 @@ export function secureAgentEnvelope(input: unknown): unknown {
   return runtimeAgentEnvelopeSchema.parse({
     agent_protocol_version: AGENT_PROTOCOL_VERSION,
     cli_version: CLI_VERSION,
-    schema: "asana-cli.agent.v1",
+    schema: "asana-cli.agent.v2",
     content_trust: "external-untrusted",
     result: sanitized.value,
     _meta: {

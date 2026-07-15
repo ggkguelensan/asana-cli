@@ -32,12 +32,13 @@ export function enforceAgentPolicy(args: ParsedArgs): void {
   if (write) {
     throw new CliError(
       "policy-denied",
-      "Use agent prepare-* and apply-* instead of direct task writes in agent mode",
+      "Use agent prepare-* and agent apply --operation-id instead of direct task writes in agent mode",
     );
   }
-  const agentApply = command === "agent" &&
-    action !== undefined &&
-    agentActionDescriptor(action)?.effect === "write";
+  const legacyApply = action === "apply-task-update" || action === "apply-comment";
+  const agentApply = command === "agent" && action !== undefined && (
+    legacyApply || agentActionDescriptor(action)?.effect === "write"
+  );
   if (agentApply && agentEnvironment().ASANA_CLI_AGENT_POLICY !== "read-write") {
     throw new CliError(
       "policy-denied",
@@ -51,9 +52,10 @@ const actionDescriptors = agentActionDescriptors();
 export const AGENT_MANIFEST = {
   agent_protocol_version: AGENT_PROTOCOL_VERSION,
   cli_version: CLI_VERSION,
-  protocol: "asana-cli-agent-v1",
+  protocol: "asana-cli-agent-v2",
   default_mode: "read-only",
-  invocation: "Direct flags for reads; one JSON object on stdin via --input - remains supported",
+  invocation:
+    "Direct flags for reads/comment prepare/apply; one strict JSON object on stdin via --input - remains supported",
   safe_commands: actionDescriptors
     .filter((descriptor) => descriptor.effect !== "write")
     .map((descriptor) => `asana-cli agent ${descriptor.action}`),
@@ -71,6 +73,16 @@ export const AGENT_MANIFEST = {
     "asana-cli auth pat set",
     "asana-cli auth pat delete",
   ],
+  deprecated_commands: {
+    "asana-cli agent apply-task-update": {
+      reason: "legacy-plan-apply-removed",
+      replacement: "asana-cli agent apply --operation-id UUID",
+    },
+    "asana-cli agent apply-comment": {
+      reason: "legacy-plan-apply-removed",
+      replacement: "asana-cli agent apply --operation-id UUID",
+    },
+  },
   actions: actionDescriptors,
   output_security: {
     active_credential_exact_redaction: true,
