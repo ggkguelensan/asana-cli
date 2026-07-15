@@ -44,6 +44,7 @@ jobs:
   publish:
     needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/download-artifact@v8
         with:
@@ -52,4 +53,18 @@ jobs:
       - run: cd dist && sha256sum * > SHA256SUMS
       - env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" --generate-notes --verify-tag
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --repo "$GITHUB_REPOSITORY" \
+            --generate-notes \
+            --verify-tag \
+            --draft
+
+          for asset in dist/*; do
+            gh release upload "$GITHUB_REF_NAME" "$asset" \
+              --repo "$GITHUB_REPOSITORY"
+          done
+
+          gh release edit "$GITHUB_REF_NAME" \
+            --repo "$GITHUB_REPOSITORY" \
+            --draft=false
