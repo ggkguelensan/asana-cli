@@ -72,13 +72,13 @@ export function parseExternalData<S extends z.ZodType>(
 ): z.output<S> {
   const envelope = dataEnvelopeSchema.safeParse(value);
   if (!envelope.success) {
-    throw new CliError(`Unexpected response envelope from ${context}`, 1);
+    throw new CliError("internal", `Unexpected response envelope from ${context}`);
   }
   const parsed = schema.safeParse(envelope.data.data);
   if (!parsed.success) {
     throw new CliError(
+      "internal",
       `Invalid response data from ${context}: ${zodIssueSummary(parsed.error)}`,
-      1,
     );
   }
   return parsed.data;

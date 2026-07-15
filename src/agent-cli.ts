@@ -76,14 +76,28 @@ function planHash(plan: unknown): string {
 }
 
 function verifyPlanHash(plan: { hash: string }): void {
-  if (plan.hash !== planHash(plan)) throw new CliError("Plan hash mismatch", 2);
+  if (plan.hash !== planHash(plan)) throw new CliError("validation", "Plan hash mismatch");
+}
+
+export function assertPreparedTaskIsCurrent(
+  currentUserGid: string,
+  currentModifiedAt: string,
+  preparedBy: string,
+  expectedModifiedAt: string,
+): void {
+  if (currentUserGid !== preparedBy || currentModifiedAt !== expectedModifiedAt) {
+    throw new CliError(
+      "stale-or-expired",
+      "Task changed after the plan was prepared; prepare a new plan",
+    );
+  }
 }
 
 function ensureNoRegisteredSecret(value: unknown, operation: string): void {
   if (containsRegisteredSecret(value)) {
     throw new CliError(
+      "policy-denied",
       `${operation} blocked because it contains a credential from the local environment`,
-      2,
     );
   }
 }
@@ -104,8 +118,8 @@ async function ownTask(
   const task = parseExternalData(taskResult, ownedTaskSchema, "TasksApi.getTask");
   if (task.assignee.gid !== user.gid) {
     throw new CliError(
+      "policy-denied",
       "Agent contract may update only tasks assigned to the authenticated user",
-      2,
     );
   }
   return { user, task };
@@ -153,7 +167,10 @@ function agentTaskProjection(task: AsanaTask): JsonObject {
 function taskList(value: unknown, context: string): AsanaTask[] {
   const parsed = taskListEnvelopeSchema.safeParse(value);
   if (!parsed.success) {
-    throw new CliError(`Invalid task list from ${context}: ${zodIssueSummary(parsed.error)}`, 1);
+    throw new CliError(
+      "internal",
+      `Invalid task list from ${context}: ${zodIssueSummary(parsed.error)}`,
+    );
   }
   return parsed.data.data;
 }
@@ -163,7 +180,7 @@ export async function runAgentCommand(
   args: ParsedArgs,
 ): Promise<unknown> {
   const action = args.positionals[1];
-  if (!action) throw new CliError("Missing agent action", 2);
+  if (!action) throw new CliError("usage", "Missing agent action");
   const inputFlag = stringFlag(args, "input");
 
   if (action === "status") {
@@ -321,9 +338,12 @@ export async function runAgentCommand(
     verifyPlanHash(plan);
     ensureNoRegisteredSecret(plan.changes, "Update");
     const { user, task } = await ownTask(client, plan.task_gid);
-    if (user.gid !== plan.prepared_by || task.modified_at !== plan.expected_modified_at) {
-      throw new CliError("Task changed after the plan was prepared; prepare a new plan", 4);
-    }
+    assertPreparedTaskIsCurrent(
+      user.gid,
+      task.modified_at,
+      plan.prepared_by,
+      plan.expected_modified_at,
+    );
     const result = await updateTask(client, plan.task_gid, plan.changes, AGENT_TASK_FIELDS);
     return agentResult(
       "apply-task-update",
@@ -356,9 +376,12 @@ export async function runAgentCommand(
     verifyPlanHash(plan);
     ensureNoRegisteredSecret(plan.text, "Comment");
     const { user, task } = await ownTask(client, plan.task_gid);
-    if (user.gid !== plan.prepared_by || task.modified_at !== plan.expected_modified_at) {
-      throw new CliError("Task changed after the plan was prepared; prepare a new plan", 4);
-    }
+    assertPreparedTaskIsCurrent(
+      user.gid,
+      task.modified_at,
+      plan.prepared_by,
+      plan.expected_modified_at,
+    );
     const result = await addTaskComment(client, plan.task_gid, { text: plan.text }, STORY_FIELDS);
     return agentResult(
       "apply-comment",
@@ -366,5 +389,5 @@ export async function runAgentCommand(
     );
   }
 
-  throw new CliError(`Unknown agent action: ${action}`, 2);
+  throw new CliError("usage", `Unknown agent action: ${action}`);
 }

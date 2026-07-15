@@ -23,16 +23,16 @@ export function enforceAgentPolicy(args: ParsedArgs): void {
   const [command, action, subaction] = args.positionals;
 
   if (command === "auth" && action === "pat" && ["set", "delete", "remove"].includes(subaction ?? "")) {
-    throw new CliError("Agent mode cannot create, replace, or delete stored credentials", 2);
+    throw new CliError("policy-denied", "Agent mode cannot create, replace, or delete stored credentials");
   }
   if (command === "request" || command === "api" && action === "call") {
-    throw new CliError("Raw/API calls are not part of the direct agent contract", 2);
+    throw new CliError("policy-denied", "Raw/API calls are not part of the direct agent contract");
   }
   const write = command === "task" && ["update", "comment"].includes(action ?? "");
   if (write) {
     throw new CliError(
+      "policy-denied",
       "Use agent prepare-* and apply-* instead of direct task writes in agent mode",
-      2,
     );
   }
   const agentApply = command === "agent" &&
@@ -40,8 +40,8 @@ export function enforceAgentPolicy(args: ParsedArgs): void {
     agentActionDescriptor(action)?.effect === "write";
   if (agentApply && agentEnvironment().ASANA_CLI_AGENT_POLICY !== "read-write") {
     throw new CliError(
+      "policy-denied",
       "Agent writes are disabled. Start the agent host with ASANA_CLI_AGENT_POLICY=read-write; host approval is still required.",
-      2,
     );
   }
 }

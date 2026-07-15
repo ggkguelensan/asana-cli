@@ -91,13 +91,13 @@ function taskGid(value: string): string {
   try {
     url = new URL(value);
   } catch {
-    throw new CliError(`Invalid task URL: ${value}`, 2);
+    throw new CliError("validation", `Invalid task URL: ${value}`);
   }
   if (url.hostname !== "app.asana.com" && !url.hostname.endsWith(".asana.com")) {
-    throw new CliError("Task URL must point to asana.com", 2);
+    throw new CliError("validation", "Task URL must point to asana.com");
   }
   const gids = url.pathname.match(/\d+/g);
-  if (!gids?.length) throw new CliError(`No task GID found in URL: ${value}`, 2);
+  if (!gids?.length) throw new CliError("validation", `No task GID found in URL: ${value}`);
   return gids[gids.length - 1]!;
 }
 
@@ -109,7 +109,7 @@ function completedMode(args: ParsedArgs): "false" | "true" | "all" {
   const normalized = value.toLowerCase();
   const parsed = completedModeSchema.safeParse(normalized);
   if (parsed.success) return parsed.data;
-  throw new CliError("--completed must be false, true, or all", 2);
+  throw new CliError("validation", "--completed must be false, true, or all");
 }
 
 function nullable(value: string): string | null {
@@ -123,7 +123,7 @@ async function updateData(args: ParsedArgs): Promise<Record<string, unknown>> {
     const parsed = await readJsonInput(json, "--data", jsonObjectSchema);
     if ("data" in parsed) {
       const nested = jsonObjectSchema.safeParse(parsed.data);
-      if (!nested.success) throw new CliError("--data.data must be a JSON object", 2);
+      if (!nested.success) throw new CliError("validation", "--data.data must be a JSON object");
       data = nested.data;
     } else {
       data = parsed;
@@ -153,7 +153,7 @@ async function updateData(args: ParsedArgs): Promise<Record<string, unknown>> {
   const notesFile = stringFlag(args, "notes-file");
   if (notesFile) data.notes = await readTextInput(`@${notesFile}`, "--notes-file");
   if (data.due_on != null && data.due_at != null) {
-    throw new CliError("due_on and due_at cannot be set at the same time", 2);
+    throw new CliError("validation", "due_on and due_at cannot be set at the same time");
   }
   return data;
 }
@@ -161,7 +161,7 @@ async function updateData(args: ParsedArgs): Promise<Record<string, unknown>> {
 function extractTasks(result: unknown): AsanaTask[] {
   const parsed = taskListEnvelopeSchema.safeParse(result);
   if (!parsed.success) {
-    throw new CliError(`Invalid task list response: ${zodIssueSummary(parsed.error)}`, 1);
+    throw new CliError("internal", `Invalid task list response: ${zodIssueSummary(parsed.error)}`);
   }
   return parsed.data.data;
 }
@@ -280,7 +280,7 @@ async function apiCommand(client: AsanaClient | undefined, args: ParsedArgs): Pr
     const method = args.positionals[3];
     const resolved = resolveApiClass(className);
     if (method && !apiMethodNames(resolved.name).includes(method)) {
-      throw new CliError(`Unknown method ${resolved.name}.${method}`, 2);
+      throw new CliError("usage", `Unknown method ${resolved.name}.${method}`);
     }
     const anchor = method ? `#${method}` : "";
     return {
@@ -291,15 +291,17 @@ async function apiCommand(client: AsanaClient | undefined, args: ParsedArgs): Pr
       },
     };
   }
-  if (action !== "call") throw new CliError(`Unknown api action: ${action}`, 2);
-  if (!client) throw new CliError("Internal error: authenticated client not initialized", 1);
+  if (action !== "call") throw new CliError("usage", `Unknown api action: ${action}`);
+  if (!client) {
+    throw new CliError("internal", "Internal error: authenticated client not initialized");
+  }
 
   const className = requirePositional(args, 2, "API class");
   const method = requirePositional(args, 3, "API method");
   const rawArgs = stringFlag(args, "args") ?? "[]";
   const callArgs = await readJsonInput(rawArgs, "--args", jsonArraySchema);
   const materialized = materializeFileReferences(callArgs);
-  if (!Array.isArray(materialized)) throw new CliError("--args must be a JSON array", 2);
+  if (!Array.isArray(materialized)) throw new CliError("validation", "--args must be a JSON array");
   const result = await invokeApiMethod(
     client,
     className,
@@ -326,17 +328,25 @@ async function patCommand(args: ParsedArgs): Promise<CliResult> {
   if (action === "help") return { text: PAT_HELP };
   if (action === "set") {
     if (args.positionals[3] !== undefined) {
-      throw new CliError("Never pass a PAT as a command-line argument; use the hidden prompt or --stdin", 2);
+      throw new CliError(
+        "policy-denied",
+        "Never pass a PAT as a command-line argument; use the hidden prompt or --stdin",
+      );
     }
     const fromEnv = booleanFlag(args, "from-env", false);
     if (fromEnv && booleanFlag(args, "stdin", false)) {
-      throw new CliError("Use only one of --from-env and --stdin", 2);
+      throw new CliError("usage", "Use only one of --from-env and --stdin");
     }
     let pat: string;
     if (fromEnv) {
       const environment = cliEnvironmentSchema.parse(process.env);
       pat = environment.ASANA_ACCESS_TOKEN || environment.ASANA_PAT || "";
-      if (!pat) throw new CliError("--from-env requires ASANA_PAT or ASANA_ACCESS_TOKEN", 3);
+      if (!pat) {
+        throw new CliError(
+          "auth-required",
+          "--from-env requires ASANA_PAT or ASANA_ACCESS_TOKEN",
+        );
+      }
     } else if (booleanFlag(args, "stdin", false)) {
       pat = patFromStdin(await Bun.stdin.text());
     } else {
@@ -391,14 +401,17 @@ async function patCommand(args: ParsedArgs): Promise<CliResult> {
       compact,
     };
   }
-  throw new CliError(`Unknown auth pat action: ${action}`, 2);
+  throw new CliError("usage", `Unknown auth pat action: ${action}`);
 }
 
 export async function runCli(argv: string[]): Promise<CliResult> {
   const args = parseArgs(argv);
   for (const forbidden of ["token", "pat", "password", "access-token"]) {
     if (Object.hasOwn(args.flags, forbidden)) {
-      throw new CliError(`--${forbidden} is forbidden; credentials are accepted only from the OS store or environment`, 2);
+      throw new CliError(
+        "policy-denied",
+        `--${forbidden} is forbidden; credentials are accepted only from the OS store or environment`,
+      );
     }
   }
   enforceAgentPolicy(args);
@@ -517,7 +530,9 @@ export async function runCli(argv: string[]): Promise<CliResult> {
       if (file) text = await readTextInput(`@${file}`, "--file");
       if (booleanFlag(args, "stdin", false)) text = await readTextInput("-", "--stdin");
       if (!text && !html) text = args.positionals.slice(3).join(" ");
-      if (text && html) throw new CliError("Use either text or html_text for a comment, not both", 2);
+      if (text && html) {
+        throw new CliError("validation", "Use either text or html_text for a comment, not both");
+      }
       const content = html ? { html_text: html } : { text: text ?? "" };
       if (booleanFlag(args, "dry-run", false)) {
         return { value: { dry_run: true, operation: "StoriesApi.createStoryForTask", task_gid: gid, body: { data: content } }, compact };
@@ -526,7 +541,7 @@ export async function runCli(argv: string[]): Promise<CliResult> {
     }
     if (action === "search" || action === "search-git" || action === "find-git") {
       const query = args.positionals.slice(2).join(" ");
-      if (!query) throw new CliError("Missing search query", 2);
+      if (!query) throw new CliError("usage", "Missing search query");
       if (action !== "search") return { value: await findGitTasks(client, args, query), compact };
       const filtersInput = stringFlag(args, "filters");
       const extra = filtersInput
@@ -550,7 +565,9 @@ export async function runCli(argv: string[]): Promise<CliResult> {
     if (action === "get-custom-id") {
       const customId = requirePositional(args, 2, "custom task ID");
       const workspace = stringFlag(args, "workspace");
-      if (!workspace) throw new CliError("task get-custom-id requires --workspace <gid>", 2);
+      if (!workspace) {
+        throw new CliError("usage", "task get-custom-id requires --workspace <gid>");
+      }
       return {
         value: await invokeApiMethod(client, "TasksApi", "getTaskForCustomID", [
           workspace,
@@ -560,8 +577,8 @@ export async function runCli(argv: string[]): Promise<CliResult> {
         compact,
       };
     }
-    throw new CliError(`Unknown task action: ${action}`, 2);
+    throw new CliError("usage", `Unknown task action: ${action}`);
   }
 
-  throw new CliError(`Unknown command: ${command}. Run \`asana-cli --help\`.`, 2);
+  throw new CliError("usage", `Unknown command: ${command}. Run \`asana-cli --help\`.`);
 }

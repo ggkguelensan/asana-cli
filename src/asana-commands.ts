@@ -111,7 +111,7 @@ async function selectedWorkspaces(client: AsanaClient, workspaceGid?: string): P
   const user = await currentUser(client);
   const workspaces = Array.isArray(user?.workspaces) ? user.workspaces : [];
   if (!workspaces.length) {
-    throw new CliError("The authenticated Asana user has no accessible workspaces", 4);
+    throw new CliError("not-found", "The authenticated Asana user has no accessible workspaces");
   }
   return workspaces;
 }
@@ -241,8 +241,8 @@ export async function updateTask(
 ): Promise<unknown> {
   if (!Object.keys(data).length) {
     throw new CliError(
+      "validation",
       "No updates supplied. Use --data JSON or task fields such as --name/--completed/--due-on.",
-      2,
     );
   }
   return invokeApiMethod(client, "TasksApi", "updateTask", [
@@ -259,7 +259,7 @@ export async function addTaskComment(
   fields: string,
 ): Promise<unknown> {
   const value = content.text ?? content.html_text;
-  if (!value?.trim()) throw new CliError("Comment text must not be empty", 2);
+  if (!value?.trim()) throw new CliError("validation", "Comment text must not be empty");
   return invokeApiMethod(client, "StoriesApi", "createStoryForTask", [
     { data: content },
     gid,
@@ -279,7 +279,7 @@ export async function searchTasks(
     includeText?: boolean;
   },
 ): Promise<unknown> {
-  if (!query.trim()) throw new CliError("Search query must not be empty", 2);
+  if (!query.trim()) throw new CliError("validation", "Search query must not be empty");
   const workspaces = await selectedWorkspaces(client, options.workspace);
   const data: unknown[] = [];
   const pages: Array<Record<string, unknown>> = [];

@@ -1,4 +1,4 @@
-import { CliError } from "./errors";
+import { asanaHttpErrorCode, CliError } from "./errors";
 import { z } from "zod";
 import { jsonObjectSchema, jsonValueSchema } from "./schemas";
 import { CLI_VERSION } from "./version";
@@ -21,15 +21,17 @@ const rawErrorSchema = z.looseObject({
 export async function rawRequest(pat: string, options: RawRequestOptions): Promise<unknown> {
   const method = options.method.toUpperCase();
   if (!METHODS.has(method)) {
-    throw new CliError(`Unsupported HTTP method: ${options.method}`, 2);
+    throw new CliError("usage", `Unsupported HTTP method: ${options.method}`);
   }
   if (!options.path.startsWith("/") || options.path.startsWith("//")) {
-    throw new CliError("API path must be relative and start with a single /", 2);
+    throw new CliError("validation", "API path must be relative and start with a single /");
   }
 
   const url = new URL(`${BASE_URL}${options.path}`);
   const queryResult = jsonObjectSchema.safeParse(options.query ?? {});
-  if (!queryResult.success) throw new CliError("Raw request query must contain JSON values", 2);
+  if (!queryResult.success) {
+    throw new CliError("validation", "Raw request query must contain JSON values");
+  }
   for (const [name, value] of Object.entries(queryResult.data)) {
     if (value === undefined) continue;
     if (Array.isArray(value)) {
@@ -43,7 +45,7 @@ export async function rawRequest(pat: string, options: RawRequestOptions): Promi
 
   const hasBody = options.data !== undefined && method !== "GET";
   if (hasBody && !jsonValueSchema.safeParse(options.data).success) {
-    throw new CliError("Raw request body must be a JSON value", 2);
+    throw new CliError("validation", "Raw request body must be a JSON value");
   }
   const response = await (options.fetchImpl ?? fetch)(url, {
     method,
@@ -73,9 +75,10 @@ export async function rawRequest(pat: string, options: RawRequestOptions): Promi
       ? parsed.data.errors.flatMap((entry) => entry.message ? [entry.message] : []).join("; ")
       : response.statusText;
     throw new CliError(
+      asanaHttpErrorCode(response.status),
       `Asana API error (${response.status}): ${messages || "Request failed"}`,
-      response.status === 401 || response.status === 403 ? 3 : 4,
-      body,
+      undefined,
+      { http_status: response.status },
     );
   }
   return body;

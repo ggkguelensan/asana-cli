@@ -11,6 +11,7 @@ import {
 import { taskPatchSchema } from "../src/agent-action-schemas";
 import { AGENT_MANIFEST } from "../src/agent-mode";
 import { runCli } from "../src/cli";
+import { AGENT_ERROR_SCHEMA_ID } from "../src/errors";
 import { jsonObjectSchema } from "../src/schemas";
 import { secureAgentEnvelope } from "../src/security";
 import { AGENT_PROTOCOL_VERSION, CLI_VERSION } from "../src/version";
@@ -25,6 +26,8 @@ const schemaCatalogSchema = z.strictObject({
   agent_protocol_version: z.literal(AGENT_PROTOCOL_VERSION),
   cli_version: z.literal(CLI_VERSION),
   schema: z.literal("asana-cli.agent.schema-catalog.v1"),
+  error_schema_id: z.literal(AGENT_ERROR_SCHEMA_ID),
+  error_schema: jsonObjectSchema,
   actions: z.array(publishedActionSchema),
 });
 
@@ -32,6 +35,8 @@ const singleActionSchema = z.strictObject({
   agent_protocol_version: z.literal(AGENT_PROTOCOL_VERSION),
   cli_version: z.literal(CLI_VERSION),
   schema: z.literal("asana-cli.agent.action-schema.v1"),
+  error_schema_id: z.literal(AGENT_ERROR_SCHEMA_ID),
+  error_schema: jsonObjectSchema,
   action: publishedActionSchema,
 });
 
