@@ -229,6 +229,7 @@ bun run check
 - [Roadmap](docs/roadmap.md) — целевая архитектура, milestones и критерии выхода.
 - [Backlog](docs/backlog.md) — приоритеты, зависимости и acceptance criteria.
 - [Implementation plan](docs/implementation-plan.md) — порядок ближайших PR для `v0.3` и `v0.4`.
+- [Swarm execution plan](docs/swarm-plan.md) — роли Terra/Sol/Luna, fanout waves и quality gates.
 
 ## License
 
