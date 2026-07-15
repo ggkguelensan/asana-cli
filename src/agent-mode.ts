@@ -1,4 +1,5 @@
 import { booleanFlag, type ParsedArgs } from "./args";
+import { agentActionDescriptor, agentActionDescriptors } from "./agent-contract";
 import { CliError } from "./errors";
 import { z } from "zod";
 import { AGENT_PROTOCOL_VERSION, CLI_VERSION } from "./version";
@@ -34,7 +35,9 @@ export function enforceAgentPolicy(args: ParsedArgs): void {
       2,
     );
   }
-  const agentApply = command === "agent" && ["apply-task-update", "apply-comment"].includes(action ?? "");
+  const agentApply = command === "agent" &&
+    action !== undefined &&
+    agentActionDescriptor(action)?.effect === "write";
   if (agentApply && agentEnvironment().ASANA_CLI_AGENT_POLICY !== "read-write") {
     throw new CliError(
       "Agent writes are disabled. Start the agent host with ASANA_CLI_AGENT_POLICY=read-write; host approval is still required.",
@@ -43,27 +46,27 @@ export function enforceAgentPolicy(args: ParsedArgs): void {
   }
 }
 
+const actionDescriptors = agentActionDescriptors();
+
 export const AGENT_MANIFEST = {
   agent_protocol_version: AGENT_PROTOCOL_VERSION,
   cli_version: CLI_VERSION,
   protocol: "asana-cli-agent-v1",
   default_mode: "read-only",
   invocation: "JSON object on stdin via --input -",
-  safe_commands: [
-    "agent status",
-    "agent my-tasks",
-    "agent get-task",
-    "agent list-comments",
-    "agent search-tasks",
-    "agent find-git",
-    "agent prepare-task-update",
-    "agent prepare-comment",
-  ],
-  guarded_commands: {
-    "agent apply-task-update": "ASANA_CLI_AGENT_POLICY=read-write + external host approval",
-    "agent apply-comment": "ASANA_CLI_AGENT_POLICY=read-write + external host approval",
-  },
+  safe_commands: actionDescriptors
+    .filter((descriptor) => descriptor.effect !== "write")
+    .map((descriptor) => `agent ${descriptor.action}`),
+  guarded_commands: Object.fromEntries(
+    actionDescriptors
+      .filter((descriptor) => descriptor.effect === "write")
+      .map((descriptor) => [
+        `agent ${descriptor.action}`,
+        "ASANA_CLI_AGENT_POLICY=read-write + external host approval",
+      ]),
+  ),
   forbidden_commands: ["agent raw", "agent api", "auth pat set", "auth pat delete"],
+  actions: actionDescriptors,
   output_security: {
     active_credential_exact_redaction: true,
     heuristic_secret_detection: false,

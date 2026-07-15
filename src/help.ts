@@ -18,6 +18,7 @@ ACCOUNT
 
 AGENT CLIENTS (DIRECT CLI, NO MCP)
   asana-cli agent capabilities           Machine-readable safe command contract
+  asana-cli agent schema [ACTION]        JSON Schema for agent actions
   asana-cli agent status                 Validate auth for Codex/Claude
   asana-cli agent my-tasks --input -     Read using one JSON object from stdin
   asana-cli agent prepare-task-update --input -
