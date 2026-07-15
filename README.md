@@ -224,6 +224,12 @@ bun run check
 `bun run typecheck` запускает строгий TypeScript и отдельный guard, запрещающий явные `any`
 в `src`, `tests` и `scripts`.
 
+## Планирование
+
+- [Roadmap](docs/roadmap.md) — целевая архитектура, milestones и критерии выхода.
+- [Backlog](docs/backlog.md) — приоритеты, зависимости и acceptance criteria.
+- [Implementation plan](docs/implementation-plan.md) — порядок ближайших PR для `v0.3` и `v0.4`.
+
 ## License
 
 MIT
