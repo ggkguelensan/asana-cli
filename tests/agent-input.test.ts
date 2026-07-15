@@ -172,6 +172,10 @@ describe("agent direct read input", () => {
       parseArgs(["agent", "list-comments", "--task", "123", "--max-content-bytes="]),
       "list-comments",
     ))).toBe("validation");
+    expect(await errorCode(() => readDirectAgentInput(
+      parseArgs(["agent", "get-task", "--task", "123", "--include", "unknown"]),
+      "get-task",
+    ))).toBe("validation");
   });
 
   test("rejects invalid direct input before any API request can start", async () => {

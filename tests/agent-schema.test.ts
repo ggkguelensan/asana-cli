@@ -137,6 +137,12 @@ describe("agent capability and schema catalog", () => {
       "asana-cli agent apply-task-update",
       "asana-cli agent apply-comment",
     ]);
+    expect(AGENT_MANIFEST.forbidden_commands).toEqual([
+      "asana-cli agent raw",
+      "asana-cli agent api",
+      "asana-cli auth pat set",
+      "asana-cli auth pat delete",
+    ]);
     for (const descriptor of AGENT_MANIFEST.actions) {
       expect(agentActionDescriptorSchema.parse(descriptor)).toMatchObject({
         minimum_cli_version: AGENT_ACTION_MINIMUM_CLI_VERSION,

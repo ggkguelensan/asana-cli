@@ -337,10 +337,17 @@ export async function runAgentCommand(
         }));
       }
       const found = new Map<string, JsonObject>();
-      for (const result of results) {
-        for (const task of taskList(result, "TasksApi.searchTasksForWorkspace")) {
-          if (gitMatches(task, input.query, contains)) {
-            found.set(task.gid, agentTaskProjection(task));
+      let reachedResultLimit = false;
+      findMatches: {
+        for (const result of results) {
+          for (const task of taskList(result, "TasksApi.searchTasksForWorkspace")) {
+            if (gitMatches(task, input.query, contains) && !found.has(task.gid)) {
+              found.set(task.gid, agentTaskProjection(task));
+              if (found.size >= input.max_results) {
+                reachedResultLimit = true;
+                break findMatches;
+              }
+            }
           }
         }
       }
@@ -351,6 +358,7 @@ export async function runAgentCommand(
           exact_match: !contains,
           mode: "asana-search",
           count: found.size,
+          truncated: reachedResultLimit,
         },
       });
     } catch (error) {
