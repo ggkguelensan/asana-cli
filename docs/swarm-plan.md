@@ -167,7 +167,7 @@ src/agent-contract.ts
 
 ## Следующие waves
 
-### Wave 3 — безопасный fanout
+### Wave 3 — merged
 
 Sol — `AP-004`:
 
@@ -191,6 +191,8 @@ Ownership: новые security/journal test files и отдельный design r
 
 Gate: error responses имеют code, не содержат raw transport/secrets; content-trust tests не
 эмулируют защиту от unrestricted same-user shell.
+
+Результат: [PR #5](https://github.com/ggkguelensan/asana-cli/pull/5), merge `92d296a`.
 
 ### Wave 4 — последовательный hotspot
 
