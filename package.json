@@ -18,6 +18,7 @@
     "build:linux-x64": "bun run --no-env-file scripts/build.ts bun-linux-x64-baseline dist/asana-cli-linux-x64",
     "build:linux-arm64": "bun run --no-env-file scripts/build.ts bun-linux-arm64 dist/asana-cli-linux-arm64",
     "build:windows-x64": "bun run --no-env-file scripts/build.ts bun-windows-x64-baseline dist/asana-cli-windows-x64.exe",
+    "release:preflight": "bun run --no-env-file scripts/release-preflight.ts",
     "check": "bun run typecheck && bun run build && bun test && ./dist/asana-cli --version"
   },
   "dependencies": {
