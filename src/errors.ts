@@ -59,7 +59,7 @@ export const errorPayloadSchema = z.strictObject({
   }),
 });
 
-export const AGENT_ERROR_SCHEMA_ID = "asana-cli.agent.error.v1" as const;
+export const AGENT_ERROR_SCHEMA_ID = "asana-cli.agent.error.v2" as const;
 
 export class CliError extends Error {
   readonly code: CliErrorCode;

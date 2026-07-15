@@ -4,7 +4,10 @@ import { runAgentCommand } from "../src/agent-cli";
 import { readDirectAgentInput } from "../src/agent-input";
 import { parseArgs } from "../src/args";
 import { CliError } from "../src/errors";
+import { MemoryOperationRepository } from "../src/operations/memory-repository";
 import { createClient } from "../src/sdk";
+
+const agentRuntime = { operations: new MemoryOperationRepository() };
 
 async function withAgentStdin<Result>(
   input: unknown,
@@ -186,14 +189,14 @@ describe("agent direct read input", () => {
       "list-comments",
       "--task",
       "invalid",
-    ])))).toBe("validation");
+    ]), agentRuntime))).toBe("validation");
     expect(await errorCode(() => runAgentCommand(client, parseArgs([
       "agent",
       "find-git",
       "--query",
       "PR-1",
       "--unknown",
-    ])))).toBe("usage");
+    ]), agentRuntime))).toBe("usage");
   });
 
   test("status supports direct invocation and the compatible empty stdin object", async () => {

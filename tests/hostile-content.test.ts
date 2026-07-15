@@ -8,6 +8,7 @@ import { z } from "zod";
 import { runAgentCommand } from "../src/agent-cli";
 import { parseArgs } from "../src/args";
 import { contentBudgetMetadataSchema } from "../src/content-budget";
+import { MemoryOperationRepository } from "../src/operations/memory-repository";
 import { taskSchema, storySchema } from "../src/schemas";
 import { createClient } from "../src/sdk";
 import { agentEnvelopeSchema, secureAgentEnvelope } from "../src/security";
@@ -16,6 +17,8 @@ import {
   hostileTaskText,
   UNKNOWN_SECRET_LIKE_ASANA_TEXT,
 } from "./fixtures/hostile-asana-content";
+
+const agentRuntime = { operations: new MemoryOperationRepository() };
 
 const requestTraceSchema = z.strictObject({
   method: z.string(),
@@ -131,6 +134,7 @@ describe("hostile Asana content boundary", () => {
         () => runAgentCommand(
           clientFor(mock.server.url, knownProcessSecret),
           parseArgs(["agent", "get-task", "--input", "-"]),
+          agentRuntime,
         ),
       ));
       expect(raw.operation).toBe("task.get");
@@ -177,6 +181,7 @@ describe("hostile Asana content boundary", () => {
         () => runAgentCommand(
           clientFor(mock.server.url, "KNOWN_COMMENT_TEST_TOKEN_123456"),
           parseArgs(["agent", "list-comments", "--input", "-"]),
+          agentRuntime,
         ),
       ));
       expect(raw.operation).toBe("task.comments");

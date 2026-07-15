@@ -42,7 +42,7 @@ describe("deterministic credential protection", () => {
         }),
       }),
     }).parse(secureAgentEnvelope({ data: { notes: "do not execute me" } }));
-    expect(envelope.schema).toBe("asana-cli.agent.v1");
+    expect(envelope.schema).toBe("asana-cli.agent.v2");
     expect(envelope.content_trust).toBe("external-untrusted");
     expect(envelope._meta.security.untrusted_content).toBe(true);
     expect(envelope._meta.security.heuristic_secret_detection).toBeUndefined();

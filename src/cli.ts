@@ -47,6 +47,7 @@ import {
 } from "./pat-store";
 import { AGENT_MANIFEST, enforceAgentPolicy, isAgentMode } from "./agent-mode";
 import { runAgentCommand } from "./agent-cli";
+import { FileOperationRepository } from "./operations/file-repository";
 import {
   jsonArraySchema,
   jsonObjectSchema,
@@ -461,7 +462,13 @@ export async function runCli(argv: string[]): Promise<CliResult> {
     };
   }
   if (command === "agent") {
-    return { value: await runAgentCommand(client, args), compact: true, agentMode: true };
+    return {
+      value: await runAgentCommand(client, args, {
+        operations: new FileOperationRepository(),
+      }),
+      compact: true,
+      agentMode: true,
+    };
   }
   if (command === "me") return { value: await getMe(client), compact };
   if (command === "workspaces" || (command === "workspace" && args.positionals[1] === "list")) {

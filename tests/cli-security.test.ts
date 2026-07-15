@@ -55,7 +55,7 @@ describe("CLI security contract", () => {
     });
     expect(result.exitCode).toBe(2);
     const payload = decode(result.stderr, agentErrorSchema);
-    expect(payload.schema).toBe("asana-cli.agent.v1");
+    expect(payload.schema).toBe("asana-cli.agent.v2");
     expect(payload.result.error.message).toContain("writes are disabled");
   });
 

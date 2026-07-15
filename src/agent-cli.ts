@@ -1,21 +1,23 @@
-import { createHash } from "node:crypto";
 import { z } from "zod";
 import {
-  commentPlanSchema,
   DEFAULT_AGENT_CONTENT_BYTES,
   getTaskInputSchema,
   TASK_INCLUDE_SELECTORS,
-  taskUpdatePlanSchema,
   type TaskIncludeSelector,
 } from "./agent-action-schemas";
 import {
   createAgentActionResult,
   type AgentActionName,
 } from "./agent-contract";
-import { readDirectAgentInput, readStdinAgentInput } from "./agent-input";
+import {
+  readApplyAgentInput,
+  readDirectAgentInput,
+  readPrepareCommentAgentInput,
+  readStdinAgentInput,
+} from "./agent-input";
+import { AgentOperationService } from "./agent-operations";
 import { type ParsedArgs } from "./args";
 import {
-  addTaskComment,
   AGENT_USER_FIELDS,
   AGENT_TASK_FIELDS,
   getMe,
@@ -25,7 +27,6 @@ import {
   searchTasks,
   STORY_FIELDS,
   TASK_FIELDS,
-  updateTask,
 } from "./asana-commands";
 import { CliError, errorStatus } from "./errors";
 import {
@@ -37,7 +38,6 @@ import {
 import { ContentBudget } from "./content-budget";
 import {
   parseExternalData,
-  storySchema,
   taskListEnvelopeSchema,
   taskSchema,
   userSchema,
@@ -46,7 +46,7 @@ import {
   type AsanaUser,
 } from "./schemas";
 import { type AsanaClient } from "./sdk";
-import { containsRegisteredSecret } from "./security";
+import type { OperationRepository } from "./operations/repository";
 
 type JsonObject = Record<string, unknown>;
 
@@ -54,40 +54,8 @@ const agentEnvironmentSchema = z.object({
   ASANA_CLI_AGENT_POLICY: z.enum(["read", "read-write"]).optional().catch(undefined),
 });
 
-const ownedTaskSchema = taskSchema.extend({
-  modified_at: z.string().min(1),
-  assignee: z.looseObject({
-    gid: z.string(),
-    name: z.string().optional(),
-  }),
-});
-
 function policy(): "read" | "read-write" {
   return agentEnvironmentSchema.parse(process.env).ASANA_CLI_AGENT_POLICY ?? "read";
-}
-
-function stable(value: unknown): string {
-  if (value === undefined) return "null";
-  if (Array.isArray(value)) return `[${value.map((entry) => stable(entry)).join(",")}]`;
-  if (value && typeof value === "object") {
-    const record = z.looseObject({}).parse(value);
-    return `{${Object.keys(record)
-      .filter((key) => record[key] !== undefined)
-      .sort()
-      .map((key) => `${JSON.stringify(key)}:${stable(record[key])}`)
-      .join(",")}}`;
-  }
-  return JSON.stringify(value);
-}
-
-function planHash(plan: unknown): string {
-  const parsed = z.looseObject({}).parse(plan);
-  const unsigned = Object.fromEntries(Object.entries(parsed).filter(([key]) => key !== "hash"));
-  return `sha256:${createHash("sha256").update(stable(unsigned)).digest("hex")}`;
-}
-
-function verifyPlanHash(plan: { hash: string }): void {
-  if (plan.hash !== planHash(plan)) throw new CliError("validation", "Plan hash mismatch");
 }
 
 export function assertPreparedTaskIsCurrent(
@@ -102,38 +70,6 @@ export function assertPreparedTaskIsCurrent(
       "Task changed after the plan was prepared; prepare a new plan",
     );
   }
-}
-
-function ensureNoRegisteredSecret(value: unknown, operation: string): void {
-  if (containsRegisteredSecret(value)) {
-    throw new CliError(
-      "policy-denied",
-      `${operation} blocked because it contains a credential from the local environment`,
-    );
-  }
-}
-
-async function ownTask(
-  client: AsanaClient,
-  taskGid: string,
-): Promise<{ user: AsanaUser; task: z.infer<typeof ownedTaskSchema> }> {
-  const [userResult, taskResult] = await Promise.all([
-    getMe(client),
-    getTask(
-      client,
-      taskGid,
-      "gid,name,modified_at,completed,due_on,due_at,start_on,assignee,assignee.gid,assignee.name,permalink_url",
-    ),
-  ]);
-  const user = parseExternalData(userResult, userSchema, "UsersApi.getUser");
-  const task = parseExternalData(taskResult, ownedTaskSchema, "TasksApi.getTask");
-  if (task.assignee.gid !== user.gid) {
-    throw new CliError(
-      "policy-denied",
-      "Agent contract may update only tasks assigned to the authenticated user",
-    );
-  }
-  return { user, task };
 }
 
 function agentResult(
@@ -228,9 +164,23 @@ function taskList(value: unknown, context: string): AsanaTask[] {
 export async function runAgentCommand(
   client: AsanaClient,
   args: ParsedArgs,
+  runtime: AgentCommandRuntime,
 ): Promise<unknown> {
   const action = args.positionals[1];
   if (!action) throw new CliError("usage", "Missing agent action");
+
+  if (action === "apply-task-update" || action === "apply-comment") {
+    throw new CliError(
+      "usage",
+      `agent ${action} was removed because complete plans are unsafe to replay`,
+      undefined,
+      {
+        reason: "legacy-plan-apply-removed",
+        replacement_action: "apply",
+        required_input: { operation_id: "UUID" },
+      },
+    );
+  }
 
   if (action === "status") {
     await readDirectAgentInput(args, "status");
@@ -389,79 +339,31 @@ export async function runAgentCommand(
 
   if (action === "prepare-task-update") {
     const input = await readStdinAgentInput(args, "prepare-task-update");
-    ensureNoRegisteredSecret(input.patch, "Update");
-    const { user, task } = await ownTask(client, input.task_gid);
-    const unsignedPlan = {
-      version: 1 as const,
-      operation: "task.update" as const,
-      task_gid: input.task_gid,
-      expected_modified_at: task.modified_at,
-      prepared_by: user.gid,
-      target: { gid: task.gid, name: task.name, permalink_url: task.permalink_url },
-      changes: input.patch,
-    };
-    const plan = taskUpdatePlanSchema.parse({ ...unsignedPlan, hash: planHash(unsignedPlan) });
-    return agentResult("prepare-task-update", {
-      plan,
-      approval: { required: true, reason: "This plan modifies one Asana task." },
-    });
-  }
-
-  if (action === "apply-task-update") {
-    const { plan } = await readStdinAgentInput(args, "apply-task-update");
-    verifyPlanHash(plan);
-    ensureNoRegisteredSecret(plan.changes, "Update");
-    const { user, task } = await ownTask(client, plan.task_gid);
-    assertPreparedTaskIsCurrent(
-      user.gid,
-      task.modified_at,
-      plan.prepared_by,
-      plan.expected_modified_at,
-    );
-    const result = await updateTask(client, plan.task_gid, plan.changes, AGENT_TASK_FIELDS);
-    return agentResult(
-      "apply-task-update",
-      parseExternalData(result, taskSchema, "TasksApi.updateTask"),
-    );
+    const service = new AgentOperationService(client, runtime.operations);
+    return agentResult("prepare-task-update", await service.prepareTaskUpdate(input));
   }
 
   if (action === "prepare-comment") {
-    const input = await readStdinAgentInput(args, "prepare-comment");
-    ensureNoRegisteredSecret(input.text, "Comment");
-    const { user, task } = await ownTask(client, input.task_gid);
-    const unsignedPlan = {
-      version: 1 as const,
-      operation: "task.comment" as const,
-      task_gid: input.task_gid,
-      expected_modified_at: task.modified_at,
-      prepared_by: user.gid,
-      target: { gid: task.gid, name: task.name, permalink_url: task.permalink_url },
-      text: input.text,
-    };
-    const plan = commentPlanSchema.parse({ ...unsignedPlan, hash: planHash(unsignedPlan) });
-    return agentResult("prepare-comment", {
-      plan,
-      approval: { required: true, reason: "This plan posts one Asana comment." },
-    });
+    const input = await readPrepareCommentAgentInput(args);
+    const service = new AgentOperationService(client, runtime.operations);
+    return agentResult("prepare-comment", await service.prepareComment(input));
   }
 
-  if (action === "apply-comment") {
-    const { plan } = await readStdinAgentInput(args, "apply-comment");
-    verifyPlanHash(plan);
-    ensureNoRegisteredSecret(plan.text, "Comment");
-    const { user, task } = await ownTask(client, plan.task_gid);
-    assertPreparedTaskIsCurrent(
-      user.gid,
-      task.modified_at,
-      plan.prepared_by,
-      plan.expected_modified_at,
-    );
-    const result = await addTaskComment(client, plan.task_gid, { text: plan.text }, STORY_FIELDS);
-    return agentResult(
-      "apply-comment",
-      parseExternalData(result, storySchema, "StoriesApi.createStoryForTask"),
-    );
+  if (action === "apply") {
+    if (policy() !== "read-write") {
+      throw new CliError(
+        "policy-denied",
+        "Agent writes are disabled. Start the agent host with ASANA_CLI_AGENT_POLICY=read-write; host approval is still required.",
+      );
+    }
+    const input = await readApplyAgentInput(args);
+    const service = new AgentOperationService(client, runtime.operations);
+    return agentResult("apply", await service.apply(input.operation_id));
   }
 
   throw new CliError("usage", `Unknown agent action: ${action}`);
+}
+
+export interface AgentCommandRuntime {
+  operations: OperationRepository;
 }

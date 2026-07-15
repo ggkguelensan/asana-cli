@@ -35,9 +35,10 @@ export function enforceAgentPolicy(args: ParsedArgs): void {
       "Use agent prepare-* and apply-* instead of direct task writes in agent mode",
     );
   }
-  const agentApply = command === "agent" &&
-    action !== undefined &&
-    agentActionDescriptor(action)?.effect === "write";
+  const legacyApply = action === "apply-task-update" || action === "apply-comment";
+  const agentApply = command === "agent" && action !== undefined && (
+    legacyApply || agentActionDescriptor(action)?.effect === "write"
+  );
   if (agentApply && agentEnvironment().ASANA_CLI_AGENT_POLICY !== "read-write") {
     throw new CliError(
       "policy-denied",
@@ -51,7 +52,7 @@ const actionDescriptors = agentActionDescriptors();
 export const AGENT_MANIFEST = {
   agent_protocol_version: AGENT_PROTOCOL_VERSION,
   cli_version: CLI_VERSION,
-  protocol: "asana-cli-agent-v1",
+  protocol: "asana-cli-agent-v2",
   default_mode: "read-only",
   invocation: "Direct flags for reads; one JSON object on stdin via --input - remains supported",
   safe_commands: actionDescriptors

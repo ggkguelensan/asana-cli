@@ -4,6 +4,7 @@ import {
   AGENT_ACTION_MINIMUM_CLI_VERSION,
   AGENT_ACTION_NAMES,
   AGENT_ACTIONS,
+  AGENT_OPERATION_APPLY_MINIMUM_CLI_VERSION,
   agentActionDescriptorSchema,
   createAgentActionResult,
   type AgentActionName,
@@ -25,7 +26,7 @@ const publishedActionSchema = z.strictObject({
 const schemaCatalogSchema = z.strictObject({
   agent_protocol_version: z.literal(AGENT_PROTOCOL_VERSION),
   cli_version: z.literal(CLI_VERSION),
-  schema: z.literal("asana-cli.agent.schema-catalog.v1"),
+  schema: z.literal("asana-cli.agent.schema-catalog.v2"),
   error_schema_id: z.literal(AGENT_ERROR_SCHEMA_ID),
   error_schema: jsonObjectSchema,
   actions: z.array(publishedActionSchema),
@@ -34,7 +35,7 @@ const schemaCatalogSchema = z.strictObject({
 const singleActionSchema = z.strictObject({
   agent_protocol_version: z.literal(AGENT_PROTOCOL_VERSION),
   cli_version: z.literal(CLI_VERSION),
-  schema: z.literal("asana-cli.agent.action-schema.v1"),
+  schema: z.literal("asana-cli.agent.action-schema.v2"),
   error_schema_id: z.literal(AGENT_ERROR_SCHEMA_ID),
   error_schema: jsonObjectSchema,
   action: publishedActionSchema,
@@ -61,27 +62,7 @@ interface DriftFixture {
   invalid: unknown;
 }
 
-const hash = `sha256:${"0".repeat(64)}`;
-const taskUpdatePlan = {
-  version: 1,
-  operation: "task.update",
-  task_gid: "123",
-  expected_modified_at: "2026-07-15T00:00:00Z",
-  prepared_by: "456",
-  target: { gid: "123", name: "Task" },
-  changes: { completed: true },
-  hash,
-};
-const commentPlan = {
-  version: 1,
-  operation: "task.comment",
-  task_gid: "123",
-  expected_modified_at: "2026-07-15T00:00:00Z",
-  prepared_by: "456",
-  target: { gid: "123", name: "Task" },
-  text: "Comment",
-  hash,
-};
+const operationId = "00000000-0000-4000-8000-000000000001";
 
 const driftFixtures = {
   status: { valid: {}, invalid: { unexpected: true } },
@@ -94,18 +75,11 @@ const driftFixtures = {
     valid: { task_gid: "123", patch: { completed: true } },
     invalid: { task_gid: "invalid", patch: { completed: true } },
   },
-  "apply-task-update": {
-    valid: { plan: taskUpdatePlan },
-    invalid: { plan: { ...taskUpdatePlan, hash: "not-a-hash" } },
-  },
   "prepare-comment": {
     valid: { task_gid: "123", text: "Comment" },
     invalid: { task_gid: "123", text: "" },
   },
-  "apply-comment": {
-    valid: { plan: commentPlan },
-    invalid: { plan: { ...commentPlan, task_gid: "invalid" } },
-  },
+  apply: { valid: { operation_id: operationId }, invalid: { operation_id: "invalid" } },
 } satisfies Record<AgentActionName, DriftFixture>;
 
 describe("agent capability and schema catalog", () => {
@@ -118,9 +92,8 @@ describe("agent capability and schema catalog", () => {
       "search-tasks",
       "find-git",
       "prepare-task-update",
-      "apply-task-update",
       "prepare-comment",
-      "apply-comment",
+      "apply",
     ]);
     expect(AGENT_MANIFEST.actions).toHaveLength(AGENT_ACTION_NAMES.length);
     expect(AGENT_MANIFEST.safe_commands).toEqual([
@@ -134,8 +107,7 @@ describe("agent capability and schema catalog", () => {
       "asana-cli agent prepare-comment",
     ]);
     expect(Object.keys(AGENT_MANIFEST.guarded_commands)).toEqual([
-      "asana-cli agent apply-task-update",
-      "asana-cli agent apply-comment",
+      "asana-cli agent apply",
     ]);
     expect(AGENT_MANIFEST.forbidden_commands).toEqual([
       "asana-cli agent raw",
@@ -144,8 +116,12 @@ describe("agent capability and schema catalog", () => {
       "asana-cli auth pat delete",
     ]);
     for (const descriptor of AGENT_MANIFEST.actions) {
+      const minimum = ["prepare-task-update", "prepare-comment", "apply"]
+        .includes(descriptor.action)
+        ? AGENT_OPERATION_APPLY_MINIMUM_CLI_VERSION
+        : AGENT_ACTION_MINIMUM_CLI_VERSION;
       expect(agentActionDescriptorSchema.parse(descriptor)).toMatchObject({
-        minimum_cli_version: AGENT_ACTION_MINIMUM_CLI_VERSION,
+        minimum_cli_version: minimum,
       });
     }
   });
@@ -199,7 +175,7 @@ describe("agent capability and schema catalog", () => {
     expect(z.looseObject({
       agent_protocol_version: z.literal(AGENT_PROTOCOL_VERSION),
       cli_version: z.literal(CLI_VERSION),
-      schema: z.literal("asana-cli.agent.v1"),
+      schema: z.literal("asana-cli.agent.v2"),
       content_trust: z.literal("external-untrusted"),
       result: z.looseObject({
         operation: z.literal("tasks.mine"),
@@ -210,7 +186,7 @@ describe("agent capability and schema catalog", () => {
     }).parse(wireEnvelope).result.operation).toBe("tasks.mine");
   });
 
-  test("preserves v0.2 stdin defaults for reads and prepare actions", () => {
+  test("preserves v0.2 read defaults and strict logical prepare inputs", () => {
     expect(AGENT_ACTIONS["my-tasks"].inputSchema.parse({})).toEqual({
       completed: "false",
       limit: 50,

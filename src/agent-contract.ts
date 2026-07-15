@@ -1,7 +1,6 @@
 import { z } from "zod";
 import {
-  applyCommentInputSchema,
-  applyTaskUpdateInputSchema,
+  applyOperationInputSchema,
   findGitInputSchema,
   getTaskInputSchema,
   listCommentsInputSchema,
@@ -19,6 +18,7 @@ import { AGENT_PROTOCOL_VERSION, CLI_VERSION } from "./version";
 
 const MAX_AGENT_INPUT_BYTES = 65_536;
 export const AGENT_ACTION_MINIMUM_CLI_VERSION = "0.2.0" as const;
+export const AGENT_OPERATION_APPLY_MINIMUM_CLI_VERSION = "0.3.0" as const;
 
 const policySchema = z.enum(["read", "read-write"]);
 const effectSchema = z.enum(["read", "prepare", "write"]);
@@ -64,6 +64,7 @@ type DescriptorSeed = {
   effect: ActionEffect;
   approval: ApprovalClass;
   limits: ActionLimits;
+  minimumCliVersion?: string;
 };
 
 function defineAction<
@@ -74,14 +75,18 @@ function defineAction<
   descriptor: DescriptorSeed,
   inputSchema: InputSchema,
 ) {
-  const inputSchemaId = `asana-cli.agent.input.${action}.v1`;
-  const outputSchemaId = `asana-cli.agent.output.${action}.v1`;
+  const inputSchemaId = `asana-cli.agent.input.${action}.v${AGENT_PROTOCOL_VERSION}`;
+  const outputSchemaId = `asana-cli.agent.output.${action}.v${AGENT_PROTOCOL_VERSION}`;
   const parsedDescriptor = agentActionDescriptorSchema.parse({
     action,
-    ...descriptor,
+    operation: descriptor.operation,
+    effect: descriptor.effect,
+    approval: descriptor.approval,
+    limits: descriptor.limits,
     input_schema: inputSchemaId,
     output_schema: outputSchemaId,
-    minimum_cli_version: AGENT_ACTION_MINIMUM_CLI_VERSION,
+    minimum_cli_version:
+      descriptor.minimumCliVersion ?? AGENT_ACTION_MINIMUM_CLI_VERSION,
   });
   const resultSchema = actionResultSchema(
     descriptor.operation,
@@ -179,19 +184,9 @@ const prepareTaskUpdateAction = defineAction(
       max_text_chars: 8_000,
       max_custom_fields: 50,
     },
+    minimumCliVersion: AGENT_OPERATION_APPLY_MINIMUM_CLI_VERSION,
   },
   prepareTaskUpdateInputSchema,
-);
-
-const applyTaskUpdateAction = defineAction(
-  "apply-task-update",
-  {
-    operation: "task.update.apply",
-    effect: "write",
-    approval: "external-host",
-    limits: { max_input_bytes: MAX_AGENT_INPUT_BYTES },
-  },
-  applyTaskUpdateInputSchema,
 );
 
 const prepareCommentAction = defineAction(
@@ -201,19 +196,21 @@ const prepareCommentAction = defineAction(
     effect: "prepare",
     approval: "none",
     limits: { max_input_bytes: MAX_AGENT_INPUT_BYTES, max_text_chars: 8_000 },
+    minimumCliVersion: AGENT_OPERATION_APPLY_MINIMUM_CLI_VERSION,
   },
   prepareCommentInputSchema,
 );
 
-const applyCommentAction = defineAction(
-  "apply-comment",
+const applyOperationAction = defineAction(
+  "apply",
   {
-    operation: "task.comment.apply",
+    operation: "operation.apply",
     effect: "write",
     approval: "external-host",
-    limits: { max_input_bytes: MAX_AGENT_INPUT_BYTES, max_text_chars: 8_000 },
+    limits: { max_input_bytes: MAX_AGENT_INPUT_BYTES },
+    minimumCliVersion: AGENT_OPERATION_APPLY_MINIMUM_CLI_VERSION,
   },
-  applyCommentInputSchema,
+  applyOperationInputSchema,
 );
 
 export const AGENT_ACTIONS = {
@@ -224,9 +221,8 @@ export const AGENT_ACTIONS = {
   [searchTasksAction.descriptor.action]: searchTasksAction,
   [findGitAction.descriptor.action]: findGitAction,
   [prepareTaskUpdateAction.descriptor.action]: prepareTaskUpdateAction,
-  [applyTaskUpdateAction.descriptor.action]: applyTaskUpdateAction,
   [prepareCommentAction.descriptor.action]: prepareCommentAction,
-  [applyCommentAction.descriptor.action]: applyCommentAction,
+  [applyOperationAction.descriptor.action]: applyOperationAction,
 };
 
 export type AgentActionName = keyof typeof AGENT_ACTIONS;
@@ -313,7 +309,7 @@ const publishedActionSchema = z.strictObject({
 const schemaCatalogSchema = z.strictObject({
   agent_protocol_version: z.literal(AGENT_PROTOCOL_VERSION),
   cli_version: z.literal(CLI_VERSION),
-  schema: z.literal("asana-cli.agent.schema-catalog.v1"),
+  schema: z.literal("asana-cli.agent.schema-catalog.v2"),
   error_schema_id: z.literal(AGENT_ERROR_SCHEMA_ID),
   error_schema: jsonObjectSchema,
   actions: z.array(publishedActionSchema),
@@ -322,7 +318,7 @@ const schemaCatalogSchema = z.strictObject({
 const singleActionSchema = z.strictObject({
   agent_protocol_version: z.literal(AGENT_PROTOCOL_VERSION),
   cli_version: z.literal(CLI_VERSION),
-  schema: z.literal("asana-cli.agent.action-schema.v1"),
+  schema: z.literal("asana-cli.agent.action-schema.v2"),
   error_schema_id: z.literal(AGENT_ERROR_SCHEMA_ID),
   error_schema: jsonObjectSchema,
   action: publishedActionSchema,
@@ -349,7 +345,7 @@ export function publishAgentSchemas(action?: string): unknown {
     return singleActionSchema.parse({
       agent_protocol_version: AGENT_PROTOCOL_VERSION,
       cli_version: CLI_VERSION,
-      schema: "asana-cli.agent.action-schema.v1",
+      schema: "asana-cli.agent.action-schema.v2",
       error_schema_id: AGENT_ERROR_SCHEMA_ID,
       error_schema: publishedAgentErrorSchema,
       action: publishAction(requireAgentAction(action)),
@@ -358,7 +354,7 @@ export function publishAgentSchemas(action?: string): unknown {
   return schemaCatalogSchema.parse({
     agent_protocol_version: AGENT_PROTOCOL_VERSION,
     cli_version: CLI_VERSION,
-    schema: "asana-cli.agent.schema-catalog.v1",
+    schema: "asana-cli.agent.schema-catalog.v2",
     error_schema_id: AGENT_ERROR_SCHEMA_ID,
     error_schema: publishedAgentErrorSchema,
     actions: AGENT_ACTION_NAMES.map((name) => publishAction(AGENT_ACTIONS[name])),
