@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { chmod, mkdtemp, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, open, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { FileOperationRepository } from "../src/operations/file-repository";
@@ -134,6 +134,54 @@ describe("file operation repository", () => {
     expect((await readdir(baseDirectory)).some((name) => name.endsWith(".tmp"))).toBe(false);
   });
 
+  test("rejects an oversized serialized record before a record or temp file appears", async () => {
+    const baseDirectory = await temporaryDirectory();
+    const repository = new FileOperationRepository({
+      baseDirectory,
+      clock: () => new Date("2026-07-15T10:00:00.000Z"),
+      idGenerator: () => operationId,
+    });
+    const oversized = {
+      ...input,
+      operation: "task.update" as const,
+      payload: { changes: { notes: "x".repeat(1_100_000) } },
+    };
+
+    await expect(repository.create(oversized)).rejects.toMatchObject({ code: "INVALID_RECORD" });
+    expect(await readdir(baseDirectory)).toEqual([]);
+  });
+
+  test("removes only its partial lock when lock fsync fails after exclusive creation", async () => {
+    const baseDirectory = await temporaryDirectory();
+    const unrelated = join(baseDirectory, "unrelated.lock");
+    await writeFile(unrelated, "do not remove", { mode: 0o600 });
+    const probe = await open(join(baseDirectory, "probe"), "w");
+    const prototype: object = Object.getPrototypeOf(probe);
+    const syncDescriptor = Object.getOwnPropertyDescriptor(prototype, "sync");
+    await probe.close();
+    await rm(join(baseDirectory, "probe"));
+    if (!syncDescriptor) throw new Error("FileHandle.sync descriptor is unavailable");
+    Object.defineProperty(prototype, "sync", {
+      ...syncDescriptor,
+      value: async () => {
+        throw new Error("injected fsync failure");
+      },
+    });
+
+    try {
+      const repository = new FileOperationRepository({
+        baseDirectory,
+        clock: () => new Date("2026-07-15T10:00:00.000Z"),
+        idGenerator: () => operationId,
+      });
+      await expect(repository.create(input)).rejects.toMatchObject({ code: "STORAGE_ERROR" });
+    } finally {
+      Object.defineProperty(prototype, "sync", syncDescriptor);
+    }
+
+    expect(await readdir(baseDirectory)).toEqual(["unrelated.lock"]);
+  });
+
   test("rejects a tampered record without returning its payload", async () => {
     const baseDirectory = await temporaryDirectory();
     const repository = new FileOperationRepository({
@@ -162,9 +210,10 @@ describe("file operation repository", () => {
 
   test("leaves a stale or crashed lock in place and fails closed", async () => {
     const baseDirectory = await temporaryDirectory();
+    let now = new Date("2026-07-15T10:00:00.000Z");
     const repository = new FileOperationRepository({
       baseDirectory,
-      clock: () => new Date("2026-07-15T10:00:00.000Z"),
+      clock: () => now,
       idGenerator: () => operationId,
       lockTimeoutMs: 20,
       lockRetryMs: 2,
@@ -180,6 +229,13 @@ describe("file operation repository", () => {
     }), { mode: 0o600 });
     if (process.platform !== "win32") await chmod(lockPath, 0o600);
 
+    expect((await repository.get(operationId))?.state).toBe("prepared");
+    await expect(repository.compareAndSet({
+      id: operationId,
+      expected_state: "prepared",
+      next_state: "applying",
+    })).rejects.toMatchObject({ code: "LOCKED" });
+    now = new Date("2026-07-15T10:01:00.000Z");
     await expect(repository.get(operationId)).rejects.toMatchObject({ code: "LOCKED" });
     expect((await readdir(baseDirectory))).toContain(`${operationId}.lock`);
   });

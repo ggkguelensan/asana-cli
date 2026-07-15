@@ -31,7 +31,8 @@ export const operationGuardsSchema = z.strictObject({
 });
 
 const taskUpdatePayloadSchema = z.strictObject({
-  changes: z.record(z.string().min(1).max(128), z.json()),
+  changes: z.record(z.string().min(1).max(128), z.json())
+    .refine((changes) => Object.keys(changes).length <= 50, "task update cannot contain more than 50 changes"),
 });
 
 const taskCommentPayloadSchema = z.strictObject({
@@ -73,6 +74,7 @@ const recordBaseShape = {
   guards: operationGuardsSchema,
   created_at: timestampSchema,
   expires_at: timestampSchema,
+  attempt_started_at: timestampSchema.optional(),
   plan_hash: hashSchema,
   record_hash: hashSchema,
   result: operationResultSchema.optional(),
@@ -108,14 +110,23 @@ export const operationRecordFileSchema = z.discriminatedUnion("operation", [
     if (record.result !== undefined) {
       context.addIssue({ code: "custom", path: ["result"], message: "active states cannot have a result" });
     }
-    return;
-  }
-
-  if (record.result?.outcome !== record.state) {
+  } else if (record.result?.outcome !== record.state) {
     context.addIssue({
       code: "custom",
       path: ["result"],
       message: `state ${record.state} requires matching result metadata`,
+    });
+  }
+
+  const attemptStarted = record.attempt_started_at !== undefined;
+  const requiresAttempt = record.state === "applying" || record.state === "applied" || record.state === "unknown";
+  if (attemptStarted !== requiresAttempt) {
+    context.addIssue({
+      code: "custom",
+      path: ["attempt_started_at"],
+      message: requiresAttempt
+        ? `state ${record.state} requires attempt_started_at`
+        : `state ${record.state} cannot have attempt_started_at`,
     });
   }
 });
@@ -237,6 +248,7 @@ function recordHashInput(record: OperationRecord): unknown {
     guards: record.guards,
     created_at: record.created_at,
     expires_at: record.expires_at,
+    attempt_started_at: record.attempt_started_at,
     plan_hash: record.plan_hash,
     result: record.result,
   };
@@ -309,6 +321,9 @@ export function transitionOperationRecord(
   if (transition.expected_state !== record.state) throw new Error("Operation state changed");
 
   let result: z.output<typeof operationResultSchema> | undefined;
+  const attemptStartedAt = transition.next_state === "applying"
+    ? recordedAt
+    : record.attempt_started_at;
   if (transition.next_state === "applied") {
     result = { outcome: "applied", recorded_at: recordedAt, ...transition.metadata };
   } else if (transition.next_state === "unknown") {
@@ -325,6 +340,7 @@ export function transitionOperationRecord(
   const changed = operationRecordFileSchema.parse({
     ...record,
     state: transition.next_state,
+    attempt_started_at: attemptStartedAt,
     result,
     record_hash: "sha256:" + "0".repeat(64),
   });

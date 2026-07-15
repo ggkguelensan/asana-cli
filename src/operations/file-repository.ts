@@ -111,6 +111,10 @@ export class FileOperationRepository implements OperationRepository {
   async get(idValue: string): Promise<OperationRecord | null> {
     await this.#ensureDirectory();
     const id = z.uuid().parse(idValue);
+    const snapshot = await this.#readRecord(id);
+    if (!snapshot || !operationIsExpired(snapshot, this.#clock())) {
+      return snapshot ? cloneOperationRecord(snapshot) : null;
+    }
     return this.#withLock(id, async () => {
       const record = await this.#readRecord(id);
       if (!record) return null;
@@ -209,11 +213,18 @@ export class FileOperationRepository implements OperationRepository {
 
   async #writeRecord(record: OperationRecord): Promise<void> {
     const path = operationRecordPath(this.baseDirectory, record.id);
+    const serialized = `${JSON.stringify(record)}\n`;
+    if (Buffer.byteLength(serialized, "utf8") > MAX_RECORD_BYTES) {
+      throw new OperationJournalError(
+        "INVALID_RECORD",
+        `Operation ${record.id} exceeds the size limit`,
+      );
+    }
     const temporary = join(dirname(path), `.${record.id}.${randomUUID()}.tmp`);
     let handle;
     try {
       handle = await open(temporary, constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY, FILE_MODE);
-      await handle.writeFile(`${JSON.stringify(record)}\n`, "utf8");
+      await handle.writeFile(serialized, "utf8");
       await handle.sync();
       await handle.close();
       handle = undefined;
@@ -258,17 +269,23 @@ export class FileOperationRepository implements OperationRepository {
         pid: process.pid,
         created_at: this.#clock().toISOString(),
       });
+      let handle: Awaited<ReturnType<typeof open>> | undefined;
+      let ownedIdentity: Readonly<{ dev: number; ino: number }> | undefined;
       try {
-        const handle = await open(path, constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY, FILE_MODE);
-        try {
-          await handle.writeFile(`${JSON.stringify(lock)}\n`, "utf8");
-          await handle.sync();
-        } finally {
-          await handle.close();
-        }
+        handle = await open(path, constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY, FILE_MODE);
+        const stats = await handle.stat();
+        ownedIdentity = { dev: stats.dev, ino: stats.ino };
+        await handle.writeFile(`${JSON.stringify(lock)}\n`, "utf8");
+        await handle.sync();
         if (this.#isPosix) await chmod(path, FILE_MODE);
+        await handle.close();
+        handle = undefined;
         return lock;
       } catch (error: unknown) {
+        if (ownedIdentity) {
+          if (handle) await handle.close().catch(() => undefined);
+          await this.#removeOwnedPartialLock(path, ownedIdentity);
+        }
         if (nodeErrorCode(error) !== "EEXIST") {
           throw storageError(`Unable to lock operation ${id}`, error);
         }
@@ -278,6 +295,25 @@ export class FileOperationRepository implements OperationRepository {
         }
         await Bun.sleep(this.#lockRetryMs);
       }
+    }
+  }
+
+  async #removeOwnedPartialLock(
+    path: string,
+    identity: Readonly<{ dev: number; ino: number }>,
+  ): Promise<void> {
+    try {
+      const current = await lstat(path);
+      if (current.isSymbolicLink() || !current.isFile()) return;
+      if (current.dev !== identity.dev || current.ino !== identity.ino) return;
+      await rm(path);
+    } catch (error: unknown) {
+      if (nodeErrorCode(error) === "ENOENT") return;
+      throw new OperationJournalError(
+        "CORRUPT_LOCK",
+        "Unable to remove a partial operation lock safely",
+        { cause: error },
+      );
     }
   }
 

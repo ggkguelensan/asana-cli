@@ -77,6 +77,10 @@ describe("operation record schemas", () => {
       metadata: { resource_gid: "555" },
     }, new Date("2026-07-15T10:00:20.000Z"));
 
+    expect(applying.attempt_started_at).toBe("2026-07-15T10:00:10.000Z");
+    expect(applied.attempt_started_at).toBe(applying.attempt_started_at);
+    expect(applied.plan_hash).toBe(prepared.plan_hash);
+
     for (const forbidden of [
       { text: "task content" },
       { pat: "secret" },
@@ -117,5 +121,19 @@ describe("operation record schemas", () => {
       request_may_have_succeeded: true,
       error_code: "NETWORK_OUTCOME_UNKNOWN",
     });
+    expect(unknown.attempt_started_at).toBe(createdAt.toISOString());
+  });
+
+  test("bounds task update plans to 50 changed properties", () => {
+    const changes = Object.fromEntries(
+      Array.from({ length: 51 }, (_, index) => [`field_${index}`, index]),
+    );
+    expect(() => createOperationRecord({
+      operation: "task.update",
+      target: { task_gid: "987654" },
+      payload: { changes },
+      guards,
+      ttl_ms: 60_000,
+    }, createdAt, operationId)).toThrow("more than 50 changes");
   });
 });
