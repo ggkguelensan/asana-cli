@@ -39,6 +39,11 @@ Codex CLI and Claude Code must use only `asana-cli agent ...`, not the human/dev
 
 Prepare/hash/policy flags prevent mistakes and stale writes. They do not prove human approval. Codex/Claude permissions and sandboxing must keep `apply-*` behind an external confirmation.
 
+Stale-lock and ambiguous-write handling is deliberately fail closed. Read the
+[operation recovery safety reference](docs/operation-recovery.md) before inspecting or recovering an
+interrupted operation. The CLI does not automatically retry `unknown` writes or remove stale locks,
+and journal hashes are not an isolation boundary against an unrestricted same-user process.
+
 ## Recommended deployment
 
 1. Prefer a dedicated least-privileged Asana account whose workspace/project membership is limited to the tasks the agent needs.
