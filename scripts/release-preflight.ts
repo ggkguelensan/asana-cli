@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { CLI_VERSION } from "../src/version";
 
 const semverPattern = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
 const gitObjectPattern = /^[0-9a-f]{40,64}$/i;
@@ -35,6 +36,12 @@ export function parseReleaseMetadata(
   const releaseEnvironment = releaseEnvironmentSchema.parse(environment);
   const packageJson = packageSchema.parse(packageValue);
   const expectedTag = `v${packageJson.version}`;
+
+  if (packageJson.version !== CLI_VERSION) {
+    throw new Error(
+      `Package version ${packageJson.version} must exactly match CLI version ${CLI_VERSION}`,
+    );
+  }
 
   if (releaseEnvironment.GITHUB_REF_NAME !== expectedTag) {
     throw new Error(

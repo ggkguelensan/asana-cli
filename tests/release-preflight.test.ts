@@ -8,6 +8,13 @@ import {
 const commit = "a".repeat(40);
 
 describe("release preflight", () => {
+  test("requires package metadata to match the compiled CLI version", () => {
+    expect(() => parseReleaseMetadata(
+      { GITHUB_REF_NAME: "v9.9.9", GITHUB_SHA: commit },
+      { version: "9.9.9" },
+    )).toThrow("must exactly match CLI version 0.2.0");
+  });
+
   test("requires the release tag to exactly match the package version", () => {
     expect(() => parseReleaseMetadata(
       { GITHUB_REF_NAME: "v0.2.1", GITHUB_SHA: commit },
