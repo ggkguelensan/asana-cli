@@ -28,6 +28,13 @@ export function enforceAgentPolicy(args: ParsedArgs): void {
   if (command === "request" || command === "api" && action === "call") {
     throw new CliError("policy-denied", "Raw/API calls are not part of the direct agent contract");
   }
+  if (
+    command === "integrations" &&
+    ["install", "update", "uninstall"].includes(action ?? "") &&
+    Object.hasOwn(args.flags, "apply")
+  ) {
+    throw new CliError("policy-denied", "Agent mode cannot apply integration lifecycle changes");
+  }
   const write = command === "task" && ["update", "comment"].includes(action ?? "");
   if (write) {
     throw new CliError(
@@ -72,6 +79,9 @@ export const AGENT_MANIFEST = {
     "asana-cli agent api",
     "asana-cli auth pat set",
     "asana-cli auth pat delete",
+    "asana-cli integrations install --apply",
+    "asana-cli integrations update --apply",
+    "asana-cli integrations uninstall --apply",
   ],
   deprecated_commands: legacyAgentApplyDeprecationManifest(),
   actions: actionDescriptors,

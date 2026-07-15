@@ -30,6 +30,21 @@ AGENT CLIENTS (DIRECT CLI, NO MCP)
   asana-cli agent apply --operation-id UUID
   asana-cli agent operation status UUID      Read local operation metadata
 
+INTEGRATIONS (STATIC SKILL BUNDLE, NO MCP)
+  asana-cli integrations list
+  asana-cli integrations detect --client CLIENT --scope user|project
+  asana-cli integrations status --client CLIENT --scope user|project
+  asana-cli integrations doctor --client CLIENT --scope user|project
+  asana-cli integrations policy CLIENT
+  asana-cli integrations install --client CLIENT --scope user|project --dry-run|--apply
+  asana-cli integrations update --client CLIENT --scope user|project --dry-run|--apply
+  asana-cli integrations diff --client CLIENT --scope user|project
+  asana-cli integrations uninstall --client CLIENT --scope user|project --dry-run|--apply
+
+  CLIENT is generic-agent-skills, codex, or claude-code. Every install/update/uninstall
+  requires explicit --dry-run or --apply. --apply performs the atomic managed-file plan;
+  it never edits AGENTS.md, CLAUDE.md, settings, hooks, marketplace, or MCP configuration.
+
 TASKS
   asana-cli tasks mine [options]         Tasks assigned to me
   asana-cli task get <gid>               Full task information

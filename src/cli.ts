@@ -63,6 +63,7 @@ import {
   type AsanaTask,
 } from "./schemas";
 import { publishAgentSchemas } from "./agent-contract";
+import { runIntegrationCommand } from "./integration-cli";
 import { CLI_VERSION } from "./version";
 
 const completedModeSchema = z.enum(["false", "true", "all"]);
@@ -439,6 +440,10 @@ export async function runCli(argv: string[]): Promise<CliResult> {
   const compact = booleanFlag(args, "compact", false);
   if (flag(args, "version") === true || command === "version") return { text: CLI_VERSION };
   if (!command || flag(args, "help") === true || command === "help") return { text: HELP };
+  if (command === "integrations") {
+    const result = await runIntegrationCommand(args);
+    return { ...result, compact };
+  }
   if (command === "agent" && args.positionals[1] === "schema") {
     return {
       value: publishAgentSchemas(args.positionals[2]),

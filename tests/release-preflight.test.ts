@@ -12,14 +12,14 @@ describe("release preflight", () => {
     expect(() => parseReleaseMetadata(
       { GITHUB_REF_NAME: "v9.9.9", GITHUB_SHA: commit },
       { version: "9.9.9" },
-    )).toThrow("must exactly match CLI version 0.3.0");
+    )).toThrow("must exactly match CLI version 0.4.0");
   });
 
   test("requires the release tag to exactly match the package version", () => {
     expect(() => parseReleaseMetadata(
       { GITHUB_REF_NAME: "v0.2.1", GITHUB_SHA: commit },
-      { version: "0.3.0" },
-    )).toThrow("must exactly match package version v0.3.0");
+      { version: "0.4.0" },
+    )).toThrow("must exactly match package version v0.4.0");
   });
 
   test("accepts a tag whose commit belongs to origin/main", () => {
@@ -30,8 +30,8 @@ describe("release preflight", () => {
       return { exitCode: 0, stdout: commit, stderr: "" };
     };
     const metadata = parseReleaseMetadata(
-      { GITHUB_REF_NAME: "v0.3.0", GITHUB_SHA: commit },
-      { version: "0.3.0" },
+      { GITHUB_REF_NAME: "v0.4.0", GITHUB_SHA: commit },
+      { version: "0.4.0" },
     );
 
     expect(verifyReleaseCommit(metadata, runGit)).toBe(commit);
@@ -44,8 +44,8 @@ describe("release preflight", () => {
       return { exitCode: 0, stdout: commit, stderr: "" };
     };
     const metadata = parseReleaseMetadata(
-      { GITHUB_REF_NAME: "v0.3.0", GITHUB_SHA: commit },
-      { version: "0.3.0" },
+      { GITHUB_REF_NAME: "v0.4.0", GITHUB_SHA: commit },
+      { version: "0.4.0" },
     );
 
     expect(() => verifyReleaseCommit(metadata, runGit)).toThrow("does not belong to origin/main");
@@ -59,8 +59,8 @@ describe("release preflight", () => {
       return { exitCode: 0, stdout: resolution === 2 ? otherCommit : commit, stderr: "" };
     };
     const metadata = parseReleaseMetadata(
-      { GITHUB_REF_NAME: "v0.3.0", GITHUB_SHA: commit },
-      { version: "0.3.0" },
+      { GITHUB_REF_NAME: "v0.4.0", GITHUB_SHA: commit },
+      { version: "0.4.0" },
     );
 
     expect(() => verifyReleaseCommit(metadata, runGit)).toThrow("do not resolve to the same commit");

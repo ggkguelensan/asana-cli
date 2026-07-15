@@ -1,0 +1,132 @@
+import { createHash } from "node:crypto";
+import { buildClientArtifactContents } from "../src/client-artifacts";
+import { z } from "zod";
+import {
+  INTEGRATION_AGENT_PROTOCOL_VERSION,
+  INTEGRATION_BUNDLE_SCHEMA,
+  INTEGRATION_BUNDLE_VERSION,
+  INTEGRATION_CLIENT_IDS,
+  integrationClient,
+  integrationClientIdSchema,
+} from "./clients";
+
+export const CANONICAL_SKILL_PATHS = [
+  "SKILL.md",
+  "references/content-trust.md",
+  "references/errors.md",
+  "references/git-context.md",
+  "references/project-context.md",
+  "references/read-tasks.md",
+  "references/write-tasks.md",
+] as const;
+
+const canonicalSkillPathSchema = z.enum(CANONICAL_SKILL_PATHS);
+const portableSourceFileSchema = z.strictObject({
+  path: canonicalSkillPathSchema,
+  content: z.string().min(1),
+});
+
+export const portableSkillBundleSchema = z.strictObject({
+  name: z.literal("asana"),
+  version: z.literal(INTEGRATION_BUNDLE_VERSION),
+  agent_protocol_version: z.literal(INTEGRATION_AGENT_PROTOCOL_VERSION),
+  files: z.array(portableSourceFileSchema).length(CANONICAL_SKILL_PATHS.length),
+}).superRefine((bundle, context) => {
+  const paths = new Set(bundle.files.map((file) => file.path));
+  for (const path of CANONICAL_SKILL_PATHS) {
+    if (!paths.has(path)) {
+      context.addIssue({
+        code: "custom",
+        path: ["files"],
+        message: `missing canonical skill file: ${path}`,
+      });
+    }
+  }
+});
+
+const renderedFileSchema = z.strictObject({
+  path: canonicalSkillPathSchema,
+  content: z.string().min(1),
+  sha256: z.string().regex(/^sha256:[0-9a-f]{64}$/),
+});
+
+export const renderedIntegrationBundleSchema = z.strictObject({
+  schema: z.literal(INTEGRATION_BUNDLE_SCHEMA),
+  bundle_version: z.literal(INTEGRATION_BUNDLE_VERSION),
+  agent_protocol_version: z.literal(INTEGRATION_AGENT_PROTOCOL_VERSION),
+  client: integrationClientIdSchema,
+  install_roots: z.strictObject({ user: z.string(), project: z.string() }),
+  entrypoint: z.literal("SKILL.md"),
+  files: z.array(renderedFileSchema).length(CANONICAL_SKILL_PATHS.length),
+});
+
+export type PortableSkillBundle = z.output<typeof portableSkillBundleSchema>;
+export type RenderedIntegrationBundle = z.output<typeof renderedIntegrationBundleSchema>;
+const utf8Decoder = new TextDecoder("utf-8", { fatal: true });
+
+function normalizedContent(content: string): string {
+  return `${content.replace(/\r\n?/g, "\n").replace(/\n*$/, "")}\n`;
+}
+
+export function sha256(content: string): string {
+  return `sha256:${createHash("sha256").update(content, "utf8").digest("hex")}`;
+}
+
+/** Parses, canonicalizes line endings, and orders the one portable source skill. */
+export function portableSkillBundle(input: unknown): PortableSkillBundle {
+  const parsed = portableSkillBundleSchema.parse(input);
+  const byPath = Object.fromEntries(
+    parsed.files.map((file) => [file.path, normalizedContent(file.content)]),
+  ) as Record<(typeof CANONICAL_SKILL_PATHS)[number], string>;
+  return portableSkillBundleSchema.parse({
+    ...parsed,
+    files: CANONICAL_SKILL_PATHS.map((path) => ({ path, content: byPath[path] })),
+  });
+}
+
+/** Renders a client bundle without timestamps, environment input, or filesystem access. */
+export function renderIntegrationBundle(
+  clientInput: unknown,
+  sourceInput: unknown,
+): RenderedIntegrationBundle {
+  const client = integrationClient(clientInput);
+  const source = portableSkillBundle(sourceInput);
+  const artifacts = buildClientArtifactContents(client.id, source.files);
+  return renderedIntegrationBundleSchema.parse({
+    schema: INTEGRATION_BUNDLE_SCHEMA,
+    bundle_version: source.version,
+    agent_protocol_version: source.agent_protocol_version,
+    client: client.id,
+    install_roots: client.install_roots,
+    entrypoint: client.skill_entrypoint,
+    files: source.files.map((file) => {
+      const artifact = artifacts[file.path];
+      if (!artifact) throw new Error(`Client artifact omitted canonical file: ${file.path}`);
+      const content = utf8Decoder.decode(artifact);
+      return { path: file.path, content, sha256: sha256(content) };
+    }),
+  });
+}
+
+export function renderIntegrationBundles(sourceInput: unknown): RenderedIntegrationBundle[] {
+  const source = portableSkillBundle(sourceInput);
+  return [...INTEGRATION_CLIENT_IDS]
+    .sort()
+    .map((client) => renderIntegrationBundle(client, source));
+}
+
+/**
+ * Generates the runtime module. Its output is deliberately self-contained: consumers
+ * statically import the generated module, whose data contains every skill byte.
+ */
+export function renderEmbeddedBundleModule(sourceInput: unknown): string {
+  const clients = renderIntegrationBundles(sourceInput);
+  const payload = JSON.stringify({
+    schema: INTEGRATION_BUNDLE_SCHEMA,
+    bundle_version: INTEGRATION_BUNDLE_VERSION,
+    agent_protocol_version: INTEGRATION_AGENT_PROTOCOL_VERSION,
+    clients,
+  }, null, 2);
+
+  return `// Generated by scripts/generate-integrations.ts. DO NOT EDIT.\nimport { z } from "zod";\n\nconst sha256Schema = z.string().regex(/^sha256:[0-9a-f]{64}$/);\nconst fileSchema = z.strictObject({\n  path: z.string().regex(/^(?:SKILL\\.md|references\\/[a-z-]+\\.md)$/),\n  content: z.string().min(1),\n  sha256: sha256Schema,\n});\nconst clientIdSchema = z.enum(["claude-code", "codex", "generic-agent-skills"]);\nconst clientBundleSchema = z.strictObject({\n  schema: z.literal("asana-cli.integration-bundle.v1"),\n  bundle_version: z.literal("0.4.0"),\n  agent_protocol_version: z.literal(2),\n  client: clientIdSchema,\n  install_roots: z.strictObject({ user: z.string(), project: z.string() }),\n  entrypoint: z.literal("SKILL.md"),\n  files: z.array(fileSchema).length(7),\n});\nexport const embeddedIntegrationBundleSchema = z.strictObject({\n  schema: z.literal("asana-cli.integration-bundle.v1"),\n  bundle_version: z.literal("0.4.0"),\n  agent_protocol_version: z.literal(2),\n  clients: z.array(clientBundleSchema).length(3),\n});\n\nexport const EMBEDDED_INTEGRATION_BUNDLE = embeddedIntegrationBundleSchema.parse(${payload}) as Readonly<z.output<typeof embeddedIntegrationBundleSchema>>;\nexport type EmbeddedIntegrationClientId = z.output<typeof clientIdSchema>;\nexport type EmbeddedIntegrationBundle = z.output<typeof clientBundleSchema>;\n\nexport function embeddedIntegrationBundle(client: unknown): EmbeddedIntegrationBundle {\n  const id = clientIdSchema.parse(client);\n  const bundle = EMBEDDED_INTEGRATION_BUNDLE.clients.find((candidate) => candidate.client === id);\n  if (!bundle) throw new Error(\`Embedded integration bundle missing client: \${id}\`);\n  return bundle;\n}\n`;
+}

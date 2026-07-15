@@ -1,4 +1,6 @@
-export {};
+import { generateIntegrationBundle } from "./generate-integrations";
+
+await generateIntegrationBundle();
 
 const [rawTarget, requestedOutput] = process.argv.slice(2);
 const target = rawTarget as Bun.Build.CompileTarget | undefined;
