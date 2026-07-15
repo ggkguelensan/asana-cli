@@ -13,9 +13,11 @@ import {
 import { CliError } from "./errors";
 import { readAgentJsonInput } from "./io";
 import { jsonObjectSchema } from "./schemas";
+import { agentEnvelopeSchema } from "./security";
 import { AGENT_PROTOCOL_VERSION, CLI_VERSION } from "./version";
 
 const MAX_AGENT_INPUT_BYTES = 65_536;
+export const AGENT_ACTION_MINIMUM_CLI_VERSION = "0.2.0" as const;
 
 const policySchema = z.enum(["read", "read-write"]);
 const effectSchema = z.enum(["read", "prepare", "write"]);
@@ -43,7 +45,7 @@ type ActionLimits = z.input<typeof actionLimitsSchema>;
 type ActionEffect = z.input<typeof effectSchema>;
 type ApprovalClass = z.input<typeof approvalClassSchema>;
 
-function actionOutputSchema<Operation extends string, Effect extends ActionEffect>(
+function actionResultSchema<Operation extends string, Effect extends ActionEffect>(
   operation: Operation,
   effect: Effect,
 ) {
@@ -77,15 +79,17 @@ function defineAction<
     ...descriptor,
     input_schema: inputSchemaId,
     output_schema: outputSchemaId,
-    minimum_cli_version: CLI_VERSION,
+    minimum_cli_version: AGENT_ACTION_MINIMUM_CLI_VERSION,
   });
+  const resultSchema = actionResultSchema(
+    descriptor.operation,
+    descriptor.effect,
+  );
   return {
     descriptor: { ...parsedDescriptor, action },
     inputSchema,
-    outputSchema: actionOutputSchema(
-      descriptor.operation,
-      descriptor.effect,
-    ),
+    resultSchema,
+    outputSchema: agentEnvelopeSchema(resultSchema),
   };
 }
 
@@ -258,7 +262,7 @@ export function createAgentActionResult(
   data: unknown,
 ): unknown {
   const definition = AGENT_ACTIONS[action];
-  return definition.outputSchema.parse({
+  return definition.resultSchema.parse({
     operation: definition.descriptor.operation,
     effect: definition.descriptor.effect,
     policy,

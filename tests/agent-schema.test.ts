@@ -1,14 +1,18 @@
 import { describe, expect, test } from "bun:test";
 import { z } from "zod";
 import {
+  AGENT_ACTION_MINIMUM_CLI_VERSION,
   AGENT_ACTION_NAMES,
   AGENT_ACTIONS,
   agentActionDescriptorSchema,
+  createAgentActionResult,
   type AgentActionName,
 } from "../src/agent-contract";
+import { taskPatchSchema } from "../src/agent-action-schemas";
 import { AGENT_MANIFEST } from "../src/agent-mode";
 import { runCli } from "../src/cli";
 import { jsonObjectSchema } from "../src/schemas";
+import { secureAgentEnvelope } from "../src/security";
 import { AGENT_PROTOCOL_VERSION, CLI_VERSION } from "../src/version";
 
 const publishedActionSchema = z.strictObject({
@@ -130,7 +134,7 @@ describe("agent capability and schema catalog", () => {
     ]);
     for (const descriptor of AGENT_MANIFEST.actions) {
       expect(agentActionDescriptorSchema.parse(descriptor)).toMatchObject({
-        minimum_cli_version: CLI_VERSION,
+        minimum_cli_version: AGENT_ACTION_MINIMUM_CLI_VERSION,
       });
     }
   });
@@ -168,6 +172,33 @@ describe("agent capability and schema catalog", () => {
     }
   });
 
+  test("publishes the actual secure stdout envelope as the output schema", async () => {
+    const publication = singleActionSchema.parse(
+      (await runCli(["agent", "schema", "my-tasks"])).value,
+    );
+    const publishedOutput = z.fromJSONSchema(
+      jsonSchemaBoundary.parse(publication.action.output),
+    );
+    const result = createAgentActionResult("my-tasks", "read", {
+      data: [],
+      meta: { count: 0 },
+    });
+    const wireEnvelope = secureAgentEnvelope(result);
+    expect(publishedOutput.safeParse(wireEnvelope).success).toBe(true);
+    expect(z.looseObject({
+      agent_protocol_version: z.literal(AGENT_PROTOCOL_VERSION),
+      cli_version: z.literal(CLI_VERSION),
+      schema: z.literal("asana-cli.agent.v1"),
+      content_trust: z.literal("external-untrusted"),
+      result: z.looseObject({
+        operation: z.literal("tasks.mine"),
+        effect: z.literal("read"),
+        policy: z.literal("read"),
+      }),
+      _meta: z.looseObject({ security: z.looseObject({}) }),
+    }).parse(wireEnvelope).result.operation).toBe("tasks.mine");
+  });
+
   test("preserves v0.2 stdin defaults for reads and prepare actions", () => {
     expect(AGENT_ACTIONS["my-tasks"].inputSchema.parse({})).toEqual({
       completed: "false",
@@ -197,7 +228,13 @@ describe("agent capability and schema catalog", () => {
       properties: z.looseObject({
         patch: z.looseObject({
           minProperties: z.literal(1),
-          not: z.strictObject({ required: z.tuple([z.literal("due_on"), z.literal("due_at")]) }),
+          not: z.strictObject({
+            required: z.tuple([z.literal("due_on"), z.literal("due_at")]),
+            properties: z.strictObject({
+              due_on: z.strictObject({ type: z.literal("string") }),
+              due_at: z.strictObject({ type: z.literal("string") }),
+            }),
+          }),
           properties: z.looseObject({
             custom_fields: z.looseObject({ maxProperties: z.literal(50) }),
           }),
@@ -206,7 +243,27 @@ describe("agent capability and schema catalog", () => {
     }).parse(publication.action.input);
     expect(patchSchema.properties.patch.minProperties).toBe(1);
     expect(patchSchema.properties.patch.not.required).toEqual(["due_on", "due_at"]);
+    expect(patchSchema.properties.patch.not.properties).toEqual({
+      due_on: { type: "string" },
+      due_at: { type: "string" },
+    });
     expect(patchSchema.properties.patch.properties.custom_fields.maxProperties).toBe(50);
+
+    const dueRule = patchSchema.properties.patch.not;
+    const rejectedByPublishedNot = (patch: Record<string, unknown>): boolean =>
+      dueRule.required.every((field) => Object.hasOwn(patch, field)) &&
+      Object.keys(dueRule.properties).every((field) => typeof patch[field] === "string");
+    const dueFixtures: Array<{ patch: Record<string, unknown>; valid: boolean }> = [
+      { patch: { due_on: "2026-07-15", due_at: "2026-07-15T10:00:00Z" }, valid: false },
+      { patch: { due_on: null, due_at: "2026-07-15T10:00:00Z" }, valid: true },
+      { patch: { due_on: "2026-07-15", due_at: null }, valid: true },
+      { patch: { due_on: null, due_at: null }, valid: true },
+      { patch: { due_on: "2026-07-15" }, valid: true },
+    ];
+    for (const fixture of dueFixtures) {
+      expect(taskPatchSchema.safeParse(fixture.patch).success).toBe(fixture.valid);
+      expect(rejectedByPublishedNot(fixture.patch)).toBe(!fixture.valid);
+    }
   });
 
   test("rejects an unknown schema action before authentication", async () => {

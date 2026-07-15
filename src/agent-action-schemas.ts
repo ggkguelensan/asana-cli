@@ -48,7 +48,7 @@ const customFieldsPatchSchema = z.record(gidSchema, customFieldValueSchema)
   .refine((fields) => Object.keys(fields).length <= 50, "Too many custom field updates")
   .meta({ maxProperties: 50 });
 
-const taskPatchSchema = z.strictObject({
+export const taskPatchSchema = z.strictObject({
   name: z.string().max(500).optional(),
   notes: z.string().max(8_000).optional(),
   completed: z.boolean().optional(),
@@ -63,7 +63,13 @@ const taskPatchSchema = z.strictObject({
   })
   .meta({
     minProperties: 1,
-    not: { required: ["due_on", "due_at"] },
+    not: {
+      required: ["due_on", "due_at"],
+      properties: {
+        due_on: { type: "string" },
+        due_at: { type: "string" },
+      },
+    },
   });
 
 export const prepareTaskUpdateInputSchema = z.strictObject({
