@@ -29,7 +29,7 @@ Issue ID следует сохранить в заголовке.
 | AP-001 | P0 | done | Формализовать `agent_protocol_version` и `cli_version` в envelope | — | Версии присутствуют в capabilities и каждом agent response; есть compatibility test |
 | AP-002 | P0 | done | Расширить capability catalog метаданными action | AP-001 | Для каждой action заданы effect, approval class, input/output schema ID, limits и minimum CLI version |
 | AP-003 | P0 | done | Публиковать JSON Schema из runtime Zod-схем | AP-001 | `agent schema` и `agent schema ACTION` возвращают стабильный JSON; schema/runtime не расходятся в тестах |
-| AP-004 | P0 | ready | Ввести стабильные machine error codes | AP-001 | Validation, auth, policy, stale, expired, conflict, unknown-result и API errors различимы без парсинга текста |
+| AP-004 | P0 | done | Ввести стабильные machine error codes | AP-001 | Validation, auth, policy, stale, expired, conflict, unknown-result и API errors различимы без парсинга текста |
 | AP-005 | P0 | ready | Добавить flags для read actions | AP-002 | Canonical read command начинается с `asana-cli`; stdin JSON остаётся совместимым интерфейсом |
 | AP-006 | P0 | done | Спроектировать Zod-валидируемый durable operation record | AP-001 | Record содержит ID, action, target, immutable payload, guards, timestamps, TTL, state и protocol version |
 | AP-007 | P0 | done | Реализовать atomic operation journal с restrictive permissions | AP-006 | Partial write не повреждает journal; чужие/невалидные records отклоняются; task/comment text не логируется отдельно |
@@ -44,7 +44,7 @@ Issue ID следует сохранить в заголовке.
 
 | ID | P | Статус | Задача | Зависит от | Acceptance criteria |
 |---|---|---|---|---|---|
-| SEC-001 | P0 | ready | Зафиксировать prompt-injection fixtures для Asana content | — | Task/comment с командами, URL и просьбой вывести env остаётся только данными и не выбирает следующую operation |
+| SEC-001 | P0 | done | Зафиксировать prompt-injection fixtures для Asana content | — | Task/comment с командами, URL и просьбой вывести env остаётся только данными и не выбирает следующую operation |
 | SEC-002 | P0 | ready | Добавить credential-source check в doctor | INT-006 | Doctor сообщает `credential_store`/`environment` без значения PAT и предупреждает об inherited PAT |
 | SEC-003 | P0 | ready | Проверять broad permission examples | INT-010 | Doctor/evals обнаруживают auto-allow для `api`, `request`, `auth` и apply |
 | SEC-004 | P1 | blocked | Workspace/project/custom-field/write-field allowlists | AP-008 | Prepare и apply независимо проверяют scope; policy file валидируется Zod и fail-closed |
