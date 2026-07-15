@@ -144,7 +144,16 @@ describe("file operation repository", () => {
     const oversized = {
       ...input,
       operation: "task.update" as const,
-      payload: { changes: { notes: "x".repeat(1_100_000) } },
+      payload: {
+        changes: {
+          custom_fields: Object.fromEntries(
+            Array.from({ length: 50 }, (_, index) => [
+              String(10_000 + index),
+              "x".repeat(25_000),
+            ]),
+          ),
+        },
+      },
     };
 
     await expect(repository.create(oversized)).rejects.toMatchObject({ code: "INVALID_RECORD" });

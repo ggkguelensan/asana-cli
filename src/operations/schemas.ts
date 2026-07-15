@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { z } from "zod";
+import { taskPatchSchema } from "../agent-action-schemas";
 import { AGENT_PROTOCOL_VERSION } from "../version";
 
 export const OPERATION_FILE_FORMAT_VERSION = 1 as const;
@@ -26,13 +27,12 @@ export const operationTargetSchema = z.strictObject({
 });
 
 export const operationGuardsSchema = z.strictObject({
-  expected_modified_at: z.string().min(1).max(128),
+  expected_modified_at: timestampSchema,
   prepared_by_gid: gidSchema,
 });
 
 const taskUpdatePayloadSchema = z.strictObject({
-  changes: z.record(z.string().min(1).max(128), z.json())
-    .refine((changes) => Object.keys(changes).length <= 50, "task update cannot contain more than 50 changes"),
+  changes: taskPatchSchema,
 });
 
 const taskCommentPayloadSchema = z.strictObject({

@@ -3,6 +3,7 @@ import { AGENT_PROTOCOL_VERSION } from "../src/version";
 import {
   OPERATION_FILE_FORMAT_VERSION,
   cloneOperationRecord,
+  createOperationInputSchema,
   createOperationRecord,
   operationRecordFileSchema,
   parseOperationRecord,
@@ -124,16 +125,24 @@ describe("operation record schemas", () => {
     expect(unknown.attempt_started_at).toBe(createdAt.toISOString());
   });
 
-  test("bounds task update plans to 50 changed properties", () => {
-    const changes = Object.fromEntries(
-      Array.from({ length: 51 }, (_, index) => [`field_${index}`, index]),
+  test("reuses the curated task patch schema for update operations", () => {
+    const customFields = Object.fromEntries(
+      Array.from({ length: 51 }, (_, index) => [String(10_000 + index), index]),
     );
     expect(() => createOperationRecord({
       operation: "task.update",
       target: { task_gid: "987654" },
-      payload: { changes },
+      payload: { changes: { custom_fields: customFields } },
       guards,
       ttl_ms: 60_000,
-    }, createdAt, operationId)).toThrow("more than 50 changes");
+    }, createdAt, operationId)).toThrow("Too many custom field updates");
+
+    expect(() => createOperationInputSchema.parse({
+      operation: "task.update",
+      target: { task_gid: "987654" },
+      payload: { changes: { arbitrary_api_field: true } },
+      guards,
+      ttl_ms: 60_000,
+    })).toThrow();
   });
 });

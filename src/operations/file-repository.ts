@@ -282,8 +282,11 @@ export class FileOperationRepository implements OperationRepository {
         handle = undefined;
         return lock;
       } catch (error: unknown) {
+        if (handle) {
+          await handle.close().catch(() => undefined);
+          handle = undefined;
+        }
         if (ownedIdentity) {
-          if (handle) await handle.close().catch(() => undefined);
           await this.#removeOwnedPartialLock(path, ownedIdentity);
         }
         if (nodeErrorCode(error) !== "EEXIST") {
