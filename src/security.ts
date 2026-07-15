@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { AGENT_PROTOCOL_VERSION, CLI_VERSION } from "./version";
 
 const knownSecrets = new Set<string>();
 
@@ -126,6 +127,8 @@ export function protectOutput<T>(
 export function secureAgentEnvelope(input: unknown): unknown {
   const sanitized = protectOutput(input, { agentMode: true });
   return {
+    agent_protocol_version: AGENT_PROTOCOL_VERSION,
+    cli_version: CLI_VERSION,
     schema: "asana-cli.agent.v1",
     content_trust: "external-untrusted",
     result: sanitized.value,

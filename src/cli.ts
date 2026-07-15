@@ -22,7 +22,7 @@ import {
   updateTask,
 } from "./asana-commands";
 import { CliError, errorStatus } from "./errors";
-import { AUTH_HELP, HELP, PAT_HELP, VERSION } from "./help";
+import { AUTH_HELP, HELP, PAT_HELP } from "./help";
 import { materializeFileReferences, readJsonInput, readTextInput } from "./io";
 import { rawRequest } from "./raw-request";
 import {
@@ -57,6 +57,7 @@ import {
   zodIssueSummary,
   type AsanaTask,
 } from "./schemas";
+import { CLI_VERSION } from "./version";
 
 const completedModeSchema = z.enum(["false", "true", "all"]);
 const cliEnvironmentSchema = z.object({
@@ -402,7 +403,7 @@ export async function runCli(argv: string[]): Promise<CliResult> {
   enforceAgentPolicy(args);
   const command = args.positionals[0];
   const compact = booleanFlag(args, "compact", false);
-  if (flag(args, "version") === true || command === "version") return { text: VERSION };
+  if (flag(args, "version") === true || command === "version") return { text: CLI_VERSION };
   if (!command || flag(args, "help") === true || command === "help") return { text: HELP };
   if (
     command === "agent" &&

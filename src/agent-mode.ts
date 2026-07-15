@@ -1,6 +1,7 @@
 import { booleanFlag, type ParsedArgs } from "./args";
 import { CliError } from "./errors";
 import { z } from "zod";
+import { AGENT_PROTOCOL_VERSION, CLI_VERSION } from "./version";
 
 const agentModeEnvironmentSchema = z.object({
   ASANA_CLI_AGENT: z.enum(["0", "1"]).optional().catch(undefined),
@@ -43,6 +44,8 @@ export function enforceAgentPolicy(args: ParsedArgs): void {
 }
 
 export const AGENT_MANIFEST = {
+  agent_protocol_version: AGENT_PROTOCOL_VERSION,
+  cli_version: CLI_VERSION,
   protocol: "asana-cli-agent-v1",
   default_mode: "read-only",
   invocation: "JSON object on stdin via --input -",

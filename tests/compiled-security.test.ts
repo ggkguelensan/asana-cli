@@ -3,7 +3,7 @@ import { existsSync } from "node:fs";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { VERSION } from "../src/help";
+import { CLI_VERSION } from "../src/version";
 
 const binary = resolve(import.meta.dir, "../dist/asana-cli");
 const created: string[] = [];
@@ -35,7 +35,7 @@ describe("compiled runtime isolation", () => {
       child.exited,
     ]);
     expect(exitCode).toBe(0);
-    expect(stdout.trim()).toBe(VERSION);
+    expect(stdout.trim()).toBe(CLI_VERSION);
     expect(stderr).toBe("");
     expect(existsSync(marker)).toBe(false);
   });

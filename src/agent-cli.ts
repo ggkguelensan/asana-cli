@@ -3,6 +3,7 @@ import { z } from "zod";
 import { stringFlag, type ParsedArgs } from "./args";
 import {
   addTaskComment,
+  AGENT_USER_FIELDS,
   AGENT_TASK_FIELDS,
   getMe,
   getMyTasks,
@@ -211,11 +212,10 @@ function agentResult(
   return { operation, effect, policy: policy(), data };
 }
 
-function agentUserProjection(user: AsanaUser): JsonObject {
+function agentStatusUserProjection(user: AsanaUser): JsonObject {
   return {
     gid: user.gid,
     name: user.name,
-    email: user.email,
     workspaces: user.workspaces,
   };
 }
@@ -261,10 +261,14 @@ export async function runAgentCommand(
   const inputFlag = stringFlag(args, "input");
 
   if (action === "status") {
-    const user = parseExternalData(await getMe(client), userSchema, "UsersApi.getUser");
+    const user = parseExternalData(
+      await getMe(client, AGENT_USER_FIELDS),
+      userSchema,
+      "UsersApi.getUser",
+    );
     return agentResult("auth.status", "read", {
       authenticated: true,
-      user: agentUserProjection(user),
+      user: agentStatusUserProjection(user),
     });
   }
 
