@@ -237,15 +237,14 @@ scenarios; generated artifacts не имеют drift; release binary содер�
 
 Порядок по зависимостям:
 
-1. `SEC-004`: finish fixed host scoped policy before a repository context can intersect trusted scope.
-2. `DEV-004`, then `DEV-005`: produce pure bounded Git context for the current worktree and candidate-only `--git-current`; discovery uses fixed argv, no shell/path input, and never exposes raw checkout/remote/branch state or selects a target on ambiguity.
-3. `DEV-006`, then `DEV-012`: trusted repository-to-Asana mapping and fixed versioned repository context. Repository aliases are exact fully-qualified ASCII locators to immutable GIDs; manifests are bounded, duplicate-safe, digest/revisioned and cannot grant policy permissions.
-4. `DEV-014`: separate repository-shared alias definitions from worktree-local active/recent context. Store only metadata in owner-controlled OS state with sequence/CAS, atomic locking, retention and explicit erasure; reads do not mutate recency.
-5. `DEV-001`–`DEV-003`, then `DEV-013`: add bounded project/section/custom-field context and central resolver. Native workspace-qualified Custom ID, GID, URL and exact aliases can resolve; Git/name/field search returns candidates only, and zero/multiple/truncated/stale results never choose a target.
-6. `DEV-007`, including versioned create-operation compatibility, then `DEV-015`: prepare/apply task creation and structural revisioned templates. A template expansion is fully displayed and persisted before approval; apply never reloads mutable template state.
-7. `DEV-008`–`DEV-011`: membership, dependencies, attachment metadata and batch reads.
-8. `DEV-016`, then `INT-015`–`INT-018`: clean-session Codex/Claude alias/template security evals before Gemini, Copilot, OpenCode and Cursor expansion.
-9. `REL-003`, `REL-004`, `REL-007`: provenance, SBOM and compatibility gates include context/operation format, generated-artifact drift and supported-client evidence.
+1. `DEV-004`, then `DEV-005`: produce pure bounded Git context for the current worktree and candidate-only `--git-current`; discovery uses fixed argv, no shell/path input, and never exposes raw checkout/remote/branch state or selects a target on ambiguity.
+2. `DEV-006`, then `DEV-012`: trusted repository-to-Asana mapping and fixed versioned repository context. Repository aliases are exact fully-qualified ASCII locators to immutable GIDs; manifests are bounded, duplicate-safe, digest/revisioned and cannot grant policy permissions.
+3. `DEV-014`: separate repository-shared alias definitions from worktree-local active/recent context. Store only metadata in owner-controlled OS state with sequence/CAS, atomic locking, retention and explicit erasure; reads do not mutate recency.
+4. `DEV-001`–`DEV-003`, then `DEV-013`: add bounded project/section/custom-field context and central resolver. Native workspace-qualified Custom ID, GID, URL and exact aliases can resolve; Git/name/field search returns candidates only, and zero/multiple/truncated/stale results never choose a target.
+5. `DEV-007`, including versioned create-operation compatibility, then `DEV-015`: prepare/apply task creation and structural revisioned templates. A template expansion is fully displayed and persisted before approval; apply never reloads mutable template state.
+6. `DEV-008`–`DEV-011`: membership, dependencies, attachment metadata and batch reads.
+7. `DEV-016`, then `INT-015`–`INT-018`: clean-session Codex/Claude alias/template security evals before Gemini, Copilot, OpenCode and Cursor expansion.
+8. `REL-003`, `REL-004`, `REL-007`: provenance, SBOM and compatibility gates include context/operation format, generated-artifact drift and supported-client evidence.
 
 ## Release checklist
 

@@ -47,7 +47,7 @@ Issue ID следует сохранить в заголовке.
 | SEC-001 | P0 | done | Зафиксировать prompt-injection fixtures для Asana content | — | Task/comment с командами, URL и просьбой вывести env остаётся только данными и не выбирает следующую operation |
 | SEC-002 | P0 | ready | Добавить credential-source check в doctor | INT-006 | Doctor сообщает `credential_store`/`environment` без значения PAT и предупреждает об inherited PAT |
 | SEC-003 | P0 | ready | Проверять broad permission examples | INT-010 | Doctor/evals обнаруживают auto-allow для `api`, `request`, `auth` и apply |
-| SEC-004 | P1 | blocked | Workspace/project/custom-field/write-field allowlists | AP-008 | Prepare и apply независимо проверяют scope; policy file валидируется Zod и fail-closed |
+| SEC-004 | P1 | done | Workspace/project/custom-field/write-field allowlists | AP-008 | Prepare и apply независимо проверяют scope; policy file валидируется Zod и fail-closed |
 | SEC-005 | P1 | blocked | Metadata-only audit log | AP-009 | Записываются operation ID, target GID, action, timestamps, result и hashes; content/PAT отсутствуют |
 | SEC-006 | P1 | done | Добавить output byte-budget tests | AP-011 | Большие API responses не обходят лимиты через nesting, Unicode или pagination |
 | SEC-007 | P2 | research | Отдельный OS user/container deployment guide | — | Документированы credential, filesystem и network boundaries без ложных гарантий |

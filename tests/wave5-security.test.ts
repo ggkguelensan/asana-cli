@@ -17,6 +17,7 @@ import {
   FixedFileHostScopedWritePolicyProvider,
   fixedHostScopedWritePolicyPath,
   type HostScopedWritePolicyProvider,
+  type WindowsPolicyCommandResult,
 } from "../src/host-write-policy";
 import { MemoryOperationRepository } from "../src/operations/memory-repository";
 import type {
@@ -53,6 +54,19 @@ const permittedPolicy: ScopedWritePolicy = {
     allow_comments: true,
   }],
 };
+
+const textEncoder = new TextEncoder();
+
+function windowsPolicyResult(
+  stdout: string,
+  options: Readonly<Partial<Pick<WindowsPolicyCommandResult, "stderr" | "exitCode">>> = {},
+): WindowsPolicyCommandResult {
+  return {
+    stdout: textEncoder.encode(stdout),
+    stderr: options.stderr ?? new Uint8Array(),
+    exitCode: options.exitCode ?? 0,
+  };
+}
 
 async function temporaryDirectory(): Promise<string> {
   const directory = await mkdtemp(join(tmpdir(), "asana-wave5-security-"));
@@ -232,7 +246,104 @@ describe("host scoped write policy", () => {
     }
   });
 
-  test("fails closed for malformed, unsafe, symlinked, outside-root, legacy Darwin, and Windows host policies without disclosure", async () => {
+  test("loads canonical Windows policy output through one frozen fixed-path PowerShell command", async () => {
+    const callerSuppliedPath = "C:\\untrusted\\caller-supplied-policy.json";
+    const canonicalPayload = Buffer.from(JSON.stringify(permittedPolicy)).toString("base64");
+    let receivedCommand: readonly string[] | undefined;
+    const provider = new FixedFileHostScopedWritePolicyProvider({
+      platform: "win32",
+      path: callerSuppliedPath,
+      windowsCommandRunner: async (command) => {
+        receivedCommand = command;
+        return windowsPolicyResult(canonicalPayload);
+      },
+    });
+
+    await expect(provider.load()).resolves.toEqual(permittedPolicy);
+    expect(provider.path).toBe("C:\\ProgramData\\asana-cli\\scoped-write-policy.json");
+    expect(fixedHostScopedWritePolicyPath("win32")).toBe(provider.path);
+    expect(receivedCommand).toBeDefined();
+    expect(Object.isFrozen(receivedCommand)).toBe(true);
+    expect(receivedCommand).toHaveLength(6);
+    expect(receivedCommand?.slice(0, 5)).toEqual([
+      "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+      "-NoLogo",
+      "-NoProfile",
+      "-NonInteractive",
+      "-Command",
+    ]);
+    expect(receivedCommand?.[5]).toContain("$policyPath = 'C:\\ProgramData\\asana-cli\\scoped-write-policy.json'");
+    expect(receivedCommand?.join("\n")).not.toContain(callerSuppliedPath);
+    expect(receivedCommand?.join("\n")).not.toContain(canonicalPayload);
+  });
+
+  test("fails closed for rejected Windows inspector statuses and untrusted payloads", async () => {
+    const canonicalPayload = Buffer.from(JSON.stringify(permittedPolicy)).toString("base64");
+    const cases: ReadonlyArray<Readonly<{
+      name: string;
+      result: WindowsPolicyCommandResult;
+    }>> = [
+      {
+        name: "nonzero inspector status",
+        result: windowsPolicyResult(canonicalPayload, { exitCode: 1 }),
+      },
+      {
+        name: "inspector standard error",
+        result: windowsPolicyResult(canonicalPayload, { stderr: textEncoder.encode("inspector failure") }),
+      },
+      {
+        name: "malformed base64 payload",
+        result: windowsPolicyResult("not-base64!"),
+      },
+      {
+        name: "noncanonical base64 payload",
+        result: windowsPolicyResult(Buffer.from("{}").toString("base64").replace(/=$/, "")),
+      },
+      {
+        name: "oversize policy payload",
+        result: windowsPolicyResult(Buffer.from(`${" ".repeat(49_153)}${JSON.stringify(permittedPolicy)}`).toString("base64")),
+      },
+      {
+        name: "invalid policy content",
+        result: windowsPolicyResult(Buffer.from("{}").toString("base64")),
+      },
+    ];
+
+    for (const testCase of cases) {
+      const repository = memoryRepository();
+      const asana = scopedFakeAsana();
+      const error = await caughtCliError(() => new AgentOperationService(asana.client, repository, {
+        writePolicy: new FixedFileHostScopedWritePolicyProvider({
+          platform: "win32",
+          windowsCommandRunner: async () => testCase.result,
+        }),
+      }).prepareComment({ task_gid: "123", text: "Blocked comment" }));
+
+      expect(error.code).toBe("policy-denied");
+      expect(await repository.inspect(operationId)).toBeNull();
+      expect(asana.traces.filter((trace) => trace.method === "POST" || trace.method === "PUT")).toEqual([]);
+    }
+  });
+
+  test("blocks preparation before persistence or remote mutation when the injected Windows loader fails", async () => {
+    const repository = memoryRepository();
+    const asana = scopedFakeAsana();
+    const error = await caughtCliError(() => new AgentOperationService(asana.client, repository, {
+      writePolicy: new FixedFileHostScopedWritePolicyProvider({
+        platform: "win32",
+        windowsCommandRunner: async () => {
+          throw new Error("WINDOWS_POLICY_RUNNER_FAILURE_CANARY");
+        },
+      }),
+    }).prepareComment({ task_gid: "123", text: "Blocked comment" }));
+
+    expect(error.code).toBe("policy-denied");
+    expect(JSON.stringify(error)).not.toContain("WINDOWS_POLICY_RUNNER_FAILURE_CANARY");
+    expect(await repository.inspect(operationId)).toBeNull();
+    expect(asana.traces.filter((trace) => trace.method === "POST" || trace.method === "PUT")).toEqual([]);
+  });
+
+  test("fails closed for malformed, unsafe, symlinked, outside-root, and legacy Darwin host policies without disclosure", async () => {
     const directory = await temporaryDirectory();
     const malformedPath = join(directory, "malformed-policy.json");
     const unsafePath = join(directory, "unsafe-policy.json");
@@ -252,7 +363,6 @@ describe("host scoped write policy", () => {
         path: "/etc/asana-cli/scoped-write-policy.json",
         platform: "darwin" as const,
       },
-      { name: "Windows policy mode", path: malformedPath, platform: "win32" as const },
     ];
 
     for (const testCase of cases) {

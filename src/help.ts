@@ -30,6 +30,9 @@ AGENT CLIENTS (DIRECT CLI, NO MCP)
   asana-cli agent apply --operation-id UUID
   asana-cli agent operation status UUID      Read local operation metadata
 
+AGENT WRITES
+  Host-scoped policy is required for writes. See docs/agent-clients.md.
+
 INTEGRATIONS (STATIC SKILL BUNDLE, NO MCP)
   asana-cli integrations list
   asana-cli integrations detect --client CLIENT --scope user|project

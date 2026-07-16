@@ -145,6 +145,20 @@ On macOS, install and administer the policy through `/private/etc/asana-cli`; `/
 system alias for that directory, but the hardened loader deliberately opens the canonical
 `/private/etc` ancestor chain without following the `/etc` symlink.
 
+On Windows, the `C:\ProgramData` location alone is not trusted. The loader fails closed unless
+`C:\ProgramData` and `C:\ProgramData\asana-cli` are non-reparse directories, the policy is a
+non-reparse regular file, and the policy directory and file each have a protected DACL containing
+exactly explicit `FullControl` allow ACEs for only `S-1-5-18` (SYSTEM) and
+`S-1-5-32-544` (BUILTIN\Administrators), with one of those SIDs as owner. It also rejects
+`C:\ProgramData` when any other SID is allowed `DeleteSubdirectoriesAndFiles`,
+`ChangePermissions`, or `TakeOwnership`. The policy must be valid UTF-8 JSON and at most 48 KiB.
+
+Windows loading depends on the standard Windows PowerShell 5.1 executable at its default system
+location. The CLI invokes that executable directly with a fixed inspection script; it does not use a
+shell, `PATH`, or a caller-controlled environment. Missing PowerShell, an invalid inspection result,
+or any failed filesystem or ACL predicate denies every agent write. Provision the directory and file
+with the exact owner and DACL above before enabling writes.
+
 ```json
 {
   "schema": "asana-cli.scoped-write-policy.v1",
