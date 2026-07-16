@@ -3,7 +3,12 @@ import { agentActionDescriptor, agentActionDescriptors, agentActionInvocation } 
 import { legacyAgentApplyDeprecationManifest } from "./agent-deprecations";
 import { CliError } from "./errors";
 import { z } from "zod";
-import { AGENT_PROTOCOL_VERSION, CLI_VERSION } from "./version";
+import {
+  AGENT_PROTOCOL_COMPATIBILITY,
+  AGENT_PROTOCOL_UPGRADE_GUIDANCE,
+  AGENT_PROTOCOL_VERSION,
+  CLI_VERSION,
+} from "./version";
 const agentModeEnvironmentSchema = z.object({
   ASANA_CLI_AGENT: z.enum(["0", "1"]).optional().catch(undefined),
   ASANA_CLI_AGENT_POLICY: z.enum(["read", "read-write"]).optional().catch(undefined),
@@ -59,6 +64,8 @@ const actionDescriptors = agentActionDescriptors();
 export const AGENT_MANIFEST = {
   agent_protocol_version: AGENT_PROTOCOL_VERSION,
   cli_version: CLI_VERSION,
+  protocol_compatibility: AGENT_PROTOCOL_COMPATIBILITY,
+  unsupported_protocol: AGENT_PROTOCOL_UPGRADE_GUIDANCE,
   protocol: "asana-cli-agent-v2",
   default_mode: "read-only",
   invocation:

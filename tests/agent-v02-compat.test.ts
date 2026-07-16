@@ -39,7 +39,11 @@ function v02CompatibleClient(): AsanaClient {
           gid: "123",
           name: "Legacy readable task",
           notes: "v0.2 stdin read payload",
-        },
+          parent: {
+            gid: "456",
+            name: "Legacy parent task",
+          },
+        }
       },
     }),
   });
@@ -55,13 +59,17 @@ describe("agent v0.2 compatibility", () => {
           gid: z.literal("123"),
           name: z.literal("Legacy readable task"),
           notes: z.literal("v0.2 stdin read payload"),
+          parent: z.strictObject({
+            gid: z.literal("456"),
+            name: z.literal("Legacy parent task"),
+          }),
         }),
-        content_profile: z.literal("selected-untrusted"),
+        content_profile: z.literal("full-untrusted"),
         content_budget: z.looseObject({}),
       }),
     }).parse(await withAgentStdin({
       task_gid: "123",
-      include: ["notes"],
+      include_content: true,
       max_content_bytes: 256,
     }, () => runAgentCommand(
       v02CompatibleClient(),
@@ -73,6 +81,10 @@ describe("agent v0.2 compatibility", () => {
       gid: "123",
       name: "Legacy readable task",
       notes: "v0.2 stdin read payload",
+      parent: {
+        gid: "456",
+        name: "Legacy parent task",
+      },
     });
   });
 

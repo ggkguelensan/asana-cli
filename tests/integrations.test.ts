@@ -10,6 +10,7 @@ import {
   EMBEDDED_INTEGRATION_BUNDLE,
   type EmbeddedIntegrationClientId,
 } from "../generated/integrations/bundle";
+import { INTEGRATION_CLIENTS } from "../integrations/clients";
 import {
   INTEGRATION_MANIFEST_FILE,
   inspectIntegration,
@@ -19,6 +20,7 @@ import {
   uninstallIntegration,
   updateIntegration,
 } from "../src/integrations";
+import { AGENT_PROTOCOL_COMPATIBILITY } from "../src/version";
 
 const projectRoot = resolve(import.meta.dir, "..");
 const entrypoint = resolve(projectRoot, "src/index.ts");
@@ -121,6 +123,12 @@ afterEach(async () => {
   await Promise.all(temporaryDirectories.splice(0).map((directory) => rm(directory, { recursive: true, force: true })));
 });
 
+
+test("keeps every integration registry entry on the canonical protocol range", () => {
+  for (const client of Object.values(INTEGRATION_CLIENTS)) {
+    expect(client.protocol).toEqual(AGENT_PROTOCOL_COMPATIBILITY);
+  }
+});
 describe("pre-PAT integration commands", () => {
   test("lists static clients and exposes policy plus credential-safe doctor guidance without auth", async () => {
     const root = await temporaryDirectory();

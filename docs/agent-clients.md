@@ -200,6 +200,10 @@ The same migration fields, plus the full replacement command, are published in
 `asana-cli agent capabilities` under `deprecated_commands`. This migration does not change the
 v0.2 read stdin contract: one strict JSON object passed with `--input -` remains supported.
 
+Direct client compatibility is published before an action is invoked. Read `asana-cli agent capabilities` (or `agent schema`) and compare the client's protocol against the inclusive `protocol_compatibility.minimum` / `maximum` range. When it is unsupported, `unsupported_protocol` provides a machine-readable reason, supported range, and `upgrade-client` required action.
+
+This range describes the agent contract. It is independent of an action descriptor's `minimum_cli_version`, which only identifies the executable version that first offered that action.
+
 The journal is local state with restrictive permissions. It may contain task/comment text; do not
 copy its files into a repository, logs or model context. The CLI response intentionally exposes a
 review preview but never the complete journal record.

@@ -253,6 +253,10 @@ ASANA_CLI_AGENT_POLICY=read-write \
 `asana-cli agent capabilities` → `deprecated_commands`. Это изменение не затрагивает совместимый
 v0.2 read-ввод: через `--input -` по-прежнему принимается ровно один strict JSON object.
 
+Совместимость direct client публикуется до вызова action. Прочитайте `asana-cli agent capabilities` (или `agent schema`) и сравните версию клиента с включительным диапазоном `protocol_compatibility.minimum` / `maximum`. Если протокол не поддержан, `unsupported_protocol` возвращает machine-readable причину, поддерживаемый диапазон и действие `upgrade-client`.
+
+Этот диапазон описывает agent contract и не связан с `minimum_cli_version` action descriptor: последний указывает только минимальную версию executable, впервые предоставившую action.
+
 Обе prepare-команды создают durable record с TTL, immutable payload и guard по
 `modified_at`/текущему пользователю. `apply` никогда не принимает payload повторно. Agent writes
 разрешены только для задач, назначенных текущему пользователю, и изменяют одну задачу за invocation.

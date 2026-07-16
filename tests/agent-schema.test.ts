@@ -15,7 +15,12 @@ import { runCli } from "../src/cli";
 import { AGENT_ERROR_SCHEMA_ID } from "../src/errors";
 import { jsonObjectSchema } from "../src/schemas";
 import { secureAgentEnvelope } from "../src/security";
-import { AGENT_PROTOCOL_VERSION, CLI_VERSION } from "../src/version";
+import {
+  AGENT_PROTOCOL_COMPATIBILITY,
+  AGENT_PROTOCOL_UPGRADE_GUIDANCE,
+  AGENT_PROTOCOL_VERSION,
+  CLI_VERSION,
+} from "../src/version";
 
 const publishedActionSchema = z.strictObject({
   descriptor: agentActionDescriptorSchema,
@@ -23,10 +28,23 @@ const publishedActionSchema = z.strictObject({
   output: jsonObjectSchema,
 });
 
+const protocolCompatibilitySchema = z.strictObject({
+  minimum: z.literal(AGENT_PROTOCOL_COMPATIBILITY.minimum),
+  maximum: z.literal(AGENT_PROTOCOL_COMPATIBILITY.maximum),
+});
+
+const unsupportedProtocolSchema = z.strictObject({
+  reason: z.literal(AGENT_PROTOCOL_UPGRADE_GUIDANCE.reason),
+  supported_protocol: protocolCompatibilitySchema,
+  required_action: z.literal(AGENT_PROTOCOL_UPGRADE_GUIDANCE.required_action),
+});
+
 const schemaCatalogSchema = z.strictObject({
   agent_protocol_version: z.literal(AGENT_PROTOCOL_VERSION),
   cli_version: z.literal(CLI_VERSION),
   schema: z.literal("asana-cli.agent.schema-catalog.v2"),
+  protocol_compatibility: protocolCompatibilitySchema,
+  unsupported_protocol: unsupportedProtocolSchema,
   error_schema_id: z.literal(AGENT_ERROR_SCHEMA_ID),
   error_schema: jsonObjectSchema,
   actions: z.array(publishedActionSchema),
@@ -37,6 +55,8 @@ const singleActionSchema = z.strictObject({
   cli_version: z.literal(CLI_VERSION),
   schema: z.literal("asana-cli.agent.action-schema.v2"),
   error_schema_id: z.literal(AGENT_ERROR_SCHEMA_ID),
+  protocol_compatibility: protocolCompatibilitySchema,
+  unsupported_protocol: unsupportedProtocolSchema,
   error_schema: jsonObjectSchema,
   action: publishedActionSchema,
 });
@@ -150,9 +170,14 @@ describe("agent capability and schema catalog", () => {
     const catalogResult = await runCli(["agent", "schema"]);
     const catalog = schemaCatalogSchema.parse(catalogResult.value);
     expect(catalog.actions.map((entry) => entry.descriptor.action)).toEqual(AGENT_ACTION_NAMES);
+    expect(catalog.protocol_compatibility).toEqual(AGENT_PROTOCOL_COMPATIBILITY);
+    expect(catalog.unsupported_protocol).toEqual(AGENT_PROTOCOL_UPGRADE_GUIDANCE);
 
     const actionResult = await runCli(["agent", "schema", "my-tasks"]);
-    const action = singleActionSchema.parse(actionResult.value).action;
+    const actionPublication = singleActionSchema.parse(actionResult.value);
+    expect(actionPublication.protocol_compatibility).toEqual(catalog.protocol_compatibility);
+    expect(actionPublication.unsupported_protocol).toEqual(catalog.unsupported_protocol);
+    const action = actionPublication.action;
     expect(action.descriptor.action).toBe("my-tasks");
     expect(action.input.$id).toBe(action.descriptor.input_schema);
     expect(action.output.$id).toBe(action.descriptor.output_schema);

@@ -16,7 +16,12 @@ import { AGENT_ERROR_SCHEMA_ID, CliError, errorPayloadSchema } from "./errors";
 import { readAgentJsonInput } from "./io";
 import { jsonObjectSchema, zodIssueSummary } from "./schemas";
 import { agentEnvelopeSchema } from "./security";
-import { AGENT_PROTOCOL_VERSION, CLI_VERSION } from "./version";
+import {
+  AGENT_PROTOCOL_COMPATIBILITY,
+  AGENT_PROTOCOL_UPGRADE_GUIDANCE,
+  AGENT_PROTOCOL_VERSION,
+  CLI_VERSION,
+} from "./version";
 
 const MAX_AGENT_INPUT_BYTES = 65_536;
 export const AGENT_ACTION_MINIMUM_CLI_VERSION = "0.2.0" as const;
@@ -338,10 +343,21 @@ const publishedActionSchema = z.strictObject({
   output: jsonObjectSchema,
 });
 
+const protocolCompatibilitySchema = z.strictObject({
+  minimum: z.literal(AGENT_PROTOCOL_COMPATIBILITY.minimum),
+  maximum: z.literal(AGENT_PROTOCOL_COMPATIBILITY.maximum),
+});
+const unsupportedProtocolSchema = z.strictObject({
+  reason: z.literal(AGENT_PROTOCOL_UPGRADE_GUIDANCE.reason),
+  supported_protocol: protocolCompatibilitySchema,
+  required_action: z.literal(AGENT_PROTOCOL_UPGRADE_GUIDANCE.required_action),
+});
 const schemaCatalogSchema = z.strictObject({
   agent_protocol_version: z.literal(AGENT_PROTOCOL_VERSION),
   cli_version: z.literal(CLI_VERSION),
   schema: z.literal("asana-cli.agent.schema-catalog.v2"),
+  protocol_compatibility: protocolCompatibilitySchema,
+  unsupported_protocol: unsupportedProtocolSchema,
   error_schema_id: z.literal(AGENT_ERROR_SCHEMA_ID),
   error_schema: jsonObjectSchema,
   actions: z.array(publishedActionSchema),
@@ -351,6 +367,8 @@ const singleActionSchema = z.strictObject({
   agent_protocol_version: z.literal(AGENT_PROTOCOL_VERSION),
   cli_version: z.literal(CLI_VERSION),
   schema: z.literal("asana-cli.agent.action-schema.v2"),
+  protocol_compatibility: protocolCompatibilitySchema,
+  unsupported_protocol: unsupportedProtocolSchema,
   error_schema_id: z.literal(AGENT_ERROR_SCHEMA_ID),
   error_schema: jsonObjectSchema,
   action: publishedActionSchema,
@@ -378,6 +396,8 @@ export function publishAgentSchemas(action?: string): unknown {
       agent_protocol_version: AGENT_PROTOCOL_VERSION,
       cli_version: CLI_VERSION,
       schema: "asana-cli.agent.action-schema.v2",
+      protocol_compatibility: AGENT_PROTOCOL_COMPATIBILITY,
+      unsupported_protocol: AGENT_PROTOCOL_UPGRADE_GUIDANCE,
       error_schema_id: AGENT_ERROR_SCHEMA_ID,
       error_schema: publishedAgentErrorSchema,
       action: publishAction(requireAgentAction(action)),
@@ -387,6 +407,8 @@ export function publishAgentSchemas(action?: string): unknown {
     agent_protocol_version: AGENT_PROTOCOL_VERSION,
     cli_version: CLI_VERSION,
     schema: "asana-cli.agent.schema-catalog.v2",
+    protocol_compatibility: AGENT_PROTOCOL_COMPATIBILITY,
+    unsupported_protocol: AGENT_PROTOCOL_UPGRADE_GUIDANCE,
     error_schema_id: AGENT_ERROR_SCHEMA_ID,
     error_schema: publishedAgentErrorSchema,
     actions: AGENT_ACTION_NAMES.map((name) => publishAction(AGENT_ACTIONS[name])),

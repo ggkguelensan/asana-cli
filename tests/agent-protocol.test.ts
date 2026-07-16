@@ -7,7 +7,12 @@ import { runCli } from "../src/cli";
 import { MemoryOperationRepository } from "../src/operations/memory-repository";
 import { createClient } from "../src/sdk";
 import { secureAgentEnvelope } from "../src/security";
-import { AGENT_PROTOCOL_VERSION, CLI_VERSION } from "../src/version";
+import {
+  AGENT_PROTOCOL_COMPATIBILITY,
+  AGENT_PROTOCOL_UPGRADE_GUIDANCE,
+  AGENT_PROTOCOL_VERSION,
+  CLI_VERSION,
+} from "../src/version";
 
 const agentRuntime = { operations: new MemoryOperationRepository() };
 
@@ -27,7 +32,20 @@ const compatibleEnvelopeSchema = protocolIdentitySchema.extend({
   }),
 });
 
+const protocolCompatibilitySchema = z.strictObject({
+  minimum: z.literal(AGENT_PROTOCOL_COMPATIBILITY.minimum),
+  maximum: z.literal(AGENT_PROTOCOL_COMPATIBILITY.maximum),
+});
+
+const unsupportedProtocolSchema = z.strictObject({
+  reason: z.literal(AGENT_PROTOCOL_UPGRADE_GUIDANCE.reason),
+  supported_protocol: protocolCompatibilitySchema,
+  required_action: z.literal(AGENT_PROTOCOL_UPGRADE_GUIDANCE.required_action),
+});
+
 const compatibleManifestSchema = protocolIdentitySchema.extend({
+  protocol_compatibility: protocolCompatibilitySchema,
+  unsupported_protocol: unsupportedProtocolSchema,
   protocol: z.literal("asana-cli-agent-v2"),
   default_mode: z.literal("read-only"),
   invocation: z.string(),
@@ -43,6 +61,8 @@ describe("agent protocol compatibility", () => {
     expect(expectedManifest).toMatchObject({
       agent_protocol_version: AGENT_PROTOCOL_VERSION,
       cli_version: CLI_VERSION,
+      protocol_compatibility: AGENT_PROTOCOL_COMPATIBILITY,
+      unsupported_protocol: AGENT_PROTOCOL_UPGRADE_GUIDANCE,
     });
 
     for (const alias of ["manifest", "capabilities"]) {

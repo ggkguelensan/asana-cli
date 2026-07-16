@@ -3,10 +3,11 @@ import {
   clientAdapter,
   parseClientAdapterId,
 } from "../src/client-adapter-specs";
+import { AGENT_PROTOCOL_COMPATIBILITY, AGENT_PROTOCOL_VERSION } from "../src/version";
 
 export const INTEGRATION_BUNDLE_SCHEMA = "asana-cli.integration-bundle.v1" as const;
 export const INTEGRATION_BUNDLE_VERSION = "0.4.0" as const;
-export const INTEGRATION_AGENT_PROTOCOL_VERSION = 2 as const;
+export const INTEGRATION_AGENT_PROTOCOL_VERSION = AGENT_PROTOCOL_VERSION;
 
 const portableRelativePathSchema = z.string()
   .min(1)
@@ -23,8 +24,8 @@ export const integrationScopeSchema = z.enum(["user", "project"]);
 
 const supportLevelSchema = z.enum(["generic", "supported"]);
 const protocolCompatibilitySchema = z.strictObject({
-  minimum: z.literal(INTEGRATION_AGENT_PROTOCOL_VERSION),
-  maximum: z.literal(INTEGRATION_AGENT_PROTOCOL_VERSION),
+  minimum: z.literal(AGENT_PROTOCOL_COMPATIBILITY.minimum),
+  maximum: z.literal(AGENT_PROTOCOL_COMPATIBILITY.maximum),
 });
 const installRootsSchema = z.strictObject({
   user: portableRelativePathSchema,
@@ -64,7 +65,7 @@ const registryDefinition = {
     id: "generic-agent-skills",
     label: genericAdapter.displayName,
     support: "generic",
-    protocol: { minimum: 2, maximum: 2 },
+    protocol: AGENT_PROTOCOL_COMPATIBILITY,
     install_roots: {
       user: genericAdapter.roots.user.join("/"),
       project: genericAdapter.roots.project.join("/"),
@@ -75,7 +76,7 @@ const registryDefinition = {
     id: "codex",
     label: codexAdapter.displayName,
     support: "supported",
-    protocol: { minimum: 2, maximum: 2 },
+    protocol: AGENT_PROTOCOL_COMPATIBILITY,
     install_roots: {
       user: codexAdapter.roots.user.join("/"),
       project: codexAdapter.roots.project.join("/"),
@@ -86,7 +87,7 @@ const registryDefinition = {
     id: "claude-code",
     label: claudeAdapter.displayName,
     support: "supported",
-    protocol: { minimum: 2, maximum: 2 },
+    protocol: AGENT_PROTOCOL_COMPATIBILITY,
     install_roots: {
       user: claudeAdapter.roots.user.join("/"),
       project: claudeAdapter.roots.project.join("/"),
