@@ -13,11 +13,13 @@ import {
   readApplyAgentInput,
   readDirectAgentInput,
   readGitCurrentAgentInput,
+  readGitCurrentCandidatesAgentInput,
   readPrepareCommentAgentInput,
   readOperationStatusAgentInput,
   readStdinAgentInput,
 } from "./agent-input";
 import { readCurrentGitContext } from "./git-context";
+import { findGitCurrentCandidates } from "./git-current-candidates";
 import { rejectDeprecatedLegacyAgentApply } from "./agent-deprecations";
 import { AgentOperationService } from "./agent-operations";
 import type { MetadataAuditStore } from "./audit/repository";
@@ -163,8 +165,14 @@ export async function runAgentCommand(
   if (!action) throw new CliError("usage", "Missing agent action");
   rejectDeprecatedLegacyAgentApply(action);
 
-  if (action === "operation" || action === "context") return runLocalAgentCommand(args, runtime);
+  if (action === "operation") return runLocalAgentCommand(args, runtime);
 
+
+  if (action === "context") {
+    const input = readGitCurrentCandidatesAgentInput(args);
+    const context = await readCurrentGitContext();
+    return agentResult("git-current-candidates", await findGitCurrentCandidates(client, input, context));
+  }
   if (action === "status") {
     await readDirectAgentInput(args, "status");
     const user = parseExternalData(

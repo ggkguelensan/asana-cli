@@ -188,6 +188,38 @@ export function readGitCurrentAgentInput(
   return parseAgentActionInput({ git_current: true }, "git-current");
 }
 
+export function readGitCurrentCandidatesAgentInput(
+  args: ParsedArgs,
+): AgentActionInput<"git-current-candidates"> {
+  if (args.positionals.length !== 2 || args.positionals[1] !== "context") {
+    throw new CliError(
+      "usage",
+      "Usage: asana-cli agent context --git-current-candidates --workspace GID [--all-assignees] [--completed|--no-completed] [--field GID]",
+    );
+  }
+  const allowed = new Set(["git-current-candidates", "workspace", "all-assignees", "completed", "field"]);
+  for (const name of Object.keys(args.flags)) {
+    if (!allowed.has(name)) {
+      throw new CliError("usage", `Unknown option for agent context: --${name}`);
+    }
+  }
+  if (scalarFlag(args, "git-current-candidates") !== true) {
+    throw new CliError(
+      "usage",
+      "Usage: asana-cli agent context --git-current-candidates --workspace GID [--all-assignees] [--completed|--no-completed] [--field GID]",
+    );
+  }
+  const allAssignees = booleanValue(args, "all-assignees");
+  const completed = booleanValue(args, "completed");
+  const fieldGid = stringValue(args, "field");
+  return parseAgentActionInput({
+    workspace_gid: requireValue(stringValue(args, "workspace"), "workspace"),
+    ...(allAssignees === undefined ? {} : { all_assignees: allAssignees }),
+    ...(completed === undefined ? {} : { completed }),
+    ...(fieldGid === undefined ? {} : { field_gid: fieldGid }),
+  }, "git-current-candidates");
+}
+
 async function readDirectOrStdinInput<Action extends "apply" | "prepare-comment">(
   args: ParsedArgs,
   action: Action,

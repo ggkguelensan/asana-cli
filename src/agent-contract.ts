@@ -3,6 +3,7 @@ import {
   applyOperationInputSchema,
   findGitInputSchema,
   gitCurrentInputSchema,
+  gitCurrentCandidatesInputSchema,
   getTaskInputSchema,
   listCommentsInputSchema,
   myTasksInputSchema,
@@ -14,6 +15,7 @@ import {
 } from "./agent-action-schemas";
 import { operationStatusProjectionSchema } from "./operations/status-projection";
 import { gitContextSchema } from "./git-context";
+import { gitCurrentCandidatesDataSchema, MAX_GIT_CURRENT_CANDIDATES } from "./git-current-candidates";
 import { AGENT_ERROR_SCHEMA_ID, CliError, errorPayloadSchema } from "./errors";
 import { readAgentJsonInput } from "./io";
 import { jsonObjectSchema, zodIssueSummary } from "./schemas";
@@ -156,6 +158,19 @@ const gitCurrentAction = defineAction(
   gitCurrentInputSchema,
   gitContextSchema,
 );
+
+const gitCurrentCandidatesAction = defineAction(
+  "git-current-candidates",
+  {
+    operation: "git.context.current.candidates",
+    effect: "read",
+    approval: "none",
+    limits: { max_input_bytes: 0, max_result_items: MAX_GIT_CURRENT_CANDIDATES },
+    command: ["context", "--git-current-candidates"],
+  },
+  gitCurrentCandidatesInputSchema,
+  gitCurrentCandidatesDataSchema,
+);
 const myTasksAction = defineAction(
   "my-tasks",
   {
@@ -263,6 +278,7 @@ export const AGENT_ACTIONS = {
   [operationStatusAction.descriptor.action]: operationStatusAction,
   [myTasksAction.descriptor.action]: myTasksAction,
   [gitCurrentAction.descriptor.action]: gitCurrentAction,
+  [gitCurrentCandidatesAction.descriptor.action]: gitCurrentCandidatesAction,
   [getTaskAction.descriptor.action]: getTaskAction,
   [listCommentsAction.descriptor.action]: listCommentsAction,
   [searchTasksAction.descriptor.action]: searchTasksAction,

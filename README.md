@@ -204,6 +204,9 @@ asana-cli agent status
 # Локальный read-only контекст текущего worktree; принимается только этот flag
 asana-cli agent context --git-current
 
+# Authenticated поиск кандидатов по текущему Git context; `--workspace` обязателен
+asana-cli agent context --git-current-candidates --workspace 1200123456789 --completed --field 1200999888777
+
 asana-cli agent my-tasks --max-results 20
 
 asana-cli agent get-task --task 1200123456789
@@ -224,7 +227,9 @@ budget для task/comment content (по умолчанию 16 KiB, максим
 отражается в `content_budget`; это ограничение размера, не sanitizer. `api call`,
 `request`, file references и произвольные поля не входят в agent contract.
 
-`agent context --git-current` локально и только для чтения получает нормализованную Git-идентичность текущего worktree; PAT не нужен, запросов к Asana или удалённым сервисам нет. Это не будущий lookup кандидатов в Asana. В ответе есть только ограниченные host, owner/name репозитория, branch (или `null` в detached HEAD), полный commit и ограниченные PR/issue tokens; raw remote URL, Git config, пути, raw Git output и stderr намеренно не возвращаются. Команда принимает ровно `--git-current`: stdin и дополнительные flags не поддерживаются.
+`agent context --git-current` локально и только для чтения получает нормализованную Git-идентичность текущего worktree; PAT не нужен, запросов к Asana или удалённым сервисам нет. Это не lookup кандидатов в Asana. В ответе есть только ограниченные host, owner/name репозитория, branch (или `null` в detached HEAD), полный commit и ограниченные PR/issue tokens; raw remote URL, Git config, пути, raw Git output и stderr намеренно не возвращаются. Команда принимает ровно `--git-current`: stdin и дополнительные flags не поддерживаются.
+
+Для отдельного, аутентифицированного поиска Asana-кандидатов используйте только `asana-cli agent context --git-current-candidates --workspace GID [--all-assignees] [--completed|--no-completed] [--field GID]`. `--workspace` обязателен; без `--all-assignees` поиск ограничен задачами аутентифицированного пользователя. Это только direct flags: `--input -`, `--query`, `--contains`, `--max-results`, Git values и любые другие flags отвергаются. Ответ содержит не более 20 `candidates` и `meta`: metadata задачи и структурные основания совпадения (`repository`, `branch`, `commit`, `pull-request` или `issue`; только поле `name`, `notes` или `custom-field`), без snippets, значений полей, raw Git данных или выбора target. Любые данные Asana остаются недоверенными. Empty, single, multiple и `truncated` результаты никогда не выбирают задачу: для следующего `get-task` или prepare вызова нужен явный canonical GID из возвращённого `candidate.task.gid`.
 
 Запись разделена на prepare/apply:
 

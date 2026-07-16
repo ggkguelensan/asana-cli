@@ -73,6 +73,21 @@ const cliEnvironmentSchema = z.object({
   ASANA_GIT_FIELD_GID: z.string().optional(),
 });
 
+function isExactLocalAgentCommand(args: ParsedArgs): boolean {
+  if (args.positionals[1] === "context") {
+    const flagNames = Object.keys(args.flags);
+    return args.positionals.length === 2 &&
+      flagNames.length === 1 &&
+      flagNames[0] === "git-current" &&
+      args.flags["git-current"] === true;
+  }
+  return args.positionals[1] === "operation" &&
+    args.positionals.length === 4 &&
+    args.positionals[2] === "status" &&
+    Object.keys(args.flags).length === 0 &&
+    z.uuid().safeParse(args.positionals[3]).success;
+}
+
 function lazyFileOperationRepository(): OperationRepository {
   let fileRepository: FileOperationRepository | undefined;
   const file = (): FileOperationRepository => {
@@ -457,7 +472,7 @@ export async function runCli(argv: string[]): Promise<CliResult> {
   ) {
     return { value: AGENT_MANIFEST, compact, agentMode: true };
   }
-  if (command === "agent" && ["operation", "context"].includes(args.positionals[1] ?? "")) {
+  if (command === "agent" && isExactLocalAgentCommand(args)) {
     return {
       value: await runLocalAgentCommand(args, { operations: lazyFileOperationRepository() }),
       compact: true,

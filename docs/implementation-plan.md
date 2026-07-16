@@ -237,7 +237,7 @@ scenarios; generated artifacts не имеют drift; release binary содер�
 
 Порядок по зависимостям:
 
-1. `DEV-004`, then `DEV-005`: produce pure bounded Git context for the current worktree and candidate-only `--git-current`; discovery uses fixed argv, no shell/path input, and never exposes raw checkout/remote/branch state or selects a target on ambiguity.
+1. `DEV-004`, then `DEV-005`: `agent context --git-current` produces pure bounded local Git context for the current worktree, while distinct authenticated `agent context --git-current-candidates --workspace GID [--all-assignees] [--completed|--no-completed] [--field GID]` returns at most 20 candidate-only Asana matches. Discovery uses fixed argv, no shell/path input, no raw checkout/remote/branch disclosure, and never selects a target for empty, single, multiple, or truncated results.
 2. `DEV-006`, then `DEV-012`: trusted repository-to-Asana mapping and fixed versioned repository context. Repository aliases are exact fully-qualified ASCII locators to immutable GIDs; manifests are bounded, duplicate-safe, digest/revisioned and cannot grant policy permissions.
 3. `DEV-014`: separate repository-shared alias definitions from worktree-local active/recent context. Store only metadata in owner-controlled OS state with sequence/CAS, atomic locking, retention and explicit erasure; reads do not mutate recency.
 4. `DEV-001`–`DEV-003`, then `DEV-013`: add bounded project/section/custom-field context and central resolver. Native workspace-qualified Custom ID, GID, URL and exact aliases can resolve; Git/name/field search returns candidates only, and zero/multiple/truncated/stale results never choose a target.

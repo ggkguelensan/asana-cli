@@ -3,11 +3,14 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { z } from "zod";
+import { runLocalAgentCommand } from "../src/agent-cli";
+import { parseArgs } from "../src/args";
 import { runCli } from "../src/cli";
 import { CliError, normalizeError } from "../src/errors";
 import { gitContextSchema } from "../src/git-context";
-
+import { MemoryOperationRepository } from "../src/operations/memory-repository";
 const directories: string[] = [];
+const agentRuntime = { operations: new MemoryOperationRepository() };
 const entrypoint = resolve(import.meta.dir, "../src/index.ts");
 
 const gitContextResultSchema = z.looseObject({
@@ -231,7 +234,7 @@ describe("agent context --git-current", () => {
     ];
 
     for (const argv of malformedInvocations) {
-      const error = await caughtCliError(() => runCli(argv));
+      const error = await caughtCliError(() => runLocalAgentCommand(parseArgs(argv), agentRuntime));
       expect(error).toMatchObject({
         code: "usage",
         message: "Usage: asana-cli agent context --git-current",

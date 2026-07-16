@@ -88,6 +88,10 @@ const driftFixtures = {
   status: { valid: {}, invalid: { unexpected: true } },
   "operation-status": { valid: { operation_id: operationId }, invalid: { operation_id: "invalid" } },
   "git-current": { valid: { git_current: true }, invalid: { git_current: false } },
+  "git-current-candidates": {
+    valid: { workspace_gid: "1200", all_assignees: true, completed: false, field_gid: "900" },
+    invalid: { workspace_gid: "1200", query: "Acme/widgets" },
+  },
   "my-tasks": { valid: {}, invalid: { limit: 0 } },
   "get-task": { valid: { task_gid: "123" }, invalid: { task_gid: "not-a-gid" } },
   "list-comments": { valid: { task_gid: "123" }, invalid: { max_results: 501 } },
@@ -111,6 +115,7 @@ describe("agent capability and schema catalog", () => {
       "operation-status",
       "my-tasks",
       "git-current",
+      "git-current-candidates",
       "get-task",
       "list-comments",
       "search-tasks",
@@ -125,6 +130,7 @@ describe("agent capability and schema catalog", () => {
       "asana-cli agent operation status UUID",
       "asana-cli agent my-tasks",
       "asana-cli agent context --git-current",
+      "asana-cli agent context --git-current-candidates",
       "asana-cli agent get-task",
       "asana-cli agent list-comments",
       "asana-cli agent search-tasks",
@@ -179,6 +185,37 @@ describe("agent capability and schema catalog", () => {
       command: ["context", "--git-current"],
     });
     expect(AGENT_MANIFEST.actions).toContainEqual(AGENT_ACTIONS["git-current"].descriptor);
+  });
+
+  test("publishes the bounded authenticated candidate command separately from local Git context", async () => {
+    expect(AGENT_ACTIONS["git-current-candidates"].descriptor).toMatchObject({
+      action: "git-current-candidates",
+      operation: "git.context.current.candidates",
+      effect: "read",
+      approval: "none",
+      limits: { max_input_bytes: 0, max_result_items: 20 },
+      command: ["context", "--git-current-candidates"],
+    });
+    const publication = singleActionSchema.parse(
+      (await runCli(["agent", "schema", "git-current-candidates"])).value,
+    );
+    expect(publication.action.descriptor).toEqual(AGENT_ACTIONS["git-current-candidates"].descriptor);
+    const output = z.fromJSONSchema(jsonSchemaBoundary.parse(publication.action.output));
+    const result = secureAgentEnvelope(createAgentActionResult("git-current-candidates", "read", {
+      candidates: [{
+        task: { gid: "123", name: "Candidate" },
+        matches: [{ kind: "repository", fields: ["name"] }],
+      }],
+      meta: {
+        workspace_gid: "1200",
+        mine: true,
+        count: 1,
+        max_candidates: 20,
+        truncated: false,
+        truncation_reasons: [],
+      },
+    }));
+    expect(output.safeParse(result).success).toBe(true);
   });
 
   test("publishes the full catalog and one action without authentication", async () => {

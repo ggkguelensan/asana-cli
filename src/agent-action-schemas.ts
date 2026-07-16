@@ -36,6 +36,13 @@ export const gitCurrentInputSchema = z.strictObject({
   git_current: z.literal(true),
 });
 
+export const gitCurrentCandidatesInputSchema = z.strictObject({
+  workspace_gid: gidSchema,
+  all_assignees: z.boolean().default(false),
+  completed: z.boolean().optional(),
+  field_gid: gidSchema.optional(),
+});
+
 export const myTasksInputSchema = z.strictObject({
   workspace_gid: gidSchema.optional(),
   completed: z.enum(["false", "true", "all"]).default("false"),

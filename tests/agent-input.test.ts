@@ -4,6 +4,7 @@ import { runAgentCommand } from "../src/agent-cli";
 import {
   readApplyAgentInput,
   readDirectAgentInput,
+  readGitCurrentCandidatesAgentInput,
   readPrepareCommentAgentInput,
 } from "../src/agent-input";
 import { parseArgs } from "../src/args";
@@ -201,6 +202,63 @@ describe("agent direct read input", () => {
       "PR-1",
       "--unknown",
     ]), agentRuntime))).toBe("usage");
+  });
+
+  test("accepts only the explicit workspace-scoped candidate grammar", async () => {
+    expect(readGitCurrentCandidatesAgentInput(parseArgs([
+      "agent",
+      "context",
+      "--git-current-candidates",
+      "--workspace",
+      "1200",
+      "--all-assignees",
+      "--no-completed",
+      "--field",
+      "900",
+    ]))).toEqual({
+      workspace_gid: "1200",
+      all_assignees: true,
+      completed: false,
+      field_gid: "900",
+    });
+
+    const rejectedCases: Array<{ argv: string[]; code: "usage" | "validation" }> = [
+      { argv: ["agent", "context", "--git-current-candidates"], code: "usage" },
+      { argv: ["agent", "context", "--workspace", "1200"], code: "usage" },
+      {
+        argv: ["agent", "context", "--git-current-candidates", "--git-current", "--workspace", "1200"],
+        code: "usage",
+      },
+      {
+        argv: ["agent", "context", "--git-current-candidates", "--workspace", "1200", "--workspace", "1201"],
+        code: "usage",
+      },
+      {
+        argv: ["agent", "context", "--git-current-candidates", "--git-current-candidates", "--workspace", "1200"],
+        code: "usage",
+      },
+      { argv: ["agent", "context", "--git-current-candidates", "--workspace", "1200", "--input", "-"], code: "usage" },
+      { argv: ["agent", "context", "--git-current-candidates", "--workspace", "1200", "--query", "Acme/widgets"], code: "usage" },
+      { argv: ["agent", "context", "--git-current-candidates", "--workspace", "1200", "--contains"], code: "usage" },
+      { argv: ["agent", "context", "--git-current-candidates", "--workspace", "1200", "--max-results", "21"], code: "usage" },
+      { argv: ["agent", "context", "--git-current-candidates", "--workspace", "1200", "--all-assignees", "sometimes"], code: "validation" },
+      { argv: ["agent", "context", "--git-current-candidates", "--workspace", "not-a-gid"], code: "validation" },
+    ];
+    for (const { argv, code } of rejectedCases) {
+      expect(await errorCode(async () => readGitCurrentCandidatesAgentInput(parseArgs(argv)))).toBe(code);
+    }
+  });
+
+  test("rejects malformed candidate input before reading Git state or starting a request", async () => {
+    const client = createClient("CANDIDATE_VALIDATION_BEFORE_NETWORK_TOKEN");
+    client.basePath = "http://127.0.0.1:1/api/1.0";
+    expect(await errorCode(() => runAgentCommand(client, parseArgs([
+      "agent",
+      "context",
+      "--git-current-candidates",
+      "--workspace",
+      "invalid",
+    ]), agentRuntime))).toBe("validation");
   });
 
   test("status supports direct invocation and the compatible empty stdin object", async () => {
