@@ -85,13 +85,18 @@ Issue ID следует сохранить в заголовке.
 | DEV-002 | P1 | blocked | Custom-field metadata и user resolution | AP-011 | Значения запрашиваются явно; sensitive content не попадает в default projection |
 | DEV-003 | P1 | blocked | `agent context --task` | DEV-001, DEV-002 | Один ограниченный response связывает task, project, section, fields, subtasks и dependencies |
 | DEV-004 | P1 | ready | Нормализовать Git context | — | Remote URL, owner/repo, branch, commit и PR/issue tokens извлекаются без shell injection |
-| DEV-005 | P1 | blocked | `agent context --git-current` | DEV-004, AP-011 | Поиск возвращает bounded candidates и основания совпадения, затем точный task GID |
-| DEV-006 | P1 | blocked | Repository-to-Asana mapping | SEC-004, DEV-004 | Project policy задаёт workspace/project/custom fields; schema валидируется Zod |
+| DEV-005 | P1 | blocked | `agent context --git-current` | DEV-004, AP-011 | Поиск возвращает bounded candidates и основания совпадения; multiple или truncated result не становится target до явного выбора canonical task GID |
+| DEV-006 | P1 | blocked | Repository-to-Asana mapping | SEC-004, DEV-004 | Fixed repository context schema задаёт workspace/project/custom-field mappings, не расширяет host policy и валидируется Zod |
 | DEV-007 | P1 | blocked | Create task/subtask prepare/apply | AP-009, SEC-004 | Preview содержит workspace/project/assignee/fields; apply идемпотентен локально и approval-required |
 | DEV-008 | P1 | blocked | Project/section membership writes | AP-009, DEV-001, SEC-004 | Каждое изменение — отдельная scoped operation с concurrency guards |
 | DEV-009 | P2 | blocked | Dependency writes | AP-009, DEV-003 | Циклы/invalid targets обрабатываются предсказуемо; операция ограничена policy |
 | DEV-010 | P2 | blocked | Attachment metadata | AP-011 | Возвращается только metadata; URL не открываются и файлы не скачиваются автоматически |
 | DEV-011 | P2 | blocked | Batch reads | AP-011 | Общие request/result/byte budgets; partial failures machine-readable |
+| DEV-012 | P1 | blocked | Versioned repository context и exact task aliases | AP-013, DEV-004, DEV-006 | Fixed root, strict bounded duplicate-safe manifest, deterministic digest/revision и fully qualified ASCII aliases; отсутствуют includes/env/scripts/network, fuzzy fallback и hidden precedence |
+| DEV-013 | P1 | blocked | Central task reference resolver | DEV-001, DEV-002, DEV-005, DEV-012 | `gid`/URL/workspace Custom ID/alias dispatch возвращает only exact GID или bounded `not_found`/`ambiguous`/`stale`; existing GID action schemas остаются неизменны |
+| DEV-014 | P1 | blocked | Human alias lifecycle и worktree-local quick context | DEV-004, DEV-012 | Repository aliases shared across linked worktrees; active/recent state isolated per worktree, CAS replace, bounded retention/erase, owner-only atomic local state and no alias mutation in agent mode |
+| DEV-015 | P1 | blocked | Revisioned task-create templates | DEV-001, DEV-002, DEV-007, DEV-012, SEC-004 | Structured static defaults only; complete immutable expansion preview records template revision/digest and target GIDs; edit after prepare cannot alter apply |
+| DEV-016 | P1 | blocked | Alias/template client security evals | DEV-003, DEV-013, DEV-014, DEV-015, INT-014 | Clean Codex/Claude sessions resolve exact alias, stop on ambiguity, reject malicious context, preserve approval and cannot mutate/list local alias history |
 
 ## Release engineering
 
