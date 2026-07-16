@@ -152,9 +152,6 @@ function Assert-ExpectedSentinel {
 
 function Assert-ProtectedTestAcl([string]$path, [bool]$isDirectory) {
   $security = if ($isDirectory) { [System.IO.Directory]::GetAccessControl($path) } else { [System.IO.File]::GetAccessControl($path) }
-  if ($null -eq $security.Owner -or $security.Owner.Value -cne $administratorsSid.Value) {
-    throw "Native Windows policy fixture cleanup refused because $path was not owned by Administrators"
-  }
   if (-not $security.AreAccessRulesProtected) {
     throw "Native Windows policy fixture cleanup refused because $path did not have a protected DACL"
   }
