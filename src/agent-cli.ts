@@ -17,6 +17,7 @@ import {
   readPrepareCommentAgentInput,
   readOperationStatusAgentInput,
   readRepositoryAsanaAgentInput,
+  readRepositoryContextAgentInput,
   readStdinAgentInput,
 } from "./agent-input";
 import { readCurrentGitContext } from "./git-context";
@@ -30,6 +31,10 @@ import {
   FixedFileRepositoryAsanaMappingProvider,
   type RepositoryAsanaMappingProvider,
 } from "./repository-asana-mapping";
+import {
+  FixedFileRepositoryContextManifestProvider,
+  type RepositoryContextManifestProvider,
+} from "./repository-context";
 import {
   AGENT_USER_FIELDS,
   AGENT_TASK_FIELDS,
@@ -359,12 +364,17 @@ export async function runAgentCommand(
   throw new CliError("usage", `Unknown agent action: ${action}`);
 }
 
-/** Executes agent operations that inspect only local durable state and require no SDK client. */
+/** Executes agent operations that inspect only local state and require no SDK client. */
 export async function runLocalAgentCommand(
   args: ParsedArgs,
   runtime: LocalAgentCommandRuntime,
 ): Promise<unknown> {
   if (args.positionals[1] === "context") {
+    if (Object.hasOwn(args.flags, "repository-context")) {
+      readRepositoryContextAgentInput(args);
+      const provider = runtime.repositoryContext ?? new FixedFileRepositoryContextManifestProvider();
+      return agentResult("repository-context", await provider.load());
+    }
     if (Object.hasOwn(args.flags, "repository-asana")) {
       readRepositoryAsanaAgentInput(args);
       const context = await readCurrentGitContext();
@@ -410,6 +420,7 @@ export async function runLocalAgentCommand(
 export interface LocalAgentCommandRuntime {
   operations: OperationRepository;
   repositoryAsanaMapping?: RepositoryAsanaMappingProvider;
+  repositoryContext?: RepositoryContextManifestProvider;
 }
 
 export interface AgentCommandRuntime {

@@ -439,6 +439,47 @@ describe("host scoped write policy", () => {
     expect((await repository.inspect(prepared.id))?.state).toBe("prepared");
     expect(asana.traces.filter((trace) => trace.method === "POST" || trace.method === "PUT")).toEqual([]);
   });
+
+  test("does not treat repository context task aliases as write authority at prepare or apply", async () => {
+    const repository = memoryRepository();
+    const asana = scopedFakeAsana();
+    const hostDeniedOptions = {
+      writePolicy: policyProvider({
+        schema: "asana-cli.scoped-write-policy.v1",
+        scopes: [],
+      }),
+      repositoryContext: {
+        load: async () => ({
+          schema: "asana-cli.repository-context.v1" as const,
+          revision: 7,
+          digest: `sha256:${"a".repeat(64)}`,
+          workspace_gid: "100",
+          projects: [{ alias: "platform", project_gid: "200" }],
+          sections: [],
+          custom_fields: [],
+          tasks: [{
+            project_alias: "platform",
+            alias: "dev-012--repository-context",
+            qualified_alias: "task:platform/dev-012--repository-context",
+            task_gid: "123",
+          }],
+        }),
+      },
+    };
+    const service = new AgentOperationService(asana.client, repository, hostDeniedOptions);
+
+    const prepareError = await caughtCliError(() => service.prepareComment({
+      task_gid: "123",
+      text: "Repository context cannot authorize this comment",
+    }));
+    const prepared = await repository.create(commentInput());
+    const applyError = await caughtCliError(() => service.apply(prepared.id));
+
+    expect(prepareError.code).toBe("policy-denied");
+    expect(applyError.code).toBe("policy-denied");
+    expect((await repository.inspect(prepared.id))?.state).toBe("prepared");
+    expect(asana.traces.filter((trace) => trace.method === "POST" || trace.method === "PUT")).toEqual([]);
+  });
 });
 
 describe("metadata-only operation audit", () => {

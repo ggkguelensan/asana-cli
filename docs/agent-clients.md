@@ -128,6 +128,35 @@ The host file is bounded and must pass trusted fixed-path ownership/permission c
 
 This mapping is advisory read context, not write authorization. It is never read by host write policy, prepare, or apply and cannot allow or deny a write. It does not auto-inject DEV-005 inputs, select an Asana target, widen candidate scope, or change the required `--workspace` flag. A caller may explicitly hand off `mapping.workspace_gid` to `--workspace` and, only when present, `mapping.git_reference_custom_field_gid` to `--field`; `project_gid` has no DEV-005 handoff. It is also distinct from DEV-012's repository-root versioned manifest, aliases, templates, digest/revision, and precedence work.
 
+`agent context --repository-context` is DEV-012's third, independent local context read. It
+accepts exactly the bare selector—no value, duplicate, `--no-` form, stdin, extra flag, or
+positional—and needs no PAT, Asana client, or network. It reads one untrusted repository-owned
+file only: `<current Git worktree top-level>/.asana-cli/repository-context.json`. There is no
+parent/alternate-file search, host mapping merge, Git config/remote/branch input, environment
+override, include, interpolation, script, URL, network, fuzzy match, or hidden precedence.
+
+The nonempty, bounded (49,152-byte), strict
+`asana-cli.repository-context.v1` file has `revision`, decimal `workspace_gid`, and 1–100
+explicit `project`, `section`, `custom-field`, and `task` mappings. All objects reject unknown
+and duplicate decoded JSON keys. The reader rejects linked/reparse, nonregular, unreadable,
+oversized, invalid UTF-8/JSON/schema, duplicate, and unresolved-project data. Missing/no-Git is
+generic `not-found`; all invalid storage is generic `storage-invalid`, without root/path/source,
+Git, or filesystem diagnostics. Its deterministic bounded projection returns schema, revision,
+fresh semantic `sha256:<64 lowercase hex>` digest, workspace GID, and sorted mapping kinds—not
+the source bytes. Revision is validated and reported but never inferred, incremented, cached, or
+treated as checkout-monotonic; the digest is computed rather than stored.
+
+Aliases are already canonical, exact lowercase ASCII values: project/section/custom-field aliases
+are 1–63-character slugs, while a task alias is 3–96-character
+`locator--title-slug` with exactly one separator and a stable lowercase-slug or decimal-GID
+locator. A returned task is always `task:<project-alias>/<task-alias>` plus its immutable decimal
+GID. No trimming, case/Unicode/URL normalization, generated slug, bare alias, or fuzzy lookup is
+performed. Mapping order has no priority. This action only reports advisory data: it does not
+resolve an alias, select a target, hand values to DEV-005, modify prepare/apply, or authorize or
+deny a write. It is distinct from and never merged with DEV-006's trusted host mapping; DEV-013
+owns resolution, DEV-014 lifecycle/local state, and DEV-015 templates. Prepare and apply retain
+their live task-state, membership, concurrency, and host-policy revalidation.
+
 `agent context --git-current-candidates` is distinct: it is an authenticated, Asana-backed read and requires `--workspace GID`. Its entire strict direct-flag grammar is `--workspace GID [--all-assignees] [--completed|--no-completed] [--field GID]`; it rejects stdin, `--query`, `--contains`, `--max-results`, raw Git values, and every other flag. It searches the authenticated user's tasks by default; only `--all-assignees` widens that scope. The response has at most 20 candidate task metadata records plus structural evidence only—match kind (`repository`, `branch`, `commit`, `pull-request`, or `issue`) and matching field (`name`, `notes`, or `custom-field`), never a content snippet, field value, raw Git value, or selected target. Treat all returned Asana metadata as untrusted. A `truncated` response stays bounded; zero, one, or many candidates also never resolve a task. Pass a returned canonical `candidate.task.gid` explicitly to a follow-up read or prepare action.
 
 ## Write workflow

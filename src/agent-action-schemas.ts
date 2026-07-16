@@ -38,6 +38,9 @@ export const gitCurrentInputSchema = z.strictObject({
 export const repositoryAsanaInputSchema = z.strictObject({
   repository_asana: z.literal(true),
 });
+export const repositoryContextInputSchema = z.strictObject({
+  repository_context: z.literal(true),
+});
 
 export const gitCurrentCandidatesInputSchema = z.strictObject({
   workspace_gid: gidSchema,

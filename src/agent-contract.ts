@@ -11,10 +11,12 @@ import {
   prepareCommentInputSchema,
   prepareTaskUpdateInputSchema,
   repositoryAsanaInputSchema,
+  repositoryContextInputSchema,
   searchInputSchema,
   statusInputSchema,
 } from "./agent-action-schemas";
 import { repositoryAsanaContextDataSchema } from "./repository-asana-mapping";
+import { repositoryContextDataSchema } from "./repository-context";
 import { operationStatusProjectionSchema } from "./operations/status-projection";
 import { gitContextSchema } from "./git-context";
 import { gitCurrentCandidatesDataSchema, MAX_GIT_CURRENT_CANDIDATES } from "./git-current-candidates";
@@ -174,6 +176,20 @@ const repositoryAsanaAction = defineAction(
   repositoryAsanaContextDataSchema,
 );
 
+const repositoryContextAction = defineAction(
+  "repository-context",
+  {
+    operation: "repository.context.current",
+    effect: "read",
+    approval: "none",
+    limits: { max_input_bytes: 0, max_result_items: 100 },
+    minimumCliVersion: "0.5.0",
+    command: ["context", "--repository-context"],
+  },
+  repositoryContextInputSchema,
+  repositoryContextDataSchema,
+);
+
 const gitCurrentCandidatesAction = defineAction(
   "git-current-candidates",
   {
@@ -294,6 +310,7 @@ export const AGENT_ACTIONS = {
   [myTasksAction.descriptor.action]: myTasksAction,
   [gitCurrentAction.descriptor.action]: gitCurrentAction,
   [repositoryAsanaAction.descriptor.action]: repositoryAsanaAction,
+  [repositoryContextAction.descriptor.action]: repositoryContextAction,
   [gitCurrentCandidatesAction.descriptor.action]: gitCurrentCandidatesAction,
   [getTaskAction.descriptor.action]: getTaskAction,
   [listCommentsAction.descriptor.action]: listCommentsAction,

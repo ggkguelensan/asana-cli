@@ -89,6 +89,7 @@ const driftFixtures = {
   "operation-status": { valid: { operation_id: operationId }, invalid: { operation_id: "invalid" } },
   "git-current": { valid: { git_current: true }, invalid: { git_current: false } },
   "repository-asana": { valid: { repository_asana: true }, invalid: { repository_asana: false } },
+  "repository-context": { valid: { repository_context: true }, invalid: { repository_context: false } },
   "git-current-candidates": {
     valid: { workspace_gid: "1200", all_assignees: true, completed: false, field_gid: "900" },
     invalid: { workspace_gid: "1200", query: "Acme/widgets" },
@@ -117,6 +118,7 @@ describe("agent capability and schema catalog", () => {
       "my-tasks",
       "git-current",
       "repository-asana",
+      "repository-context",
       "git-current-candidates",
       "get-task",
       "list-comments",
@@ -133,6 +135,7 @@ describe("agent capability and schema catalog", () => {
       "asana-cli agent my-tasks",
       "asana-cli agent context --git-current",
       "asana-cli agent context --repository-asana",
+      "asana-cli agent context --repository-context",
       "asana-cli agent context --git-current-candidates",
       "asana-cli agent get-task",
       "asana-cli agent list-comments",
@@ -168,8 +171,10 @@ describe("agent capability and schema catalog", () => {
       },
     });
     for (const descriptor of AGENT_MANIFEST.actions) {
-      const minimum = ["operation-status", "prepare-task-update", "prepare-comment", "apply"]
-        .includes(descriptor.action)
+      const minimum = descriptor.action === "repository-context"
+        ? "0.5.0"
+        : ["operation-status", "prepare-task-update", "prepare-comment", "apply"]
+          .includes(descriptor.action)
         ? AGENT_OPERATION_APPLY_MINIMUM_CLI_VERSION
         : AGENT_ACTION_MINIMUM_CLI_VERSION;
       expect(agentActionDescriptorSchema.parse(descriptor)).toMatchObject({
@@ -217,6 +222,46 @@ describe("agent capability and schema catalog", () => {
         repository: { owner: "Acme", name: "widgets" },
       },
       mapping: { workspace_gid: "1200", config_path: "PRIVATE_PATH_CANARY" },
+    })).toThrow();
+  });
+
+  test("publishes repository context as a bounded local read and rejects source-location leakage", async () => {
+    expect(AGENT_ACTIONS["repository-context"].descriptor).toEqual(expect.objectContaining({
+      action: "repository-context",
+      operation: "repository.context.current",
+      effect: "read",
+      approval: "none",
+      limits: { max_input_bytes: 0, max_result_items: 100 },
+      minimum_cli_version: "0.5.0",
+      command: ["context", "--repository-context"],
+    }));
+    const publication = singleActionSchema.parse(
+      (await runCli(["agent", "schema", "repository-context"])).value,
+    );
+    const output = z.fromJSONSchema(jsonSchemaBoundary.parse(publication.action.output));
+    const data = {
+      schema: "asana-cli.repository-context.v1",
+      revision: 7,
+      digest: `sha256:${"a".repeat(64)}`,
+      workspace_gid: "100",
+      projects: [{ alias: "platform", project_gid: "200" }],
+      sections: [],
+      custom_fields: [],
+      tasks: [{
+        project_alias: "platform",
+        alias: "dev-012--repository-context",
+        qualified_alias: "task:platform/dev-012--repository-context",
+        task_gid: "500",
+      }],
+    };
+    expect(output.safeParse(secureAgentEnvelope(createAgentActionResult(
+      "repository-context",
+      "read",
+      data,
+    ))).success).toBe(true);
+    expect(() => createAgentActionResult("repository-context", "read", {
+      ...data,
+      manifest_path: "PRIVATE_MANIFEST_PATH_CANARY",
     })).toThrow();
   });
 

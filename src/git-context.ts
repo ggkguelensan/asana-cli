@@ -64,6 +64,7 @@ const GIT_COMMANDS = {
   remote: ["git", "config", "--local", "--no-includes", "--get", "remote.origin.url"],
   branch: ["git", "symbolic-ref", "--quiet", "--short", "HEAD"],
   commit: ["git", "rev-parse", "--verify", "HEAD^{commit}"],
+  root: ["git", "rev-parse", "--show-toplevel"],
 } as const;
 
 type GitCommandName = keyof typeof GIT_COMMANDS;
@@ -218,4 +219,11 @@ export async function readCurrentGitContext(): Promise<GitContext> {
     commit: normalizeCommit(commitOutput),
     tokens: branch === null ? [] : extractTokens(branch),
   });
+}
+
+/** Returns the current worktree root using the fixed, bounded Git command runner. */
+export async function readCurrentRepositoryRoot(): Promise<string> {
+  const root = await runFixedGitCommand("root");
+  if (root === null) throw gitUnavailable();
+  return root;
 }

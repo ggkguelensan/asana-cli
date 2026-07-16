@@ -7,6 +7,7 @@ import {
   readGitCurrentCandidatesAgentInput,
   readPrepareCommentAgentInput,
   readRepositoryAsanaAgentInput,
+  readRepositoryContextAgentInput,
 } from "../src/agent-input";
 import { parseArgs } from "../src/args";
 import { CliError } from "../src/errors";
@@ -275,6 +276,29 @@ describe("agent direct read input", () => {
     ];
     for (const argv of malformedInvocations) {
       expect(await errorCode(async () => readRepositoryAsanaAgentInput(parseArgs(argv)))).toBe("usage");
+    }
+  });
+
+  test("accepts only the bare repository context selector", async () => {
+    expect(readRepositoryContextAgentInput(parseArgs([
+      "agent",
+      "context",
+      "--repository-context",
+    ]))).toEqual({ repository_context: true });
+
+    const malformedInvocations = [
+      ["agent", "context"],
+      ["agent", "context", "--repository-context=value"],
+      ["agent", "context", "--repository-context", "value"],
+      ["agent", "context", "--repository-context", "--repository-context"],
+      ["agent", "context", "--no-repository-context"],
+      ["agent", "context", "--repository-context", "--input", "-"],
+      ["agent", "context", "--repository-context", "--git-current"],
+      ["agent", "context", "--repository-context", "--repository-asana"],
+      ["agent", "context", "--repository-context", "--workspace", "1200"],
+    ];
+    for (const argv of malformedInvocations) {
+      expect(await errorCode(async () => readRepositoryContextAgentInput(parseArgs(argv)))).toBe("usage");
     }
   });
 

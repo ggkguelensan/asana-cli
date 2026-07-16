@@ -72,6 +72,39 @@ read context only: it is not consumed by host write policy, prepare, or apply, c
 or deny a write, and does not automatically inject DEV-005 candidate flags. It is not DEV-012's
 repository-root versioned manifest, alias, template, digest/revision, or precedence mechanism.
 
+## Untrusted repository context
+
+`agent context --repository-context` is the separate DEV-012 local read of exactly
+`<current Git worktree top-level>/.asana-cli/repository-context.json`. The checkout controls
+this file, so it is untrusted advisory data—not a host mapping, credential source, policy
+input, or authority. Root discovery uses only the local worktree; there is no parent/home
+search, alternate filename, Git-config/remote/branch source, argv/stdin/environment override,
+include, merge/overlay precedence, interpolation, script, URL, network access, or fuzzy
+fallback.
+
+The loader accepts one bounded (at most 49,152-byte), nonempty regular file through a
+non-following final open; its `.asana-cli` parent and leaf must not be links/reparse points.
+It rejects invalid UTF-8, malformed JSON, duplicate decoded JSON member names, extra fields,
+invalid schema, and duplicate mapping locators/GIDs. A missing manifest or unavailable Git
+root returns only `not-found`; any unsafe, unreadable, oversized, malformed, or invalid
+storage returns only `storage-invalid`. Public responses omit roots, paths, source bytes,
+Git output, filesystem metadata, and diagnostics.
+
+The strict `asana-cli.repository-context.v1` manifest has a positive bounded `revision`, an
+immutable decimal `workspace_gid`, and 1–100 explicit `project`, `section`, `custom-field`,
+and `task` mappings. It reports a fresh semantic `sha256:<64 lowercase hex>` digest; the digest
+is not stored on disk, source formatting/order does not alter it, and the loader does not cache,
+increment, compare, or infer revisions. Every output task is an exact canonical
+`task:<project>/<alias>` locator with its immutable decimal GID; there is no case folding,
+Unicode/URL normalization, generated alias, bare alias, or resolver in this action.
+
+Repository context cannot select a target, inject DEV-005 candidate inputs, alter candidate
+search, enter an operation record, or reach prepare/apply/host policy. It cannot authorize or
+deny a write. DEV-006 remains the separately trusted host-administered mapping with no merge or
+precedence over this manifest; DEV-013, DEV-014, and DEV-015 respectively own resolution,
+alias lifecycle/state, and templates. All later writes still revalidate live task state,
+membership, concurrency, and host policy at prepare and apply.
+
 ## Recommended deployment
 
 1. Prefer a dedicated least-privileged Asana account whose workspace/project membership is limited to the tasks the agent needs.
