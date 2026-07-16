@@ -237,7 +237,7 @@ scenarios; generated artifacts не имеют drift; release binary содер�
 
 Порядок по зависимостям:
 
-1. `AP-013` и `SEC-004`: finish protocol compatibility/deprecation and fixed host scoped policy before a repository context can publish compatibility bounds or intersect trusted scope.
+1. `SEC-004`: finish fixed host scoped policy before a repository context can intersect trusted scope.
 2. `DEV-004`, then `DEV-005`: produce pure bounded Git context for the current worktree and candidate-only `--git-current`; discovery uses fixed argv, no shell/path input, and never exposes raw checkout/remote/branch state or selects a target on ambiguity.
 3. `DEV-006`, then `DEV-012`: trusted repository-to-Asana mapping and fixed versioned repository context. Repository aliases are exact fully-qualified ASCII locators to immutable GIDs; manifests are bounded, duplicate-safe, digest/revisioned and cannot grant policy permissions.
 4. `DEV-014`: separate repository-shared alias definitions from worktree-local active/recent context. Store only metadata in owner-controlled OS state with sequence/CAS, atomic locking, retention and explicit erasure; reads do not mutate recency.

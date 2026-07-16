@@ -38,7 +38,7 @@ Issue ID следует сохранить в заголовке.
 | AP-010 | P0 | ready | Добавить `agent operation status` и recovery guidance | AP-009 | Пользователь видит безопасный статус и следующий шаг без вывода payload/credential |
 | AP-011 | P1 | done | Заменить `include_content` на field selectors и byte budget | AP-003 | Клиент явно выбирает `notes`, `custom_fields` и лимит; превышение возвращает предсказуемый truncated result |
 | AP-012 | P1 | done | Минимизировать `agent status` и общие projections | — | Email и другие необязательные PII отсутствуют по умолчанию |
-| AP-013 | P1 | ready | Добавить protocol compatibility/deprecation tests | AP-001, AP-003 | Старый совместимый клиент получает корректный ответ; несовместимый — machine-readable upgrade guidance |
+| AP-013 | P1 | done | Добавить protocol compatibility/deprecation tests | AP-001, AP-003 | Старый совместимый клиент получает корректный ответ; несовместимый — machine-readable upgrade guidance |
 
 ## Security и policy
 
