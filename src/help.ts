@@ -30,6 +30,7 @@ AGENT CLIENTS (DIRECT CLI, NO MCP)
   asana-cli agent apply --operation-id UUID
   asana-cli agent operation status UUID      Read local operation metadata
   asana-cli agent context --git-current     Read normalized local Git context
+  asana-cli agent context --repository-asana Read trusted local repository-to-Asana mapping
 
 AGENT WRITES
   Host-scoped policy is required for writes. See docs/agent-clients.md.

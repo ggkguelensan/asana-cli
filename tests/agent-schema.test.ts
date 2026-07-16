@@ -88,6 +88,7 @@ const driftFixtures = {
   status: { valid: {}, invalid: { unexpected: true } },
   "operation-status": { valid: { operation_id: operationId }, invalid: { operation_id: "invalid" } },
   "git-current": { valid: { git_current: true }, invalid: { git_current: false } },
+  "repository-asana": { valid: { repository_asana: true }, invalid: { repository_asana: false } },
   "git-current-candidates": {
     valid: { workspace_gid: "1200", all_assignees: true, completed: false, field_gid: "900" },
     invalid: { workspace_gid: "1200", query: "Acme/widgets" },
@@ -115,6 +116,7 @@ describe("agent capability and schema catalog", () => {
       "operation-status",
       "my-tasks",
       "git-current",
+      "repository-asana",
       "git-current-candidates",
       "get-task",
       "list-comments",
@@ -130,6 +132,7 @@ describe("agent capability and schema catalog", () => {
       "asana-cli agent operation status UUID",
       "asana-cli agent my-tasks",
       "asana-cli agent context --git-current",
+      "asana-cli agent context --repository-asana",
       "asana-cli agent context --git-current-candidates",
       "asana-cli agent get-task",
       "asana-cli agent list-comments",
@@ -185,6 +188,36 @@ describe("agent capability and schema catalog", () => {
       command: ["context", "--git-current"],
     });
     expect(AGENT_MANIFEST.actions).toContainEqual(AGENT_ACTIONS["git-current"].descriptor);
+  });
+
+  test("publishes the trusted repository mapping as a one-result local read with a strict public projection", async () => {
+    expect(AGENT_ACTIONS["repository-asana"].descriptor).toMatchObject({
+      action: "repository-asana",
+      operation: "repository.context.asana",
+      effect: "read",
+      approval: "none",
+      limits: { max_input_bytes: 0, max_result_items: 1 },
+      command: ["context", "--repository-asana"],
+    });
+    const publication = singleActionSchema.parse(
+      (await runCli(["agent", "schema", "repository-asana"])).value,
+    );
+    const output = z.fromJSONSchema(jsonSchemaBoundary.parse(publication.action.output));
+    const result = secureAgentEnvelope(createAgentActionResult("repository-asana", "read", {
+      git: {
+        remote: { host: "github.example" },
+        repository: { owner: "Acme", name: "widgets" },
+      },
+      mapping: { workspace_gid: "1200" },
+    }));
+    expect(output.safeParse(result).success).toBe(true);
+    expect(() => createAgentActionResult("repository-asana", "read", {
+      git: {
+        remote: { host: "github.example" },
+        repository: { owner: "Acme", name: "widgets" },
+      },
+      mapping: { workspace_gid: "1200", config_path: "PRIVATE_PATH_CANARY" },
+    })).toThrow();
   });
 
   test("publishes the bounded authenticated candidate command separately from local Git context", async () => {

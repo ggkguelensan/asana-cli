@@ -16,6 +16,7 @@ import {
   readGitCurrentCandidatesAgentInput,
   readPrepareCommentAgentInput,
   readOperationStatusAgentInput,
+  readRepositoryAsanaAgentInput,
   readStdinAgentInput,
 } from "./agent-input";
 import { readCurrentGitContext } from "./git-context";
@@ -25,6 +26,10 @@ import { AgentOperationService } from "./agent-operations";
 import type { MetadataAuditStore } from "./audit/repository";
 import type { HostScopedWritePolicyProvider } from "./host-write-policy";
 import { type ParsedArgs } from "./args";
+import {
+  FixedFileRepositoryAsanaMappingProvider,
+  type RepositoryAsanaMappingProvider,
+} from "./repository-asana-mapping";
 import {
   AGENT_USER_FIELDS,
   AGENT_TASK_FIELDS,
@@ -357,9 +362,37 @@ export async function runAgentCommand(
 /** Executes agent operations that inspect only local durable state and require no SDK client. */
 export async function runLocalAgentCommand(
   args: ParsedArgs,
-  runtime: AgentCommandRuntime,
+  runtime: LocalAgentCommandRuntime,
 ): Promise<unknown> {
   if (args.positionals[1] === "context") {
+    if (Object.hasOwn(args.flags, "repository-asana")) {
+      readRepositoryAsanaAgentInput(args);
+      const context = await readCurrentGitContext();
+      const provider = runtime.repositoryAsanaMapping ?? new FixedFileRepositoryAsanaMappingProvider();
+      const mapping = await provider.find({
+        remote: context.remote,
+        repository: context.repository,
+      });
+      if (!mapping) {
+        throw new CliError(
+          "not-found",
+          "No trusted repository-to-Asana mapping is configured for this repository",
+        );
+      }
+      return agentResult("repository-asana", {
+        git: {
+          remote: context.remote,
+          repository: context.repository,
+        },
+        mapping: {
+          workspace_gid: mapping.workspace_gid,
+          ...(mapping.project_gid === undefined ? {} : { project_gid: mapping.project_gid }),
+          ...(mapping.git_reference_custom_field_gid === undefined
+            ? {}
+            : { git_reference_custom_field_gid: mapping.git_reference_custom_field_gid }),
+        },
+      });
+    }
     readGitCurrentAgentInput(args);
     return agentResult("git-current", await readCurrentGitContext());
   }
@@ -373,6 +406,11 @@ export async function runLocalAgentCommand(
   return agentResult("operation-status", operationStatusProjection(record));
 }
 
+
+export interface LocalAgentCommandRuntime {
+  operations: OperationRepository;
+  repositoryAsanaMapping?: RepositoryAsanaMappingProvider;
+}
 
 export interface AgentCommandRuntime {
   operations: OperationRepository;

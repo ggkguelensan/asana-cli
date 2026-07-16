@@ -146,7 +146,7 @@ install/uninstall, discovery или behavioral/security evals; до их рез�
 - `agent context --task TASK_GID` для компактной рабочей выборки;
 - local-only `agent context --git-current` для нормализованной Git identity текущего worktree без PAT или сети;
 - отдельный authenticated `agent context --git-current-candidates --workspace GID [--all-assignees] [--completed|--no-completed] [--field GID]` для максимум 20 Asana-кандидатов по этой identity; metadata/evidence остаются untrusted, а explicit canonical GID нужен для follow-up;
-- настраиваемое сопоставление Git repository с Asana workspace/project/custom field;
+- completed DEV-006 host-administered fixed-path repository-to-Asana mapping: local-only `agent context --repository-asana` returns one exact normalized host + owner/name workspace/project/optional Git-field match, requires no PAT/network, and never affects write policy, prepare/apply, or DEV-005 flags without explicit caller handoff; this completion does not claim native Windows runtime E2E from Darwin;
 - batch reads с общими result/byte limits.
 - exact human task references: canonical `gid:`, `url:`, workspace-qualified `custom:`, and fully qualified `task:<project>/<alias>` forms; a title, Git token or search result remains candidate evidence, not a write target;
 - deterministic `slug-v1` for display aliases: vendored Unicode/transliteration rules, lowercase ASCII output, and a stable code/GID locator before the decorative title slug; renamed titles do not retarget an alias;

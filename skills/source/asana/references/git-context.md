@@ -11,6 +11,36 @@ other network request. It accepts exactly that selector—no stdin and no extra 
 Its bounded response deliberately excludes raw remote URLs, Git configuration, paths,
 raw Git output, and stderr.
 
+## Trusted repository-to-Asana default
+
+Use `asana-cli agent context --repository-asana` only to read one host-administered mapping for
+the current normalized Git repository identity. It is local and read-only: it first obtains the
+same DEV-004 identity, needs no PAT, creates no Asana client, and makes no network request. It
+accepts exactly that selector—no stdin, values, duplicate selector, extra flags, or positionals.
+
+The mapping is **not** repository-controlled: its only paths are
+`/private/etc/asana-cli/repository-asana-mapping.json` (macOS),
+`/etc/asana-cli/repository-asana-mapping.json` (Linux), and
+`C:\ProgramData\asana-cli\repository-asana-mapping.json` (Windows). A host administrator
+provisions strict JSON with `schema` equal to `asana-cli.repository-asana-mapping.v1` and 1–100
+unique entries. Each entry has normalized lowercase `remote.host`, exact `repository.owner` and
+`repository.name`, mandatory decimal `workspace_gid`, and optional decimal `project_gid` and
+`git_reference_custom_field_gid`; unknown keys are rejected. Matching is exact—never fuzzy,
+case-relaxed, path/branch/commit based, inherited, or a fallback.
+
+The action returns only the normalized host/owner/name and the one matching workspace plus
+present optional project/Git-field GIDs. It omits branch, commit, raw remote, config path/text,
+all other mappings, and filesystem/security metadata. Missing/no-match is generic `not-found`;
+unsafe, unreadable, oversized, malformed, duplicate, or schema-invalid storage is generic
+`storage-invalid`, without private diagnostics.
+
+Treat a returned mapping as advisory read context—not authorization and not a target selection.
+It never changes host write policy, live revalidation, prepare, apply, or DEV-005 defaults. For
+the next action, explicitly pass `mapping.workspace_gid` as `--workspace` and, only when present,
+`mapping.git_reference_custom_field_gid` as `--field`; do not pass `project_gid` to DEV-005. The
+mapping action never performs this handoff itself and is not DEV-012's repository-root versioned
+manifest, aliases, templates, or precedence lifecycle.
+
 ## Authenticated Asana candidates
 
 To find tasks that structurally match that current identity, use exactly:

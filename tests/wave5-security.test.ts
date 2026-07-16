@@ -406,6 +406,39 @@ describe("host scoped write policy", () => {
     expect((await repository.inspect(operationId))?.state).toBe("prepared");
     expect(asana.traces.filter((trace) => trace.method === "POST" || trace.method === "PUT")).toEqual([]);
   });
+
+  test("does not treat a matching repository mapping as write authorization at prepare or apply", async () => {
+    const repository = memoryRepository();
+    const asana = scopedFakeAsana();
+    const hostDeniedOptions = {
+      writePolicy: policyProvider({
+        schema: "asana-cli.scoped-write-policy.v1",
+        scopes: [],
+      }),
+      repositoryAsanaMapping: {
+        find: async () => ({
+          remote: { host: "github.example" },
+          repository: { owner: "Acme", name: "widgets" },
+          workspace_gid: "100",
+          project_gid: "200",
+          git_reference_custom_field_gid: "300",
+        }),
+      },
+    };
+    const service = new AgentOperationService(asana.client, repository, hostDeniedOptions);
+
+    const prepareError = await caughtCliError(() => service.prepareComment({
+      task_gid: "123",
+      text: "Mapping cannot authorize this comment",
+    }));
+    const prepared = await repository.create(commentInput());
+    const applyError = await caughtCliError(() => service.apply(prepared.id));
+
+    expect(prepareError.code).toBe("policy-denied");
+    expect(applyError.code).toBe("policy-denied");
+    expect((await repository.inspect(prepared.id))?.state).toBe("prepared");
+    expect(asana.traces.filter((trace) => trace.method === "POST" || trace.method === "PUT")).toEqual([]);
+  });
 });
 
 describe("metadata-only operation audit", () => {

@@ -50,6 +50,7 @@ import { rejectDeprecatedLegacyAgentApply } from "./agent-deprecations";
 import { runAgentCommand, runLocalAgentCommand } from "./agent-cli";
 import { FileMetadataAuditStore } from "./audit/file-repository";
 import { FixedFileHostScopedWritePolicyProvider } from "./host-write-policy";
+import { FixedFileRepositoryAsanaMappingProvider } from "./repository-asana-mapping";
 import { FileOperationRepository } from "./operations/file-repository";
 import type { OperationRepository } from "./operations/repository";
 import {
@@ -76,10 +77,12 @@ const cliEnvironmentSchema = z.object({
 function isExactLocalAgentCommand(args: ParsedArgs): boolean {
   if (args.positionals[1] === "context") {
     const flagNames = Object.keys(args.flags);
-    return args.positionals.length === 2 &&
+    return Object.hasOwn(args.flags, "repository-asana") || (
+      args.positionals.length === 2 &&
       flagNames.length === 1 &&
       flagNames[0] === "git-current" &&
-      args.flags["git-current"] === true;
+      args.flags["git-current"] === true
+    );
   }
   return args.positionals[1] === "operation" &&
     args.positionals.length === 4 &&
@@ -474,7 +477,10 @@ export async function runCli(argv: string[]): Promise<CliResult> {
   }
   if (command === "agent" && isExactLocalAgentCommand(args)) {
     return {
-      value: await runLocalAgentCommand(args, { operations: lazyFileOperationRepository() }),
+      value: await runLocalAgentCommand(args, {
+        operations: lazyFileOperationRepository(),
+        repositoryAsanaMapping: new FixedFileRepositoryAsanaMappingProvider(),
+      }),
       compact: true,
       agentMode: true,
     };

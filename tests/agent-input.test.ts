@@ -6,6 +6,7 @@ import {
   readDirectAgentInput,
   readGitCurrentCandidatesAgentInput,
   readPrepareCommentAgentInput,
+  readRepositoryAsanaAgentInput,
 } from "../src/agent-input";
 import { parseArgs } from "../src/args";
 import { CliError } from "../src/errors";
@@ -225,6 +226,11 @@ describe("agent direct read input", () => {
     const rejectedCases: Array<{ argv: string[]; code: "usage" | "validation" }> = [
       { argv: ["agent", "context", "--git-current-candidates"], code: "usage" },
       { argv: ["agent", "context", "--workspace", "1200"], code: "usage" },
+      { argv: ["agent", "context", "--git-current-candidates", "--repository-asana"], code: "usage" },
+      {
+        argv: ["agent", "context", "--git-current-candidates", "--repository-asana", "--workspace", "1200"],
+        code: "usage",
+      },
       {
         argv: ["agent", "context", "--git-current-candidates", "--git-current", "--workspace", "1200"],
         code: "usage",
@@ -246,6 +252,29 @@ describe("agent direct read input", () => {
     ];
     for (const { argv, code } of rejectedCases) {
       expect(await errorCode(async () => readGitCurrentCandidatesAgentInput(parseArgs(argv)))).toBe(code);
+    }
+  });
+
+  test("accepts only the bare trusted repository mapping selector", async () => {
+    expect(readRepositoryAsanaAgentInput(parseArgs([
+      "agent",
+      "context",
+      "--repository-asana",
+    ]))).toEqual({ repository_asana: true });
+
+    const malformedInvocations = [
+      ["agent", "context"],
+      ["agent", "context", "--repository-asana=value"],
+      ["agent", "context", "--repository-asana", "value"],
+      ["agent", "context", "--repository-asana", "--repository-asana"],
+      ["agent", "context", "--no-repository-asana"],
+      ["agent", "context", "--repository-asana", "--input", "-"],
+      ["agent", "context", "--repository-asana", "--git-current"],
+      ["agent", "context", "--repository-asana", "--git-current-candidates", "--workspace", "1200"],
+      ["agent", "context", "--repository-asana", "--workspace", "1200"],
+    ];
+    for (const argv of malformedInvocations) {
+      expect(await errorCode(async () => readRepositoryAsanaAgentInput(parseArgs(argv)))).toBe("usage");
     }
   });
 

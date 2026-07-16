@@ -7,12 +7,17 @@ const MAX_BRANCH_LENGTH = 128;
 const MAX_GIT_TOKENS = 16;
 const MAX_GIT_TOKEN_NUMBER = 2_147_483_647;
 
-const normalizedHostSchema = z.string().regex(
+export const normalizedHostSchema = z.string().regex(
   /^[a-z0-9](?:[a-z0-9.-]{0,251}[a-z0-9])?$/,
 ).refine((value) => !value.includes(".."), "Invalid remote host");
-const repositoryPartSchema = z.string().regex(
+export const repositoryPartSchema = z.string().regex(
   /^[A-Za-z0-9](?:[A-Za-z0-9._-]{0,62}[A-Za-z0-9])?$/,
 );
+export const gitRepositoryIdentitySchema = z.strictObject({
+  remote: z.strictObject({ host: normalizedHostSchema }),
+  repository: z.strictObject({ owner: repositoryPartSchema, name: repositoryPartSchema }),
+});
+export type GitRepositoryIdentity = z.output<typeof gitRepositoryIdentitySchema>;
 const normalizedBranchSchema = z.string()
   .min(1)
   .max(MAX_BRANCH_LENGTH)

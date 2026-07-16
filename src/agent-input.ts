@@ -188,6 +188,23 @@ export function readGitCurrentAgentInput(
   return parseAgentActionInput({ git_current: true }, "git-current");
 }
 
+export function readRepositoryAsanaAgentInput(
+  args: ParsedArgs,
+): AgentActionInput<"repository-asana"> {
+  if (args.positionals.length !== 2 || args.positionals[1] !== "context") {
+    throw new CliError("usage", "Usage: asana-cli agent context --repository-asana");
+  }
+  const flagNames = Object.keys(args.flags);
+  if (
+    flagNames.length !== 1 ||
+    flagNames[0] !== "repository-asana" ||
+    args.flags["repository-asana"] !== true
+  ) {
+    throw new CliError("usage", "Usage: asana-cli agent context --repository-asana");
+  }
+  return parseAgentActionInput({ repository_asana: true }, "repository-asana");
+}
+
 export function readGitCurrentCandidatesAgentInput(
   args: ParsedArgs,
 ): AgentActionInput<"git-current-candidates"> {

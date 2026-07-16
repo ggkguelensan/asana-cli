@@ -35,6 +35,9 @@ export const operationStatusInputSchema = z.strictObject({
 export const gitCurrentInputSchema = z.strictObject({
   git_current: z.literal(true),
 });
+export const repositoryAsanaInputSchema = z.strictObject({
+  repository_asana: z.literal(true),
+});
 
 export const gitCurrentCandidatesInputSchema = z.strictObject({
   workspace_gid: gidSchema,

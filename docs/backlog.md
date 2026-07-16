@@ -86,7 +86,7 @@ Issue ID следует сохранить в заголовке.
 | DEV-003 | P1 | blocked | `agent context --task` | DEV-001, DEV-002 | Один ограниченный response связывает task, project, section, fields, subtasks и dependencies |
 | DEV-004 | P1 | done | Нормализовать Git context | — | Local-only `agent context --git-current` получает ограниченную нормализованную identity без PAT, сети или shell injection |
 | DEV-005 | P1 | done | `agent context --git-current-candidates` | DEV-004, AP-011 | Аутентифицированный workspace-scoped поиск возвращает максимум 20 candidates и структурные основания совпадения; empty/single/multiple/truncated result не становится target до явного выбора canonical task GID |
-| DEV-006 | P1 | blocked | Repository-to-Asana mapping | SEC-004, DEV-004 | Fixed repository context schema задаёт workspace/project/custom-field mappings, не расширяет host policy и валидируется Zod |
+| DEV-006 | P1 | done | Repository-to-Asana mapping | SEC-004, DEV-004 | Host-administered fixed-path strict v1 mapping returns only one exact normalized host + owner/name workspace/project/optional Git-field match through local `agent context --repository-asana`; no PAT/network, no repository-controlled trust, no host-policy/write effect, and generic safe absence/storage errors |
 | DEV-007 | P1 | blocked | Create task/subtask prepare/apply | AP-009, SEC-004 | Preview содержит workspace/project/assignee/fields; apply идемпотентен локально и approval-required |
 | DEV-008 | P1 | blocked | Project/section membership writes | AP-009, DEV-001, SEC-004 | Каждое изменение — отдельная scoped operation с concurrency guards |
 | DEV-009 | P2 | blocked | Dependency writes | AP-009, DEV-003 | Циклы/invalid targets обрабатываются предсказуемо; операция ограничена policy |

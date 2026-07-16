@@ -204,6 +204,9 @@ asana-cli agent status
 # Локальный read-only контекст текущего worktree; принимается только этот flag
 asana-cli agent context --git-current
 
+# Локальное trusted сопоставление текущего worktree с Asana; PAT и сеть не нужны
+asana-cli agent context --repository-asana
+
 # Authenticated поиск кандидатов по текущему Git context; `--workspace` обязателен
 asana-cli agent context --git-current-candidates --workspace 1200123456789 --completed --field 1200999888777
 
@@ -228,6 +231,27 @@ budget для task/comment content (по умолчанию 16 KiB, максим
 `request`, file references и произвольные поля не входят в agent contract.
 
 `agent context --git-current` локально и только для чтения получает нормализованную Git-идентичность текущего worktree; PAT не нужен, запросов к Asana или удалённым сервисам нет. Это не lookup кандидатов в Asana. В ответе есть только ограниченные host, owner/name репозитория, branch (или `null` в detached HEAD), полный commit и ограниченные PR/issue tokens; raw remote URL, Git config, пути, raw Git output и stderr намеренно не возвращаются. Команда принимает ровно `--git-current`: stdin и дополнительные flags не поддерживаются.
+
+`agent context --repository-asana` — отдельный local read-only lookup: сначала получает ту же нормализованную Git identity, затем возвращает только один exact match из host-administered mapping. PAT, Asana client и сеть не используются. Конфигурация никогда не берётся из checkout, remote URL, Git config, argv, stdin или environment; этот action принимает ровно `--repository-asana`. В ответе есть только normalized `git.remote.host`, `git.repository.owner`/`name` и `mapping.workspace_gid`, а при наличии — `project_gid` и `git_reference_custom_field_gid`; branch, commit, raw remote, путь конфигурации, её содержимое, остальные mappings и filesystem/security metadata намеренно не возвращаются.
+
+Host administrator создаёт единственный строгий JSON-файл: macOS — `/private/etc/asana-cli/repository-asana-mapping.json`, Linux — `/etc/asana-cli/repository-asana-mapping.json`, Windows — `C:\ProgramData\asana-cli\repository-asana-mapping.json`. На POSIX CLI принимает только root-owned regular file и все directory ancestors без group/other write и без links; на Windows применяется fixed protected-DACL/non-reparse inspection. Минимальная schema (strict objects, 1–100 unique exact `host` + `owner` + `name` entries, без unknown keys) выглядит так:
+
+```json
+{
+  "schema": "asana-cli.repository-asana-mapping.v1",
+  "mappings": [
+    {
+      "remote": { "host": "github.com" },
+      "repository": { "owner": "acme", "name": "service" },
+      "workspace_gid": "1200123456789"
+    }
+  ]
+}
+```
+
+`host` должен быть нормализованным lowercase host; `owner` и `name` match exactly. `workspace_gid` обязателен; `project_gid` и `git_reference_custom_field_gid` — optional decimal GID и при отсутствии не возвращаются. Missing file или no exact match возвращают generic `not-found`; unsafe, unreadable, oversized, malformed или schema-invalid file — generic `storage-invalid`, без путей, diagnostics или private content.
+
+Mapping — advisory read context, не authorization: он никогда не разрешает и не запрещает write, не меняет host write policy, live task revalidation, prepare/apply либо DEV-005 candidate lookup. Для DEV-005 caller вручную передаёт `mapping.workspace_gid` как `--workspace` и, только если поле присутствует, `mapping.git_reference_custom_field_gid` как `--field`; mapping не подставляет flags автоматически, не выбирает task и не расширяет candidate scope. Это не DEV-012 repository-root versioned manifest, aliases, templates или precedence lifecycle.
 
 Для отдельного, аутентифицированного поиска Asana-кандидатов используйте только `asana-cli agent context --git-current-candidates --workspace GID [--all-assignees] [--completed|--no-completed] [--field GID]`. `--workspace` обязателен; без `--all-assignees` поиск ограничен задачами аутентифицированного пользователя. Это только direct flags: `--input -`, `--query`, `--contains`, `--max-results`, Git values и любые другие flags отвергаются. Ответ содержит не более 20 `candidates` и `meta`: metadata задачи и структурные основания совпадения (`repository`, `branch`, `commit`, `pull-request` или `issue`; только поле `name`, `notes` или `custom-field`), без snippets, значений полей, raw Git данных или выбора target. Любые данные Asana остаются недоверенными. Empty, single, multiple и `truncated` результаты никогда не выбирают задачу: для следующего `get-task` или prepare вызова нужен явный canonical GID из возвращённого `candidate.task.gid`.
 
