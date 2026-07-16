@@ -457,7 +457,7 @@ export async function runCli(argv: string[]): Promise<CliResult> {
   ) {
     return { value: AGENT_MANIFEST, compact, agentMode: true };
   }
-  if (command === "agent" && args.positionals[1] === "operation") {
+  if (command === "agent" && ["operation", "context"].includes(args.positionals[1] ?? "")) {
     return {
       value: await runLocalAgentCommand(args, { operations: lazyFileOperationRepository() }),
       compact: true,

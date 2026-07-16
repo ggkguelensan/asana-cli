@@ -32,6 +32,10 @@ export const operationStatusInputSchema = z.strictObject({
   operation_id: z.uuid(),
 });
 
+export const gitCurrentInputSchema = z.strictObject({
+  git_current: z.literal(true),
+});
+
 export const myTasksInputSchema = z.strictObject({
   workspace_gid: gidSchema.optional(),
   completed: z.enum(["false", "true", "all"]).default("false"),

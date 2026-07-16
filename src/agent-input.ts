@@ -171,6 +171,23 @@ export function readOperationStatusAgentInput(
   return parseAgentActionInput({ operation_id: args.positionals[3] }, "operation-status");
 }
 
+export function readGitCurrentAgentInput(
+  args: ParsedArgs,
+): AgentActionInput<"git-current"> {
+  if (args.positionals.length !== 2 || args.positionals[1] !== "context") {
+    throw new CliError("usage", "Usage: asana-cli agent context --git-current");
+  }
+  const flagNames = Object.keys(args.flags);
+  if (
+    flagNames.length !== 1 ||
+    flagNames[0] !== "git-current" ||
+    args.flags["git-current"] !== true
+  ) {
+    throw new CliError("usage", "Usage: asana-cli agent context --git-current");
+  }
+  return parseAgentActionInput({ git_current: true }, "git-current");
+}
+
 async function readDirectOrStdinInput<Action extends "apply" | "prepare-comment">(
   args: ParsedArgs,
   action: Action,

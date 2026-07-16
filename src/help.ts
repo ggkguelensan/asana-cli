@@ -29,6 +29,7 @@ AGENT CLIENTS (DIRECT CLI, NO MCP)
   asana-cli agent prepare-comment --task GID --text TEXT
   asana-cli agent apply --operation-id UUID
   asana-cli agent operation status UUID      Read local operation metadata
+  asana-cli agent context --git-current     Read normalized local Git context
 
 AGENT WRITES
   Host-scoped policy is required for writes. See docs/agent-clients.md.

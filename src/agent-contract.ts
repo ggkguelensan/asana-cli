@@ -2,6 +2,7 @@ import { z } from "zod";
 import {
   applyOperationInputSchema,
   findGitInputSchema,
+  gitCurrentInputSchema,
   getTaskInputSchema,
   listCommentsInputSchema,
   myTasksInputSchema,
@@ -12,6 +13,7 @@ import {
   statusInputSchema,
 } from "./agent-action-schemas";
 import { operationStatusProjectionSchema } from "./operations/status-projection";
+import { gitContextSchema } from "./git-context";
 import { AGENT_ERROR_SCHEMA_ID, CliError, errorPayloadSchema } from "./errors";
 import { readAgentJsonInput } from "./io";
 import { jsonObjectSchema, zodIssueSummary } from "./schemas";
@@ -141,6 +143,19 @@ const operationStatusAction = defineAction(
   operationStatusInputSchema,
   operationStatusProjectionSchema,
 );
+
+const gitCurrentAction = defineAction(
+  "git-current",
+  {
+    operation: "git.context.current",
+    effect: "read",
+    approval: "none",
+    limits: { max_input_bytes: 0, max_result_items: 16 },
+    command: ["context", "--git-current"],
+  },
+  gitCurrentInputSchema,
+  gitContextSchema,
+);
 const myTasksAction = defineAction(
   "my-tasks",
   {
@@ -247,6 +262,7 @@ export const AGENT_ACTIONS = {
   [statusAction.descriptor.action]: statusAction,
   [operationStatusAction.descriptor.action]: operationStatusAction,
   [myTasksAction.descriptor.action]: myTasksAction,
+  [gitCurrentAction.descriptor.action]: gitCurrentAction,
   [getTaskAction.descriptor.action]: getTaskAction,
   [listCommentsAction.descriptor.action]: listCommentsAction,
   [searchTasksAction.descriptor.action]: searchTasksAction,

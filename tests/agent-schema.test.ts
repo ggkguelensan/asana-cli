@@ -87,6 +87,7 @@ const operationId = "00000000-0000-4000-8000-000000000001";
 const driftFixtures = {
   status: { valid: {}, invalid: { unexpected: true } },
   "operation-status": { valid: { operation_id: operationId }, invalid: { operation_id: "invalid" } },
+  "git-current": { valid: { git_current: true }, invalid: { git_current: false } },
   "my-tasks": { valid: {}, invalid: { limit: 0 } },
   "get-task": { valid: { task_gid: "123" }, invalid: { task_gid: "not-a-gid" } },
   "list-comments": { valid: { task_gid: "123" }, invalid: { max_results: 501 } },
@@ -109,6 +110,7 @@ describe("agent capability and schema catalog", () => {
       "status",
       "operation-status",
       "my-tasks",
+      "git-current",
       "get-task",
       "list-comments",
       "search-tasks",
@@ -122,6 +124,7 @@ describe("agent capability and schema catalog", () => {
       "asana-cli agent status",
       "asana-cli agent operation status UUID",
       "asana-cli agent my-tasks",
+      "asana-cli agent context --git-current",
       "asana-cli agent get-task",
       "asana-cli agent list-comments",
       "asana-cli agent search-tasks",
@@ -164,6 +167,18 @@ describe("agent capability and schema catalog", () => {
         minimum_cli_version: minimum,
       });
     }
+  });
+
+  test("publishes the git-current action as a no-input local read command", () => {
+    expect(AGENT_ACTIONS["git-current"].descriptor).toMatchObject({
+      action: "git-current",
+      operation: "git.context.current",
+      effect: "read",
+      approval: "none",
+      limits: { max_input_bytes: 0, max_result_items: 16 },
+      command: ["context", "--git-current"],
+    });
+    expect(AGENT_MANIFEST.actions).toContainEqual(AGENT_ACTIONS["git-current"].descriptor);
   });
 
   test("publishes the full catalog and one action without authentication", async () => {
