@@ -5,6 +5,7 @@ import type { ScopedWritePolicy } from "../src/write-policy";
 const powerShellPath = "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe";
 const policyDirectoryPath = "C:\\ProgramData\\asana-cli";
 const policyPath = `${policyDirectoryPath}\\scoped-write-policy.json`;
+const powerShellPhaseTimeoutMilliseconds = 15_000;
 
 const acceptedPolicy: ScopedWritePolicy = {
   schema: "asana-cli.scoped-write-policy.v1",
@@ -213,15 +214,34 @@ async function runPowerShell(script: string, phase: string, arguments_: string[]
     throw new Error(`${phase} could not start PowerShell: ${String(error)}`);
   }
 
-  const [stdout, stderr, exitCode] = await Promise.all([
-    new Response(requireOutputStream(process.stdout, "stdout")).text(),
-    new Response(requireOutputStream(process.stderr, "stderr")).text(),
-    process.exited,
-  ]);
-  if (exitCode !== 0 || stderr.length !== 0) {
-    throw new Error(`${phase} failed (exit ${exitCode}): ${(stderr || stdout).trim()}`);
+  const stdout = new Response(requireOutputStream(process.stdout, "stdout")).text();
+  const stderr = new Response(requireOutputStream(process.stderr, "stderr")).text();
+  const [stdoutOutput, stderrOutput, exitCode] = await new Promise<[string, string, number]>((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      clearTimeout(timeout);
+      try {
+        process.kill();
+      } catch {
+        // The process may have exited while the timeout callback was queued.
+      }
+      reject(new Error(`${phase} timed out after ${powerShellPhaseTimeoutMilliseconds}ms`));
+    }, powerShellPhaseTimeoutMilliseconds);
+
+    void Promise.all([stdout, stderr, process.exited]).then(
+      (result) => {
+        clearTimeout(timeout);
+        resolve(result);
+      },
+      (error) => {
+        clearTimeout(timeout);
+        reject(error);
+      },
+    );
+  });
+  if (exitCode !== 0 || stderrOutput.length !== 0) {
+    throw new Error(`${phase} failed (exit ${exitCode}): ${(stderrOutput || stdoutOutput).trim()}`);
   }
-  return stdout;
+  return stdoutOutput;
 }
 
 function parseFixtureSentinel(setupOutput: string): string {
