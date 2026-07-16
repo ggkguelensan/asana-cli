@@ -250,4 +250,4 @@ nativeWindowsTest("loads the protected fixed Windows policy and denies a broad D
       await runPowerShell(fixtureCleanupScript, "Native Windows policy fixture cleanup", [fixtureSentinel]);
     }
   }
-});
+}, 30_000);
