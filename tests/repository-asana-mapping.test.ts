@@ -22,8 +22,8 @@ const directories: string[] = [];
 const operations = new MemoryOperationRepository();
 
 const matchingIdentity = {
-  remote: { host: "github.example" },
-  repository: { owner: "Acme", name: "widgets" },
+  remote: { host: "github.example" as const },
+  repository: { owner: "Acme" as const, name: "widgets" as const },
 };
 
 const mapping: RepositoryAsanaMapping = {
