@@ -33,7 +33,10 @@ type CliResult = Readonly<{ stdout: string; stderr: string; exitCode: number }>;
 
 const lifecycleCases = [
   { client: "generic-agent-skills", scope: "user" },
+  { client: "generic-agent-skills", scope: "project" },
+  { client: "codex", scope: "user" },
   { client: "codex", scope: "project" },
+  { client: "claude-code", scope: "user" },
   { client: "claude-code", scope: "project" },
 ] as const satisfies readonly LifecycleCase[];
 

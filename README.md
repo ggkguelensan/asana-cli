@@ -15,10 +15,13 @@
 типизированные Asana DTO, environment-настройки и результаты credential manager. Универсальная
 поверхность `node-asana` изолирована как `unknown` внутри SDK-адаптера и не распространяет `any`
 по приложению.
-> **Статус release (2026-07-15).** Последний опубликованный GitHub Release — `v0.2.0`.
-> `main` уже объявляет версию `0.4.0`, однако tag `v0.4.0` и опубликованный release отсутствуют.
-> Это код-кандидат на `main`, а не доступный пользователям релиз: не выдавайте его за stable и не
-> устанавливайте как release binary до прохождения [release procedure](docs/implementation-plan.md#maintainer-release-procedure).
+
+> **Статус release (2026-07-20).** Текущий опубликованный GitHub Release —
+> [`v0.4.0`](https://github.com/ggkguelensan/asana-cli/releases/tag/v0.4.0), tag указывает на
+> commit [`81c1b7a`](https://github.com/ggkguelensan/asana-cli/commit/81c1b7afa789527cc52faca8ca300f9f66da63f4).
+> Release workflow успешно собрал семь platform binaries и `SHA256SUMS`. Версия исходников,
+> embedded integration bundle и CLI остаётся `0.4.0`; изменения после tag относятся к следующему
+> циклу и не являются новым release до отдельного version bump и tag.
 
 ## Установка
 
@@ -46,7 +49,8 @@ bun run check
 ```
 
 Результат: `dist/asana-cli` — самостоятельный нативный executable.
-Для состояния release и действий maintainer перед созданием tag см. [release procedure](docs/implementation-plan.md#maintainer-release-procedure).
+Для зафиксированного состояния `v0.4.0` и действий maintainer перед следующим tag см.
+[release record и release procedure](docs/implementation-plan.md#release-record-v040).
 
 ## PAT и `asana-cli auth pat`
 
@@ -355,9 +359,9 @@ bun run check
 
 - [Roadmap](docs/roadmap.md) — целевая архитектура, milestones и критерии выхода.
 - [Backlog](docs/backlog.md) — приоритеты, зависимости и acceptance criteria.
-- [Implementation plan](docs/implementation-plan.md) — порядок ближайших PR для `v0.3` и `v0.4`.
-- [Maintainer release procedure](docs/implementation-plan.md#maintainer-release-procedure) — evidence, tag и проверка публикации `v0.4`.
-- [Swarm execution plan](docs/swarm-plan.md) — роли Terra/Sol/Luna, fanout waves и quality gates.
+- [Implementation plan](docs/implementation-plan.md) — текущее состояние и порядок ближайших PR для `v0.5`.
+- [Maintainer release procedure](docs/implementation-plan.md#maintainer-release-procedure) — version bump, evidence, tag и проверка следующей публикации.
+- [Swarm execution plan](docs/swarm-plan.md) — история выполненных waves, роли Terra/Sol/Luna и quality gates.
 
 ## License
 
