@@ -58,10 +58,10 @@ jobs:
             runner: ubuntu-latest
             verify-package-content: true
             verify-in-musl-container: true
-          - output: asana-cli-windows-x64.exe
-            runner: windows-latest
-            native-build: true
-            verify-package-content: true
+          - target: bun-windows-x64-baseline
+            output: asana-cli-windows-x64.exe
+            runner: ubuntu-latest
+            verify-package-content: false
     steps:
       - uses: actions/checkout@v7
       - uses: oven-sh/setup-bun@v2
@@ -69,10 +69,7 @@ jobs:
           bun-version: 1.3.14
           no-cache: true
       - run: bun install --frozen-lockfile
-      - if: matrix.native-build
-        run: bun run --no-env-file scripts/build.ts "" dist/${{ matrix.output }}
-      - if: '!matrix.native-build'
-        run: bun run --no-env-file scripts/build.ts ${{ matrix.target }} dist/${{ matrix.output }}
+      - run: bun run --no-env-file scripts/build.ts ${{ matrix.target }} dist/${{ matrix.output }}
       - if: matrix.verify-in-musl-container
         run: docker run --rm --volume "$GITHUB_WORKSPACE:/workspace" --workdir /workspace oven/bun:1.3.14-alpine bun run --no-env-file scripts/check-package-content.ts "dist/${{ matrix.output }}"
       - if: matrix.verify-package-content && !matrix.verify-in-musl-container
@@ -82,9 +79,25 @@ jobs:
           name: ${{ matrix.output }}
           path: dist/${{ matrix.output }}
 
+  verify-windows-package-content:
+    needs: build
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+          no-cache: true
+      - run: bun install --frozen-lockfile
+      - uses: actions/download-artifact@v8
+        with:
+          name: asana-cli-windows-x64.exe
+          path: dist
+      - run: bun run check:package-content -- dist/asana-cli-windows-x64.exe
+
   publish:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: build
+    needs: [build, verify-windows-package-content]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
