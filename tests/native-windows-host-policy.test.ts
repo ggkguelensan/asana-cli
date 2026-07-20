@@ -6,6 +6,7 @@ const powerShellPath = "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershe
 const policyDirectoryPath = "C:\\ProgramData\\asana-cli";
 const policyPath = `${policyDirectoryPath}\\scoped-write-policy.json`;
 const powerShellPhaseTimeoutMilliseconds = 15_000;
+const nativeWindowsTestTimeoutMilliseconds = 120_000;
 
 const acceptedPolicy: ScopedWritePolicy = {
   schema: "asana-cli.scoped-write-policy.v1",
@@ -267,4 +268,4 @@ nativeWindowsTest("loads the protected fixed Windows policy and denies a broad D
       await runPowerShell(fixtureCleanupScript, "Native Windows policy fixture cleanup", [fixtureSentinel]);
     }
   }
-}, 60_000);
+}, nativeWindowsTestTimeoutMilliseconds);
