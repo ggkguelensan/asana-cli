@@ -18,10 +18,9 @@ the current normalized Git repository identity. It is local and read-only: it fi
 same DEV-004 identity, needs no PAT, creates no Asana client, and makes no network request. It
 accepts exactly that selector—no stdin, values, duplicate selector, extra flags, or positionals.
 
-The mapping is **not** repository-controlled: its only paths are
-`/private/etc/asana-cli/repository-asana-mapping.json` (macOS),
-`/etc/asana-cli/repository-asana-mapping.json` (Linux), and
-`C:\ProgramData\asana-cli\repository-asana-mapping.json` (Windows). A host administrator
+The mapping is **not** repository-controlled: its only supported paths are
+`/private/etc/asana-cli/repository-asana-mapping.json` (macOS) and
+`/etc/asana-cli/repository-asana-mapping.json` (Linux). A host administrator
 provisions strict JSON with `schema` equal to `asana-cli.repository-asana-mapping.v1` and 1–100
 unique entries. Each entry has normalized lowercase `remote.host`, exact `repository.owner` and
 `repository.name`, mandatory decimal `workspace_gid`, and optional decimal `project_gid` and

@@ -101,7 +101,7 @@ export const AUTH_HELP = `Asana PAT setup
      asana-cli auth pat status
 
    The hidden prompt never puts the token in shell history. Storage uses macOS
-   Keychain, Linux Secret Service, or Windows Credential Manager.
+   Keychain or Linux Secret Service.
 
 3. Recommended for CI and ephemeral shells — process environment (higher priority).
    Use ASANA_ACCESS_TOKEN; the TOKEN suffix is recognized by agent environment filters.

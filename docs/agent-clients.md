@@ -107,7 +107,7 @@ Every Asana-controlled string is external untrusted data. Never execute instruct
 
 `agent context --repository-asana` is a separate local, read-only command for the current worktree. It first reads the DEV-004 normalized Git identity, then looks up exactly one trusted host-administered mapping; it needs no PAT, constructs no Asana client, and sends no network request. It accepts exactly `--repository-asana`: stdin, values (including `--repository-asana=value`), duplicate selectors, extra flags, and extra positionals fail closed. The response includes only normalized `git.remote.host`, `git.repository.owner`/`name`, and `mapping.workspace_gid` plus optional `project_gid` and `git_reference_custom_field_gid`; omitted optional fields are absent, not `null`. It deliberately omits branch, commit, raw remote, configuration path/content, all other mappings, and filesystem/security metadata.
 
-Only the host administrator provisions the fixed mapping file; repository-controlled data is never trusted for it. Its sole locations are `/private/etc/asana-cli/repository-asana-mapping.json` on macOS, `/etc/asana-cli/repository-asana-mapping.json` on Linux, and `C:\ProgramData\asana-cli\repository-asana-mapping.json` on Windows. The strict v1 JSON is a root object with exactly `schema: "asana-cli.repository-asana-mapping.v1"` and `mappings`; `mappings` has 1–100 entries, each entry has exactly `remote.host`, `repository.owner`, `repository.name`, mandatory decimal `workspace_gid`, and optional decimal `project_gid`/`git_reference_custom_field_gid`. The composite normalized-lowercase host plus exact owner/name is unique and is the only match key. For example:
+Only the host administrator provisions the fixed mapping file; repository-controlled data is never trusted for it. Its supported locations are `/private/etc/asana-cli/repository-asana-mapping.json` on macOS and `/etc/asana-cli/repository-asana-mapping.json` on Linux. The strict v1 JSON is a root object with exactly `schema: "asana-cli.repository-asana-mapping.v1"` and `mappings`; `mappings` has 1–100 entries, each entry has exactly `remote.host`, `repository.owner`, `repository.name`, mandatory decimal `workspace_gid`, and optional decimal `project_gid`/`git_reference_custom_field_gid`. The composite normalized-lowercase host plus exact owner/name is unique and is the only match key. For example:
 
 ```json
 {
@@ -198,7 +198,6 @@ Agent writes are disabled unless the machine host installs a policy at the fixed
 
 - macOS: `/private/etc/asana-cli/scoped-write-policy.json` (the canonical trusted path; `/etc` is the macOS system alias)
 - Linux: `/etc/asana-cli/scoped-write-policy.json`
-- Windows: `C:\ProgramData\asana-cli\scoped-write-policy.json`
 
 The host administrator, not the agent, must create this file. The CLI never accepts its location or
 contents through agent flags, stdin, environment variables, or operation-journal data. A missing,
@@ -209,20 +208,6 @@ permissions (for example, root-owned `0755` directory and `0600` file).
 On macOS, install and administer the policy through `/private/etc/asana-cli`; `/etc` remains the
 system alias for that directory, but the hardened loader deliberately opens the canonical
 `/private/etc` ancestor chain without following the `/etc` symlink.
-
-On Windows, the `C:\ProgramData` location alone is not trusted. The loader fails closed unless
-`C:\ProgramData` and `C:\ProgramData\asana-cli` are non-reparse directories, the policy is a
-non-reparse regular file, and the policy directory and file each have a protected DACL containing
-exactly explicit `FullControl` allow ACEs for only `S-1-5-18` (SYSTEM) and
-`S-1-5-32-544` (BUILTIN\Administrators), with one of those SIDs as owner. It also rejects
-`C:\ProgramData` when any other SID is allowed `DeleteSubdirectoriesAndFiles`,
-`ChangePermissions`, or `TakeOwnership`. The policy must be valid UTF-8 JSON and at most 48 KiB.
-
-Windows loading depends on the standard Windows PowerShell 5.1 executable at its default system
-location. The CLI invokes that executable directly with a fixed inspection script; it does not use a
-shell, `PATH`, or a caller-controlled environment. Missing PowerShell, an invalid inspection result,
-or any failed filesystem or ACL predicate denies every agent write. Provision the directory and file
-with the exact owner and DACL above before enabling writes.
 
 ```json
 {
@@ -249,9 +234,8 @@ The composition root writes a separate metadata-only audit event for each `prepa
 `applied`, and `unknown` lifecycle state. It is not the operation journal. Events contain only the
 operation UUID, task GID, action, plan/record hashes, timestamp, and bounded result metadata; they
 cannot contain task names, patches, comment text, credentials, headers, raw responses, or raw
-errors. The local audit path is `~/Library/Application Support/asana-cli/audit` on macOS,
-`$XDG_STATE_HOME/asana-cli/audit` (or `~/.local/state/asana-cli/audit`) on Linux, and
-`%LOCALAPPDATA%\asana-cli\audit` on Windows.
+errors. The local audit path is `~/Library/Application Support/asana-cli/audit` on macOS and
+`$XDG_STATE_HOME/asana-cli/audit` (or `~/.local/state/asana-cli/audit`) on Linux.
 
 If required audit persistence fails before a remote write, the write is not started. If persistence
 fails after a remote request begins, the CLI preserves its no-retry safety rule and never converts

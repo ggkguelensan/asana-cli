@@ -58,10 +58,6 @@ jobs:
             runner: ubuntu-latest
             verify-package-content: true
             verify-in-musl-container: true
-          - target: bun-windows-x64-baseline
-            output: asana-cli-windows-x64.exe
-            runner: ubuntu-latest
-            verify-package-content: false
     steps:
       - uses: actions/checkout@v7
       - uses: oven-sh/setup-bun@v2
@@ -79,25 +75,9 @@ jobs:
           name: ${{ matrix.output }}
           path: dist/${{ matrix.output }}
 
-  verify-windows-package-content:
-    needs: build
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.3.14
-          no-cache: true
-      - run: bun install --frozen-lockfile
-      - uses: actions/download-artifact@v8
-        with:
-          name: asana-cli-windows-x64.exe
-          path: dist
-      - run: bun run check:package-content -- dist/asana-cli-windows-x64.exe
-
   publish:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [build, verify-windows-package-content]
+    needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:

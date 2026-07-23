@@ -17,12 +17,15 @@
     "build:darwin-x64": "bun run --no-env-file scripts/build.ts bun-darwin-x64 dist/asana-cli-darwin-x64",
     "build:linux-x64": "bun run --no-env-file scripts/build.ts bun-linux-x64-baseline dist/asana-cli-linux-x64",
     "build:linux-arm64": "bun run --no-env-file scripts/build.ts bun-linux-arm64 dist/asana-cli-linux-arm64",
-    "build:windows-x64": "bun run --no-env-file scripts/build.ts bun-windows-x64-baseline dist/asana-cli-windows-x64.exe",
+    "build:linux-x64-musl": "bun run --no-env-file scripts/build.ts bun-linux-x64-baseline-musl dist/asana-cli-linux-x64-musl",
+    "build:linux-arm64-musl": "bun run --no-env-file scripts/build.ts bun-linux-arm64-musl dist/asana-cli-linux-arm64-musl",
     "generate:integrations": "bun run --no-env-file scripts/generate-integrations.ts",
     "check:generated-integrations": "bun run --no-env-file scripts/check-generated-integrations.ts",
     "check:package-content": "bun run --no-env-file scripts/check-package-content.ts",
+    "check:project-plan": "bun run --no-env-file scripts/check-project-plan.ts",
+    "check:support-matrix": "bun run --no-env-file scripts/check-support-matrix.ts",
     "release:preflight": "bun run --no-env-file scripts/release-preflight.ts",
-    "check": "bun run typecheck && bun run check:generated-integrations && bun run build && bun run check:package-content && bun test && ./dist/asana-cli --version"
+    "check": "bun run typecheck && bun run check:generated-integrations && bun run check:project-plan && bun run check:support-matrix && bun run build && bun run check:package-content && bun test && ./dist/asana-cli --version"
   },
   "dependencies": {
     "asana": "3.1.12",

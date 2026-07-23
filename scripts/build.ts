@@ -1,9 +1,16 @@
 import { generateIntegrationBundle } from "./generate-integrations";
+import { parseRequestedBuildTarget } from "./check-support-matrix";
 
 await generateIntegrationBundle();
 
-const [rawTarget, requestedOutput] = process.argv.slice(2);
-const target = rawTarget as Bun.Build.CompileTarget | undefined;
+const [rawTarget, requestedOutput, ...unexpectedArguments] = process.argv.slice(2);
+if (unexpectedArguments.length > 0) {
+  throw new Error("Usage: bun run build [supported-target output-path]");
+}
+if ((rawTarget === undefined) !== (requestedOutput === undefined)) {
+  throw new Error("A cross-compile target and output path must be provided together");
+}
+const target = parseRequestedBuildTarget(rawTarget);
 const outfile = requestedOutput ?? "dist/asana-cli";
 
 const result = await Bun.build({

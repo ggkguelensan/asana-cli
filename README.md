@@ -15,16 +15,25 @@
 типизированные Asana DTO, environment-настройки и результаты credential manager. Универсальная
 поверхность `node-asana` изолирована как `unknown` внутри SDK-адаптера и не распространяет `any`
 по приложению.
-> **Статус release (2026-07-15).** Последний опубликованный GitHub Release — `v0.2.0`.
-> `main` уже объявляет версию `0.4.0`, однако tag `v0.4.0` и опубликованный release отсутствуют.
-> Это код-кандидат на `main`, а не доступный пользователям релиз: не выдавайте его за stable и не
-> устанавливайте как release binary до прохождения [release procedure](docs/implementation-plan.md#maintainer-release-procedure).
+
+> **Статус release (2026-07-23).** Текущий опубликованный GitHub Release —
+> [`v0.4.0`](https://github.com/ggkguelensan/asana-cli/releases/tag/v0.4.0), tag указывает на
+> commit [`81c1b7a`](https://github.com/ggkguelensan/asana-cli/commit/81c1b7afa789527cc52faca8ca300f9f66da63f4).
+> Release workflow успешно собрал семь platform binaries и `SHA256SUMS`. Версия исходников,
+> embedded integration bundle и CLI остаётся `0.4.0`; изменения после tag относятся к следующему
+> циклу и не являются новым release до отдельного version bump и tag.
+>
+> **Platform policy после `v0.4.0`:** новые releases поддерживают только native macOS и Linux.
+> Windows x64 artifact в `v0.4.0` остаётся историческим и не означает дальнейшую поддержку.
+> Точная матрица и исполняемый gate описаны в [platform support policy](docs/support-policy.md).
 
 ## Установка
 
 ### Готовый бинарник
 
-Скачайте файл для своей платформы из [GitHub Releases](https://github.com/ggkguelensan/asana-cli/releases), переименуйте его в `asana-cli` и добавьте в `PATH`.
+Скачайте macOS или Linux файл для своей архитектуры из
+[GitHub Releases](https://github.com/ggkguelensan/asana-cli/releases), переименуйте его в
+`asana-cli` и добавьте в `PATH`.
 
 На macOS/Linux:
 
@@ -46,7 +55,8 @@ bun run check
 ```
 
 Результат: `dist/asana-cli` — самостоятельный нативный executable.
-Для состояния release и действий maintainer перед созданием tag см. [release procedure](docs/implementation-plan.md#maintainer-release-procedure).
+Для зафиксированного состояния `v0.4.0` и действий maintainer перед следующим tag см.
+[release record и release procedure](docs/implementation-plan.md#release-record-v040).
 
 ## PAT и `asana-cli auth pat`
 
@@ -63,8 +73,7 @@ asana-cli auth pat delete
 `set` скрывает ввод, проверяет токен через `UsersApi.getUser("me")`, затем сохраняет его в:
 
 - macOS Keychain;
-- Linux Secret Service (`libsecret`, работающий keyring/DBus обязателен);
-- Windows Credential Manager.
+- Linux Secret Service (`libsecret`, работающий keyring/DBus обязателен).
 
 Функция основана на экспериментальном `Bun.secrets`. Если credential manager недоступен, используйте окружение. Для CI рекомендуемое имя — `ASANA_ACCESS_TOKEN`; `ASANA_PAT` поддерживается как alias:
 
@@ -234,7 +243,11 @@ budget для task/comment content (по умолчанию 16 KiB, максим
 
 `agent context --repository-asana` — отдельный local read-only lookup: сначала получает ту же нормализованную Git identity, затем возвращает только один exact match из host-administered mapping. PAT, Asana client и сеть не используются. Конфигурация никогда не берётся из checkout, remote URL, Git config, argv, stdin или environment; этот action принимает ровно `--repository-asana`. В ответе есть только normalized `git.remote.host`, `git.repository.owner`/`name` и `mapping.workspace_gid`, а при наличии — `project_gid` и `git_reference_custom_field_gid`; branch, commit, raw remote, путь конфигурации, её содержимое, остальные mappings и filesystem/security metadata намеренно не возвращаются.
 
-Host administrator создаёт единственный строгий JSON-файл: macOS — `/private/etc/asana-cli/repository-asana-mapping.json`, Linux — `/etc/asana-cli/repository-asana-mapping.json`, Windows — `C:\ProgramData\asana-cli\repository-asana-mapping.json`. На POSIX CLI принимает только root-owned regular file и все directory ancestors без group/other write и без links; на Windows применяется fixed protected-DACL/non-reparse inspection. Минимальная schema (strict objects, 1–100 unique exact `host` + `owner` + `name` entries, без unknown keys) выглядит так:
+Host administrator создаёт единственный строгий JSON-файл: macOS —
+`/private/etc/asana-cli/repository-asana-mapping.json`, Linux —
+`/etc/asana-cli/repository-asana-mapping.json`. CLI принимает только root-owned regular file и
+все directory ancestors без group/other write и без links. Минимальная schema (strict objects,
+1–100 unique exact `host` + `owner` + `name` entries, без unknown keys) выглядит так:
 
 ```json
 {
@@ -354,10 +367,12 @@ bun run check
 ## Планирование
 
 - [Roadmap](docs/roadmap.md) — целевая архитектура, milestones и критерии выхода.
+- [Release plan](docs/release-plan.md) — последовательный scope `v0.5` → `v1.0.0`.
 - [Backlog](docs/backlog.md) — приоритеты, зависимости и acceptance criteria.
-- [Implementation plan](docs/implementation-plan.md) — порядок ближайших PR для `v0.3` и `v0.4`.
-- [Maintainer release procedure](docs/implementation-plan.md#maintainer-release-procedure) — evidence, tag и проверка публикации `v0.4`.
-- [Swarm execution plan](docs/swarm-plan.md) — роли Terra/Sol/Luna, fanout waves и quality gates.
+- [Implementation plan](docs/implementation-plan.md) — текущее состояние и порядок ближайших PR для `v0.5`.
+- [Platform support policy](docs/support-policy.md) — поддерживаемые runtime/artifacts и executable gate.
+- [Maintainer release procedure](docs/implementation-plan.md#maintainer-release-procedure) — version bump, evidence, tag и проверка следующей публикации.
+- [Swarm execution plan](docs/swarm-plan.md) — история выполненных waves, роли Terra/Sol/Luna и quality gates.
 
 ## License
 

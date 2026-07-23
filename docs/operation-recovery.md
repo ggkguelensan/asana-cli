@@ -33,18 +33,17 @@ overwrites, or retries a stale lock. Manual file deletion is not a recovery proc
 
 ## `applying` and `unknown`
 
-The core's `attempt_started_at` records when one local apply attempt enters `applying`. Future wiring
-must retain it in `applied` and `unknown` records so status tooling can report the age of the attempt.
-Age is diagnostic metadata only; it never makes an attempt safe to retry.
+The core's `attempt_started_at` records when one local apply attempt enters `applying` and retains
+it in `applied` and `unknown` records so status tooling can report the age of the attempt. Age is
+diagnostic metadata only; it never makes an attempt safe to retry.
 
-In the future state machine, an `unknown` result will mean the remote write may have succeeded. The
-CLI must not retry it automatically. Future recovery tooling may support read-only reconciliation,
-but if the effect cannot be established, the operation must remain `unknown`; repeating a comment
-may create a duplicate.
+An `unknown` result means the remote write may have succeeded. The CLI never retries it
+automatically. Status provides read-only guidance, but if the effect cannot be established, the
+operation remains `unknown`; repeating a comment may create a duplicate.
 
-Today an ambiguous `agent apply` has no safe automated recovery path even though its operation is
-persisted as `unknown`. Do not retry the command. Inspect Asana separately and obtain explicit human
-direction before considering a separately prepared new write.
+An ambiguous `agent apply` has no safe automated recovery path. Do not retry the command. Inspect
+Asana separately and obtain explicit human direction before considering a separately prepared new
+write.
 
 ## Integrity and platform limits
 
@@ -52,8 +51,6 @@ The core's `plan_hash` and `record_hash` detect accidental changes and ordinary 
 unrestricted process running as the same OS user can change a record and recompute an unkeyed hash,
 so hashes are not a same-user security boundary.
 
-The file repository enforces owner checks and restrictive directory/file modes on POSIX. Windows
-does not implement POSIX mode bits as an equivalent ACL guarantee, and the journal's Windows ACL,
-locking and rename behavior has not yet passed native end-to-end testing. Use a dedicated OS account
-or stronger sandbox for hostile agents; do not treat the current Windows storage path as hardened
-isolation.
+The file repository enforces owner checks and restrictive directory/file modes on supported macOS
+and Linux runtimes. Use a dedicated OS account or stronger sandbox for hostile agents; same-user
+filesystem permissions are not process isolation.

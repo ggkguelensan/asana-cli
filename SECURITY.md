@@ -44,23 +44,21 @@ Prepare now persists immutable payloads in the local operation journal, and appl
 operation UUID. The journal prevents a second local dispatch for `applied`, `applying` and `unknown`
 states. It cannot provide server-side exactly-once delivery: if a request begins and its result is
 ambiguous, the operation becomes `unknown` and must not be retried automatically. A read-only
-operation-status/reconciliation command is not implemented yet. See the
-[operation recovery constraints](docs/operation-recovery.md).
+`agent operation status UUID` command reports a bounded local snapshot but never reconciles or
+retries the remote effect. See the [operation recovery constraints](docs/operation-recovery.md).
 
 ## Trusted repository-to-Asana mapping
 
 `agent context --repository-asana` is a local read-only metadata lookup, not a repository
 configuration feature. Only a host administrator may provision its fixed mapping file:
 `/private/etc/asana-cli/repository-asana-mapping.json` on macOS,
-`/etc/asana-cli/repository-asana-mapping.json` on Linux, or
-`C:\ProgramData\asana-cli\repository-asana-mapping.json` on Windows. The CLI never accepts
+or `/etc/asana-cli/repository-asana-mapping.json` on Linux. The CLI never accepts
 the location or contents from a checkout, Git configuration/remote, argv, stdin, environment,
 operation journal, or network.
 
 The file uses a bounded strict schema and exact normalized-host plus repository owner/name match.
-On POSIX, every fixed-path ancestor and the regular file must be root-owned, not group/other
-writable, and opened without following links. On Windows, the fixed bundled inspector enforces
-the corresponding protected-DACL and non-reparse predicates. Missing/no-match returns only
+Every fixed-path ancestor and the regular file must be root-owned, not group/other writable, and
+opened without following links. Missing/no-match returns only
 `not-found`; unsafe, unreadable, oversized, malformed, duplicate, or schema-invalid data returns
 only `storage-invalid`. Neither result contains a path, configuration text, identity details, or
 filesystem/ACL diagnostics.
@@ -104,6 +102,13 @@ deny a write. DEV-006 remains the separately trusted host-administered mapping w
 precedence over this manifest; DEV-013, DEV-014, and DEV-015 respectively own resolution,
 alias lifecycle/state, and templates. All later writes still revalidate live task state,
 membership, concurrency, and host policy at prepare and apply.
+
+## Supported platforms
+
+New releases after `v0.4.0` support native macOS and Linux only. Native Windows is not part of the
+runtime, CI, release, credential-store, filesystem-policy, or security-evidence boundary. The
+historical Windows artifact in immutable release `v0.4.0` does not extend this support statement.
+See the [platform support policy](docs/support-policy.md).
 
 ## Recommended deployment
 

@@ -1,5 +1,6 @@
 import { CliError } from "./errors";
 import { registerEnvironmentSecrets } from "./security";
+import { assertSupportedRuntimePlatform } from "./platform-support";
 import { z } from "zod";
 
 const runtimeEnvironmentSchema = z.object({
@@ -7,6 +8,7 @@ const runtimeEnvironmentSchema = z.object({
 });
 
 export function hardenRuntime({ registerSecrets = true }: { registerSecrets?: boolean } = {}): void {
+  assertSupportedRuntimePlatform();
   if (registerSecrets) registerEnvironmentSecrets();
   process.env.BUN_CONFIG_VERBOSE_FETCH = "";
   const environment = runtimeEnvironmentSchema.parse(process.env);

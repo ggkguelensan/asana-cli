@@ -54,6 +54,7 @@ describe("stable machine error codes", () => {
     expect(CLI_ERROR_REGISTRY).toMatchObject({
       usage: { default_exit_code: 2 },
       validation: { default_exit_code: 2 },
+      "unsupported-platform": { default_exit_code: 2 },
       "auth-required": { default_exit_code: 3 },
       "auth-failed": { default_exit_code: 3 },
       "policy-denied": { default_exit_code: 2 },

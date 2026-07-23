@@ -3,6 +3,7 @@ import { z } from "zod";
 export const cliErrorCodeSchema = z.enum([
   "usage",
   "validation",
+  "unsupported-platform",
   "auth-required",
   "auth-failed",
   "policy-denied",
@@ -32,6 +33,7 @@ export const CLI_ERROR_REGISTRY = z.record(
 ).parse({
   usage: { default_exit_code: 2, retryable: false },
   validation: { default_exit_code: 2, retryable: false },
+  "unsupported-platform": { default_exit_code: 2, retryable: false },
   "auth-required": { default_exit_code: 3, retryable: false },
   "auth-failed": { default_exit_code: 3, retryable: false },
   "policy-denied": { default_exit_code: 2, retryable: false },

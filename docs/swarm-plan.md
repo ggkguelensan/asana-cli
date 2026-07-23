@@ -1,13 +1,15 @@
 # Swarm execution plan
 
-Актуально на 2026-07-15. Этот документ задаёт способ выполнения
+Актуально на 2026-07-23. Этот документ фиксирует выполненные waves до `v0.4.0` и способ выполнения
 [roadmap](roadmap.md) через planning/review agents `gpt-terra` и implementation agents
 `gpt-sol`/`gpt-luna`.
 
 Связанные документы:
 
 - [Backlog](backlog.md) — стабильные ID задач и зависимости.
-- [Implementation plan](implementation-plan.md) — технический порядок `v0.3`/`v0.4`.
+- [Release plan](release-plan.md) — последовательные scopes и gates до `v1.0.0`.
+- [Implementation plan](implementation-plan.md) — текущий технический порядок `v0.5` и release work.
+- [Platform support](support-policy.md) — обязательная macOS/Linux matrix.
 - [Security model](../SECURITY.md) — обязательные границы всех реализаций.
 
 Имена `gpt-terra`, `gpt-sol` и `gpt-luna` являются обязательными role/model targets для runner,
@@ -111,8 +113,8 @@ milestone, а одну bounded задачу с разрешёнными/запр
 Для каждой задачи создаётся отдельный worktree от одного green `origin/main`:
 
 ```text
-/Users/admin/ticketon/worktrees/asana-cli/sol-<backlog-id>
-/Users/admin/ticketon/worktrees/asana-cli/luna-<backlog-id>
+<worktree-root>/asana-cli/sol-<backlog-id>
+<worktree-root>/asana-cli/luna-<backlog-id>
 ```
 
 Ветки:
@@ -150,7 +152,7 @@ src/agent-contract.ts
 Параллельность достигается созданием новых изолированных модулей и tests, а не одновременным
 редактированием hotspot-файлов с надеждой разрешить конфликт позже.
 
-## Выполненные waves
+## История waves
 
 ### Wave 1 — merged
 
@@ -164,8 +166,6 @@ src/agent-contract.ts
 - Luna: `AP-006`, `AP-007` — isolated operation journal core, atomic CAS и fail-closed storage.
 - Terra re-review: прежние blocker/high findings закрыты.
 - Результат: [PR #3](https://github.com/ggkguelensan/asana-cli/pull/3), merge `37cfe66`.
-
-## Следующие waves
 
 ### Wave 3 — merged
 
@@ -194,7 +194,7 @@ Gate: error responses имеют code, не содержат raw transport/secre
 
 Результат: [PR #5](https://github.com/ggkguelensan/asana-cli/pull/5), merge `92d296a`.
 
-### Wave 4 — последовательный hotspot
+### Wave 4 — merged, последовательный hotspot
 
 Сначала Sol — `AP-005`, `AP-011`, `SEC-006`:
 
@@ -213,7 +213,10 @@ Gate: error responses имеют code, не содержат raw transport/secre
 
 Эти задачи нельзя выполнять параллельно: обе меняют `agent-cli.ts` и canonical action schemas.
 
-### Wave 5 — завершение v0.3
+Результат: canonical read flags/content budgets и durable non-replayable apply включены в
+`v0.4.0`; compatibility stdin `v0.2` сохранена.
+
+### Wave 5 — merged, завершение v0.3
 
 - Luna: `AP-010` — read-only operation status и explicit stale-lock/ambiguous recovery.
 - Sol: `AP-013` — compatibility/deprecation fixtures и migration guidance.
@@ -222,7 +225,10 @@ Gate: error responses имеют code, не содержат raw transport/secre
 Gate `v0.3`: повторный apply локально невозможен; `unknown` не ретраится; stale/expired operations
 имеют безопасный recovery path; v0.2 reads остаются совместимыми.
 
-### v0.4 fanout
+Результат: operation status/recovery, protocol compatibility, scoped write policy и metadata-only
+audit реализованы и покрыты repository tests.
+
+### v0.4 fanout — merged и опубликован
 
 Первый параллельный слой:
 
@@ -237,8 +243,21 @@ Gate `v0.3`: повторный apply локально невозможен; `un
 - Sol: `INT-010`, `INT-013`, Codex adapter.
 - Luna: Claude adapter.
 
-Terra review проверяет deterministic generation, unmanaged-file preservation и реальные client
-discovery/evals до статуса `supported`.
+Результат: canonical skill, registry, deterministic generator, embedded bundle, package-content
+checks, integration manager и три adapters включены в
+[`v0.4.0`](https://github.com/ggkguelensan/asana-cli/releases/tag/v0.4.0). Repository lifecycle
+tests подтверждают deterministic generation и unmanaged-file preservation. Clean-session
+Codex/Claude discovery и behavioral/security eval evidence остаются `INT-011`/`INT-012`/`INT-014`;
+их нельзя считать выполненными только по факту публикации release.
+
+### Текущие приоритеты
+
+- platform baseline: `REL-008`;
+- готовые `v0.5` задачи: `DEV-014`, `DEV-001`, `DEV-002`, `DEV-007`, `DEV-010`, `DEV-011`;
+- qualification debt: `INT-011`, `INT-012`, `INT-014`, `REL-002`;
+- release engineering без незакрытых dependencies: `REL-003`, `REL-004`;
+- полный порядок и зависимости поддерживаются в [implementation plan](implementation-plan.md) и
+  [backlog](backlog.md).
 
 ### v0.5–v1.0 ownership
 
