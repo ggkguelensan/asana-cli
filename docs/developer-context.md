@@ -1,8 +1,9 @@
 # Curated developer context
 
-The authenticated agent contract exposes six narrowly scoped reads for discovering exact
-workspace, project, section, membership, custom-field, and user identifiers. They are intended
-to remove ordinary developer workflows from the generic `api call` and `request` surfaces.
+The authenticated agent contract exposes narrowly scoped reads for discovering exact workspace,
+project, section, membership, custom-field, user, and task identifiers and for loading one compact
+task working set. They are intended to remove ordinary developer workflows from the generic
+`api call` and `request` surfaces.
 
 ## Commands
 
@@ -15,6 +16,13 @@ asana-cli agent list-custom-fields --workspace 1200
 asana-cli agent get-custom-field --field 1203
 asana-cli agent get-custom-field --field 1203 --include-values --max-content-bytes 12000
 asana-cli agent resolve-user --workspace 1200 --user me
+asana-cli agent resolve-task --reference gid:1204
+asana-cli agent resolve-task --reference url:https://app.asana.com/1/1200/task/1204
+asana-cli agent resolve-task --reference custom:1200/DEV-42
+asana-cli agent resolve-task --reference task:platform/dev-013--exact-resolver
+asana-cli agent context --task 1204 --max-related-results 20
+asana-cli agent context --task 1204 \
+  --include notes --include field-values --max-content-bytes 12000
 ```
 
 Every collection requires an explicit workspace or project scope. The default page size is 50,
@@ -40,6 +48,40 @@ untrusted.
 address. The response contains only the supplied workspace GID and the resolved user's GID and
 optional name. It never returns email, photo, workspace membership, or a user directory.
 
+## Exact task references
+
+`resolve-task` accepts exactly one prefixed reference:
+
+- `gid:<decimal-gid>`;
+- `url:https://app.asana.com/0/<project-or-0>/<task>[/f]`;
+- `url:https://app.asana.com/1/<workspace>/[project/<project>/]task/<task>`;
+- `custom:<workspace-gid>/<alphanumeric-prefix>-<positive-number>`;
+- fully qualified repository alias `task:<project>/<stable-locator>--<title-slug>`.
+
+There is no whitespace trimming, case folding, URL decoding, alternate host/scheme, query or
+fragment, bare GID/URL/Custom ID, title search, Git-token inference, or fuzzy fallback. A
+repository alias is read only from the fixed-root untrusted repository manifest; human local
+alias/history state remains outside agent mode. The resolver revalidates the live task workspace
+and project relationship. Success contains one GID. Missing, duplicate exact mappings, or changed
+live scope return stable `not-found`, `ambiguous`, or `stale` errors without selecting a candidate.
+The caller must explicitly pass the returned GID to a later GID-only read or prepare action.
+
+## Compact task context
+
+`agent context --task GID` fetches one task and bounded subtasks, dependencies, dependents, and
+attachment metadata. `--max-related-results` defaults to 20 and cannot exceed 100 for each of the
+four related sources. Each source reports count, `has_more`, and `truncated`.
+If Asana returns `402` for a premium-only relation endpoint, only that source is marked
+`premium-required`; the response is `partial` and `truncated`. Authentication, network, and
+invalid-response failures still fail the complete action.
+
+The default task projection contains structural metadata, workspace, project/section
+memberships, and custom-field metadata. Notes require `--include notes`; field display values
+require `--include field-values`. All selected and metadata names share one UTF-8 budget
+(16 KiB default, 64 KiB maximum). Attachments expose only GID, bounded name, subtype, creation
+time, and optional size. Download, permanent, and view URLs are not requested or returned, and
+the CLI never opens or downloads an attachment.
+
 ## Authority and trust boundary
 
 These actions are reads, not authorization:
@@ -58,3 +100,13 @@ The endpoint semantics follow Asana's official API references for
 [workspace custom fields](https://developers.asana.com/reference/getcustomfieldsforworkspace),
 [one custom field](https://developers.asana.com/reference/getcustomfield), and
 [workspace-scoped user lookup](https://developers.asana.com/reference/getuserforworkspace).
+Task-context semantics follow the official endpoints for
+[one task](https://developers.asana.com/reference/gettask),
+[subtasks](https://developers.asana.com/reference/getsubtasksfortask),
+[dependencies](https://developers.asana.com/reference/getdependenciesfortask),
+[dependents](https://developers.asana.com/reference/getdependentsfortask), and
+[attachment metadata](https://developers.asana.com/reference/getattachmentsforobject).
+Workspace-qualified Custom ID resolution uses the official
+[Custom ID endpoint](https://developers.asana.com/reference/gettaskforcustomid); accepted v0/v1
+task URL forms follow Asana's documented
+[rich-text task links](https://developers.asana.com/docs/rich-text).

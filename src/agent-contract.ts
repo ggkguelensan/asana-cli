@@ -17,9 +17,11 @@ import {
   prepareTaskUpdateInputSchema,
   repositoryAsanaInputSchema,
   repositoryContextInputSchema,
+  resolveTaskInputSchema,
   resolveUserInputSchema,
   searchInputSchema,
   statusInputSchema,
+  taskContextInputSchema,
 } from "./agent-action-schemas";
 import { repositoryAsanaContextDataSchema } from "./repository-asana-mapping";
 import { repositoryContextDataSchema } from "./repository-context";
@@ -36,6 +38,8 @@ import {
   resolvedUserContextDataSchema,
   sectionListContextDataSchema,
 } from "./developer-context";
+import { taskContextDataSchema } from "./task-context";
+import { resolvedTaskReferenceDataSchema } from "./task-reference";
 import { AGENT_ERROR_SCHEMA_ID, CliError, errorPayloadSchema } from "./errors";
 import { readAgentJsonInput } from "./io";
 import { jsonObjectSchema, zodIssueSummary } from "./schemas";
@@ -311,6 +315,37 @@ const resolveUserAction = defineAction(
   resolvedUserContextDataSchema,
 );
 
+const taskContextAction = defineAction(
+  "task-context",
+  {
+    operation: "task.context.get",
+    effect: "read",
+    approval: "none",
+    limits: {
+      max_input_bytes: 0,
+      max_result_items: 400,
+      max_content_bytes: 65_536,
+    },
+    minimumCliVersion: "0.5.0",
+    command: ["context", "--task", "GID"],
+  },
+  taskContextInputSchema,
+  taskContextDataSchema,
+);
+
+const resolveTaskAction = defineAction(
+  "resolve-task",
+  {
+    operation: "task.reference.resolve",
+    effect: "read",
+    approval: "none",
+    limits: { max_input_bytes: MAX_AGENT_INPUT_BYTES, max_result_items: 1 },
+    minimumCliVersion: "0.5.0",
+  },
+  resolveTaskInputSchema,
+  resolvedTaskReferenceDataSchema,
+);
+
 const getTaskAction = defineAction(
   "get-task",
   {
@@ -412,6 +447,8 @@ export const AGENT_ACTIONS = {
   [listCustomFieldsAction.descriptor.action]: listCustomFieldsAction,
   [getCustomFieldAction.descriptor.action]: getCustomFieldAction,
   [resolveUserAction.descriptor.action]: resolveUserAction,
+  [taskContextAction.descriptor.action]: taskContextAction,
+  [resolveTaskAction.descriptor.action]: resolveTaskAction,
   [gitCurrentAction.descriptor.action]: gitCurrentAction,
   [repositoryAsanaAction.descriptor.action]: repositoryAsanaAction,
   [repositoryContextAction.descriptor.action]: repositoryContextAction,

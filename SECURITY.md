@@ -63,6 +63,18 @@ target selection. All Asana-controlled names and values remain `external-untrust
 write retains its independent live owner, membership, concurrency, and host-policy checks. See
 [the developer context contract](docs/developer-context.md).
 
+`resolve-task` accepts only canonical prefixed forms and performs no trimming, fuzzy lookup,
+title search, Git inference, or implicit selection. Repository aliases are read from the one
+untrusted fixed-root manifest, then revalidated against the manifest workspace/project and live
+task membership. The resolver returns one GID or a bounded `not-found`, `ambiguous`, or `stale`
+error; it never changes existing GID-only read or write schemas and never grants write authority.
+
+`agent context --task` uses fixed task, subtask, dependency, dependent, and attachment endpoints.
+Every related list has a 100-item hard cap. It returns attachment metadata only: download,
+permanent, and view URLs are neither requested nor projected, and no attachment is opened.
+Task notes and custom-field display values require explicit selectors and share the content
+budget. All returned names, notes, values, and attachment metadata remain external untrusted data.
+
 ## Trusted repository-to-Asana mapping
 
 `agent context --repository-asana` is a local read-only metadata lookup, not a repository
@@ -141,8 +153,9 @@ ABA reuse. This protects against other OS users under ordinary POSIX permissions
 unrestricted process running as the same user.
 
 Human aliases remain advisory locators. They do not enter agent mode, merge with the untrusted
-repository manifest, select a target, or authorize a write. Later resolution must still produce
-one canonical GID, and prepare/apply must revalidate live state and host policy.
+repository manifest, select a target, or authorize a write. Agent `resolve-task` reads only the
+repository manifest; prepare/apply still require an explicitly supplied canonical GID and
+revalidate live state and host policy.
 
 ## Supported platforms
 

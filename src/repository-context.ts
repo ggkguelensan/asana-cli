@@ -25,16 +25,10 @@ export const taskAliasSchema = z.string()
     message: "Invalid repository context task alias",
   });
 
-export const qualifiedTaskAliasSchema = z.string().superRefine((value, context) => {
-  const match = /^task:([^/]+)\/(.+)$/.exec(value);
-  if (
-    !match ||
-    !projectAliasSchema.safeParse(match[1]).success ||
-    !taskAliasSchema.safeParse(match[2]).success
-  ) {
-    context.addIssue({ code: "custom", message: "Invalid qualified task alias" });
-  }
-});
+export const qualifiedTaskAliasSchema = z.string().regex(
+  /^task:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\/(?=.{3,96}$)(?:\d{1,64}|[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)--[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/,
+  "Invalid qualified task alias",
+);
 
 const projectMappingSchema = z.strictObject({
   kind: z.literal("project"),

@@ -248,6 +248,8 @@ asana-cli agent list-project-memberships --project 1200987654321
 asana-cli agent list-custom-fields --workspace 1200123456789
 asana-cli agent get-custom-field --field 1200111222333
 asana-cli agent resolve-user --workspace 1200123456789 --user me
+asana-cli agent resolve-task --reference task:platform/dev-013--exact-resolver
+asana-cli agent context --task 1200333444555 --max-related-results 20
 
 asana-cli agent get-task --task 1200123456789
 
@@ -272,6 +274,15 @@ pagination и имеют hard cap 200 результатов. Custom-field value
 `get-custom-field --include-values` и ограничиваются общим byte budget; `resolve-user` никогда не
 возвращает email. Все имена и значения из Asana остаются `external-untrusted`, а membership или
 найденный GID не дают write authorization. Полный контракт: [developer context](docs/developer-context.md).
+
+`resolve-task` принимает только canonical `gid:`, exact Asana `url:`, workspace-qualified
+`custom:<workspace>/<ID>` или repository `task:<project>/<alias>` reference. Он не ищет по title,
+Git token или содержимому, revalidates live workspace/project state и возвращает ровно один GID
+либо стабильный `not-found`/`ambiguous`/`stale`. Existing GID schemas не расширяются: resolved GID
+передаётся в следующий action явно. `agent context --task` возвращает compact task structure,
+до 100 subtasks/dependencies/dependents/attachment metadata на источник и никогда не возвращает
+attachment URLs или скачивает файлы. Notes и custom-field values требуют explicit `--include` и
+делят один 64 KiB maximum UTF-8 budget.
 
 `agent context --git-current` локально и только для чтения получает нормализованную Git-идентичность текущего worktree; PAT не нужен, запросов к Asana или удалённым сервисам нет. Это не lookup кандидатов в Asana. В ответе есть только ограниченные host, owner/name репозитория, branch (или `null` в detached HEAD), полный commit и ограниченные PR/issue tokens; raw remote URL, Git config, пути, raw Git output и stderr намеренно не возвращаются. Команда принимает ровно `--git-current`: stdin и дополнительные flags не поддерживаются.
 
@@ -322,7 +333,7 @@ The manifest is repository-controlled **untrusted advisory context**, not host c
 
 Project, section, and custom-field aliases are canonical 1–63-character lowercase ASCII slugs (`a-z`, `0-9`, interior hyphens only). A task alias is a 3–96-character canonical `locator--title-slug`: `locator` is a lowercase ASCII code slug or decimal GID-shaped stable locator; `title-slug` uses the same slug grammar; there is exactly one literal `--`. Thus the response exposes each task as the immutable-GID locator `task:<project-alias>/<task-alias>`, for example `task:platform/dev-012--repository-context`. It never trims, folds case, normalizes/transliterates Unicode, decodes URLs/percent escapes, generates a slug, or accepts a bare/fuzzy alias. Project aliases and GIDs, section scopes and GIDs, custom-field aliases and GIDs, and fully qualified task locators are unique; a task and section must reference a declared project. Mapping order has no precedence, and the same task GID may intentionally occur under distinct qualified task locators.
 
-The bounded deterministic response contains only `schema`, `revision`, `digest`, `workspace_gid`, and sorted `projects`, `sections`, `custom_fields`, and `tasks` projections. DEV-012 only reads and reports this data: it does not resolve an alias, choose a task, hand values to DEV-005, search candidates, modify a prepare/apply input, or authorize/deny a write. DEV-006 remains the distinct trusted **host-administered** remote-keyed mapping and neither source overrides, merges with, or has priority over the other. DEV-013 owns later task-reference resolution; DEV-014 owns alias lifecycle/worktree-local state; DEV-015 owns templates. Existing prepare/apply checks continue to revalidate live task state, membership, concurrency, and host policy.
+The bounded deterministic response contains only `schema`, `revision`, `digest`, `workspace_gid`, and sorted `projects`, `sections`, `custom_fields`, and `tasks` projections. DEV-012 only reads and reports this data: it does not resolve an alias, choose a task, hand values to DEV-005, search candidates, modify a prepare/apply input, or authorize/deny a write. DEV-006 remains the distinct trusted **host-administered** remote-keyed mapping and neither source overrides, merges with, or has priority over the other. DEV-013 provides the separate live exact task-reference resolver; DEV-014 owns human alias lifecycle/worktree-local state; DEV-015 owns templates. Existing prepare/apply checks continue to revalidate live task state, membership, concurrency, and host policy.
 
 Для отдельного, аутентифицированного поиска Asana-кандидатов используйте только `asana-cli agent context --git-current-candidates --workspace GID [--all-assignees] [--completed|--no-completed] [--field GID]`. `--workspace` обязателен; без `--all-assignees` поиск ограничен задачами аутентифицированного пользователя. Это только direct flags: `--input -`, `--query`, `--contains`, `--max-results`, Git values и любые другие flags отвергаются. Ответ содержит не более 20 `candidates` и `meta`: metadata задачи и структурные основания совпадения (`repository`, `branch`, `commit`, `pull-request` или `issue`; только поле `name`, `notes` или `custom-field`), без snippets, значений полей, raw Git данных или выбора target. Любые данные Asana остаются недоверенными. Empty, single, multiple и `truncated` результаты никогда не выбирают задачу: для следующего `get-task` или prepare вызова нужен явный canonical GID из возвращённого `candidate.task.gid`.
 

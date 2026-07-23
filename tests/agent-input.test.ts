@@ -8,6 +8,7 @@ import {
   readPrepareCommentAgentInput,
   readRepositoryAsanaAgentInput,
   readRepositoryContextAgentInput,
+  readTaskContextAgentInput,
 } from "../src/agent-input";
 import { parseArgs } from "../src/args";
 import { CliError } from "../src/errors";
@@ -216,6 +217,12 @@ describe("agent direct read input", () => {
       workspace_gid: "1200",
       user: "developer@example.com",
     });
+    expect(await readDirectAgentInput(parseArgs([
+      "agent", "resolve-task",
+      "--reference", "task:platform/dev-013--exact-resolver",
+    ]), "resolve-task")).toEqual({
+      reference: "task:platform/dev-013--exact-resolver",
+    });
 
     const stdin = await withAgentStdin({
       project_gid: "2200",
@@ -231,6 +238,40 @@ describe("agent direct read input", () => {
       paginate: true,
       max_results: 40,
     });
+  });
+
+  test("accepts only the bounded task-context grammar", () => {
+    expect(readTaskContextAgentInput(parseArgs([
+      "agent",
+      "context",
+      "--task",
+      "1201",
+      "--include",
+      "notes",
+      "--include",
+      "field-values",
+      "--max-related-results",
+      "12",
+      "--max-content-bytes",
+      "4096",
+    ]))).toEqual({
+      task_gid: "1201",
+      include: ["notes", "field-values"],
+      max_related_results: 12,
+      max_content_bytes: 4096,
+    });
+
+    const rejected = [
+      ["agent", "context", "--task"],
+      ["agent", "context", "--task", "not-a-gid"],
+      ["agent", "context", "--task", "1201", "--include", "unknown"],
+      ["agent", "context", "--task", "1201", "--max-related-results", "101"],
+      ["agent", "context", "--task", "1201", "--workspace", "1200"],
+      ["agent", "context", "--task", "1201", "--git-current-candidates"],
+    ];
+    for (const argv of rejected) {
+      expect(() => readTaskContextAgentInput(parseArgs(argv))).toThrow();
+    }
   });
 
   test("fails closed on unknown, repeated scalar, mixed, and positional input", async () => {

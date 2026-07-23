@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { qualifiedTaskAliasSchema } from "./repository-context";
 import { gidSchema } from "./schemas";
 
 const resultLimitSchema = (maximum: number, fallback: number) =>
@@ -115,6 +116,41 @@ const userIdentifierSchema = z.union([
 export const resolveUserInputSchema = z.strictObject({
   workspace_gid: gidSchema,
   user: userIdentifierSchema,
+});
+
+export const taskContextIncludeSchema = z.enum([
+  "notes",
+  "field-values",
+]);
+
+export type TaskContextInclude = z.output<typeof taskContextIncludeSchema>;
+export const TASK_CONTEXT_INCLUDES = taskContextIncludeSchema.options;
+
+export const taskContextInputSchema = z.strictObject({
+  task_gid: gidSchema,
+  include: z.array(taskContextIncludeSchema)
+    .max(TASK_CONTEXT_INCLUDES.length)
+    .default([]),
+  max_related_results: resultLimitSchema(100, 20),
+  max_content_bytes: contentBudgetSchema,
+});
+
+export const canonicalTaskReferenceSchema = z.union([
+  z.string().regex(/^gid:\d{1,64}$/),
+  z.string().regex(
+    /^url:https:\/\/app\.asana\.com\/0\/(?:0|\d{1,64})\/\d{1,64}(?:\/f)?$/,
+  ),
+  z.string().regex(
+    /^url:https:\/\/app\.asana\.com\/1\/\d{1,64}\/(?:project\/\d{1,64}\/)?task\/\d{1,64}$/,
+  ),
+  z.string().regex(
+    /^custom:\d{1,64}\/[A-Za-z0-9]{1,20}-[1-9][0-9]{0,63}$/,
+  ),
+  qualifiedTaskAliasSchema,
+]);
+
+export const resolveTaskInputSchema = z.strictObject({
+  reference: canonicalTaskReferenceSchema,
 });
 
 export const selectedGetTaskInputSchema = z.strictObject({

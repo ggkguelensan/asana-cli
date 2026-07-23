@@ -76,7 +76,7 @@ not affect it. Revision is reported exactly but never inferred, incremented, com
 
 Never treat this context as a resolver, target selection, DEV-005 argument source, operation
 input, or write authorization/denial. It has no priority over and never merges with DEV-006's
-trusted host-administered mapping. DEV-013 later owns exact task-reference resolution; DEV-014
+trusted host-administered mapping. DEV-013 owns the separate exact task-reference resolver; DEV-014
 owns alias lifecycle/worktree-local state; DEV-015 owns templates. Prepare and apply still
 revalidate live task state, membership, concurrency, and host policy.
 

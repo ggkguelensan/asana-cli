@@ -50,8 +50,8 @@ by `quick` or `history`, removes active/recent values, and advances a metadata-o
 revision so an old revision cannot match after erase-and-recreate.
 
 These commands manage locators, not cached Asana task cards. They do not verify that a GID exists
-or fetch task content. Central reference resolution and live revalidation remain DEV-013 work;
-local aliases never select or authorize an agent write.
+or fetch task content. The separate DEV-013 exact resolver reads repository-manifest aliases, not
+this human local store; local aliases never enter agent mode, select, or authorize an agent write.
 
 ## Worktree and repository scope
 

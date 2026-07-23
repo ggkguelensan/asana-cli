@@ -155,7 +155,8 @@ Gate выхода:
 План:
 
 - curated reads для projects, sections, memberships, custom fields и user resolution;
-- task context с subtasks, dependencies и attachment metadata без автоматического скачивания;
+- implementation candidate: bounded task context с subtasks, dependencies, dependents и
+  attachment metadata без URL projection или автоматического скачивания;
 - создание task/subtask через prepare/apply;
 - добавление/удаление задачи из project, перенос между sections и управление dependencies;
 - `agent context --task TASK_GID` для компактной рабочей выборки;
@@ -163,14 +164,19 @@ Gate выхода:
 - отдельный authenticated `agent context --git-current-candidates --workspace GID [--all-assignees] [--completed|--no-completed] [--field GID]` для максимум 20 Asana-кандидатов по этой identity; metadata/evidence остаются untrusted, а explicit canonical GID нужен для follow-up;
 - completed DEV-006 host-administered fixed-path repository-to-Asana mapping: local-only `agent context --repository-asana` returns one exact normalized host + owner/name workspace/project/optional Git-field match, requires no PAT/network, and never affects write policy, prepare/apply, or DEV-005 flags without explicit caller handoff;
 - batch reads с общими result/byte limits;
-- exact human task references: canonical `gid:`, `url:`, workspace-qualified `custom:`, and fully qualified `task:<project>/<alias>` forms; a title, Git token or search result remains candidate evidence, not a write target;
+- implementation candidate: exact task references use canonical `gid:`, v0/v1 `url:`,
+  workspace-qualified `custom:`, and fully qualified `task:<project>/<alias>` forms; a title,
+  Git token or search result remains candidate evidence, not a write target;
 - deterministic `slug-v1` for display aliases: vendored Unicode/transliteration rules, lowercase ASCII output, and a stable code/GID locator before the decorative title slug; renamed titles do not retarget an alias;
 - completed DEV-012 repository context: local-only `agent context --repository-context` reads exactly the untrusted fixed-root `.asana-cli/repository-context.json` v1 manifest (bounded strict project/section/custom-field/task mappings, revision and fresh semantic digest) without a PAT or network. It exposes exact canonical `task:<project>/<alias>` immutable-GID aliases but never resolves, selects, injects, authorizes, merges, or establishes precedence; no includes, interpolation, scripts, URLs, repository-defined authorization, or cache exist. DEV-013 owns resolution, DEV-014 lifecycle/state, and DEV-015 templates;
 - human-only alias lifecycle (`set`, explicit CAS `replace`, `remove`, `activate`, bounded
   history/clear) and local `quick` locator; aliases are shared by linked worktrees, while
   active/recent selection is worktree-local. This stores no task card/content and performs no
-  network read; task context and live resolution remain DEV-003/DEV-013;
-- bounded `agent context --alias` и `agent context --git-current-candidates` resolution: zero/single/multiple/truncated matches остаются candidates и никогда не selected implicitly;
+  network read; authenticated task context and repository-alias resolution remain separate
+  DEV-003/DEV-013 actions and never inspect this human state;
+- exact `agent resolve-task --reference` returns one live GID or bounded
+  `not-found`/`ambiguous`/`stale`; `agent context --git-current-candidates` remains a separate
+  candidate surface and never selects implicitly;
 - owner-controlled local context state outside the checkout: versioned Zod snapshots, opaque repository/worktree identities, atomic locked updates, retention/erasure, restrictive permissions and no task/comment content, credentials, raw paths, remotes or branch names;
 - live revalidation before prepare/apply: aliases/templates resolve to immutable GIDs, but host policy, membership, owner and concurrency guards remain authoritative;
 - no persistent task cache in v0.5; cache/invalidation and explicitly stale offline reads remain LTR-003 work.

@@ -119,6 +119,14 @@ const driftFixtures = {
     valid: { workspace_gid: "1200", user: "me" },
     invalid: { workspace_gid: "1200", user: "not-an-identifier" },
   },
+  "task-context": {
+    valid: { task_gid: "123", include: ["notes"], max_related_results: 10 },
+    invalid: { task_gid: "123", max_related_results: 101 },
+  },
+  "resolve-task": {
+    valid: { reference: "gid:123" },
+    invalid: { reference: "Task title" },
+  },
   "get-task": { valid: { task_gid: "123" }, invalid: { task_gid: "not-a-gid" } },
   "list-comments": { valid: { task_gid: "123" }, invalid: { max_results: 501 } },
   "search-tasks": { valid: { query: "git-123" }, invalid: { query: "" } },
@@ -146,6 +154,8 @@ describe("agent capability and schema catalog", () => {
       "list-custom-fields",
       "get-custom-field",
       "resolve-user",
+      "task-context",
+      "resolve-task",
       "git-current",
       "repository-asana",
       "repository-context",
@@ -169,6 +179,8 @@ describe("agent capability and schema catalog", () => {
       "asana-cli agent list-custom-fields",
       "asana-cli agent get-custom-field",
       "asana-cli agent resolve-user",
+      "asana-cli agent context --task GID",
+      "asana-cli agent resolve-task",
       "asana-cli agent context --git-current",
       "asana-cli agent context --repository-asana",
       "asana-cli agent context --repository-context",
@@ -216,6 +228,8 @@ describe("agent capability and schema catalog", () => {
         "list-custom-fields",
         "get-custom-field",
         "resolve-user",
+        "task-context",
+        "resolve-task",
       ].includes(descriptor.action)
         ? "0.5.0"
         : ["operation-status", "prepare-task-update", "prepare-comment", "apply"]

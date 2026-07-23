@@ -8,8 +8,10 @@ protocol.
   through the approved host flow.
 - **Validation error:** correct only the malformed requested input. Do not switch to a
   raw API command or broaden the request.
-- **Not found or ambiguous target:** ask for a task GID or a narrower identifier. Do
-  not guess a task to modify.
+- **Not found or ambiguous target:** ask for a canonical task reference or a narrower
+  identifier. Do not guess a task to modify.
+- **Stale reference:** stop and report that its live workspace/project relationship no longer
+  matches. Do not fall back to search or silently use the stored GID.
 - **Policy denied:** explain that the curated policy rejected the operation. Do not
   seek a bypass or substitute an unrestricted command.
 - **Expired or stale prepared operation:** show that it was not applied. If the user

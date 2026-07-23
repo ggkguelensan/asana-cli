@@ -90,6 +90,10 @@ asana-cli agent get-custom-field --field 1203
 
 asana-cli agent resolve-user --workspace 1200 --user me
 
+asana-cli agent resolve-task --reference task:platform/dev-013--exact-resolver
+
+asana-cli agent context --task 1204 --max-related-results 20
+
 asana-cli agent get-task --task 1201
 
 asana-cli agent get-task --task 1201 \
@@ -132,6 +136,21 @@ they are limited to 500 records and one 64 KiB maximum content budget. `resolve-
 exact GID, `me`, or email inside an explicit workspace but returns no email, photo, workspaces, or
 directory. Returned identifiers and Asana-controlled strings remain untrusted read context and
 never authorize or select a write. See [curated developer context](developer-context.md).
+
+`resolve-task --reference REFERENCE` is the only central exact-reference dispatcher. It accepts
+canonical prefixed GID, Asana v0/v1 URL, workspace-qualified Custom ID, or fully qualified
+repository-alias syntax. It never searches titles, Git tokens, task text, or human local alias
+history. Repository alias resolution revalidates live workspace/project membership and returns
+one GID or a bounded `not-found`, `ambiguous`, or `stale` error. Pass a successful GID explicitly
+to the next action; existing GID inputs do not accept aliases.
+
+`context --task GID` returns the task's bounded structural working set: workspace,
+project/section memberships, custom-field metadata, subtasks, dependencies, dependents, and
+attachment metadata. Each related source has a 100-record hard cap. Notes and field values need
+explicit `--include` selectors and share one content budget. Attachment URLs are not requested or
+returned, and no file is downloaded. A premium-only relation can be reported as a bounded partial
+source; other failures remain fail-closed. Full syntax and output limits are in
+[curated developer context](developer-context.md).
 
 `agent context --git-current` is a local, read-only command for the current worktree; it needs no PAT and makes no Asana or other remote request. Its response is limited to normalized host and repository owner/name, branch (or `null` when detached), full commit, and bounded PR/issue tokens. It deliberately omits raw remote URLs, Git configuration, paths, raw Git output, and stderr. It accepts exactly `--git-current`; stdin and extra flags are unsupported.
 

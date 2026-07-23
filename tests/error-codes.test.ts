@@ -59,6 +59,7 @@ describe("stable machine error codes", () => {
       "auth-failed": { default_exit_code: 3 },
       "policy-denied": { default_exit_code: 2 },
       "not-found": { default_exit_code: 4 },
+      ambiguous: { default_exit_code: 4 },
       conflict: { default_exit_code: 4 },
       stale: { default_exit_code: 4 },
       expired: { default_exit_code: 4 },
@@ -200,7 +201,7 @@ describe("stable machine error codes", () => {
       (value) => typeof value === "object" && value !== null,
     );
     const published = z.fromJSONSchema(schemaBoundary.parse(catalog.error_schema));
-    for (const code of ["stale", "expired", "unknown-result", "network"] as const) {
+    for (const code of ["ambiguous", "stale", "expired", "unknown-result", "network"] as const) {
       const wire = secureAgentEnvelope(errorPayload(new CliError(code, "test error")));
       expect(published.safeParse(wire).success).toBe(true);
     }

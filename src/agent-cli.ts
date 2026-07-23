@@ -19,6 +19,7 @@ import {
   readRepositoryAsanaAgentInput,
   readRepositoryContextAgentInput,
   readStdinAgentInput,
+  readTaskContextAgentInput,
 } from "./agent-input";
 import { readCurrentGitContext } from "./git-context";
 import { findGitCurrentCandidates } from "./git-current-candidates";
@@ -74,6 +75,8 @@ import {
   listSectionsContext,
   resolveUserContext,
 } from "./developer-context";
+import { getTaskContext } from "./task-context";
+import { resolveTaskReference } from "./task-reference";
 
 type JsonObject = Record<string, unknown>;
 
@@ -187,6 +190,13 @@ export async function runAgentCommand(
 
 
   if (action === "context") {
+    if (Object.hasOwn(args.flags, "task")) {
+      const input = readTaskContextAgentInput(args);
+      return agentResult(
+        "task-context",
+        await getTaskContext(client, input),
+      );
+    }
     const input = readGitCurrentCandidatesAgentInput(args);
     const context = await readCurrentGitContext();
     return agentResult("git-current-candidates", await findGitCurrentCandidates(client, input, context));
@@ -254,6 +264,16 @@ export async function runAgentCommand(
   if (action === "resolve-user") {
     const input = await readDirectAgentInput(args, "resolve-user");
     return agentResult("resolve-user", await resolveUserContext(client, input));
+  }
+
+  if (action === "resolve-task") {
+    const input = await readDirectAgentInput(args, "resolve-task");
+    return agentResult(
+      "resolve-task",
+      await resolveTaskReference(client, input.reference, {
+        repositoryContext: runtime.repositoryContext,
+      }),
+    );
   }
 
   if (action === "get-task") {
@@ -474,4 +494,5 @@ export interface AgentCommandRuntime {
   operations: OperationRepository;
   writePolicy?: HostScopedWritePolicyProvider;
   audit?: MetadataAuditStore;
+  repositoryContext?: RepositoryContextManifestProvider;
 }

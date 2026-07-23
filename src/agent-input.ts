@@ -16,6 +16,7 @@ export type DirectReadAction =
   | "list-custom-fields"
   | "get-custom-field"
   | "resolve-user"
+  | "resolve-task"
   | "get-task"
   | "list-comments"
   | "search-tasks"
@@ -30,6 +31,7 @@ const directFlags = {
   "list-custom-fields": ["workspace", "limit", "paginate", "max-results"],
   "get-custom-field": ["field", "include-values", "max-content-bytes"],
   "resolve-user": ["workspace", "user"],
+  "resolve-task": ["reference"],
   "get-task": ["task", "include", "max-content-bytes"],
   "list-comments": ["task", "limit", "paginate", "max-results", "max-content-bytes"],
   "search-tasks": ["query", "workspace", "all-assignees", "completed", "max-results"],
@@ -173,6 +175,8 @@ export async function readDirectAgentInput<Action extends DirectReadAction>(
   } else if (action === "resolve-user") {
     raw.workspace_gid = requireValue(stringValue(args, "workspace"), "workspace");
     raw.user = requireValue(stringValue(args, "user"), "user");
+  } else if (action === "resolve-task") {
+    raw.reference = requireValue(stringValue(args, "reference"), "reference");
   } else if (action === "get-task") {
     raw.task_gid = requireValue(stringValue(args, "task"), "task");
     raw.include = includeValues(args) ?? [];
@@ -195,6 +199,43 @@ export async function readDirectAgentInput<Action extends DirectReadAction>(
     }
   }
   return parseAgentActionInput(raw, action);
+}
+
+export function readTaskContextAgentInput(
+  args: ParsedArgs,
+): AgentActionInput<"task-context"> {
+  if (args.positionals.length !== 2 || args.positionals[1] !== "context") {
+    throw new CliError(
+      "usage",
+      "Usage: asana-cli agent context --task GID [--include notes|field-values]",
+    );
+  }
+  const allowed = new Set([
+    "task",
+    "include",
+    "max-related-results",
+    "max-content-bytes",
+  ]);
+  for (const name of Object.keys(args.flags)) {
+    if (!allowed.has(name)) {
+      throw new CliError("usage", `Unknown option for agent task context: --${name}`);
+    }
+  }
+  const raw: Record<string, unknown> = {
+    task_gid: requireValue(stringValue(args, "task"), "task"),
+    include: includeValues(args) ?? [],
+  };
+  assignIfDefined(
+    raw,
+    "max_related_results",
+    integerValue(args, "max-related-results"),
+  );
+  assignIfDefined(
+    raw,
+    "max_content_bytes",
+    integerValue(args, "max-content-bytes"),
+  );
+  return parseAgentActionInput(raw, "task-context");
 }
 
 export function readOperationStatusAgentInput(
