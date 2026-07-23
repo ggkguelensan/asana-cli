@@ -72,7 +72,7 @@ function withoutUnsupportedNot(value: unknown): unknown {
   const record = z.looseObject({}).parse(value);
   return Object.fromEntries(
     Object.entries(record)
-      .filter(([key]) => key !== "not")
+      .filter(([key]) => !["not", "if", "then", "else"].includes(key))
       .map(([key, entry]) => [key, withoutUnsupportedNot(entry)]),
   );
 }
@@ -95,6 +95,30 @@ const driftFixtures = {
     invalid: { workspace_gid: "1200", query: "Acme/widgets" },
   },
   "my-tasks": { valid: {}, invalid: { limit: 0 } },
+  "list-projects": {
+    valid: { workspace_gid: "1200" },
+    invalid: { workspace_gid: "invalid" },
+  },
+  "list-sections": {
+    valid: { project_gid: "2200" },
+    invalid: { max_results: 201 },
+  },
+  "list-project-memberships": {
+    valid: { project_gid: "2200", member_gid: "3300" },
+    invalid: { project_gid: "2200", member_gid: "invalid" },
+  },
+  "list-custom-fields": {
+    valid: { workspace_gid: "1200" },
+    invalid: { workspace_gid: "1200", unexpected: true },
+  },
+  "get-custom-field": {
+    valid: { field_gid: "4400", include_values: true, max_content_bytes: 1024 },
+    invalid: { field_gid: "invalid" },
+  },
+  "resolve-user": {
+    valid: { workspace_gid: "1200", user: "me" },
+    invalid: { workspace_gid: "1200", user: "not-an-identifier" },
+  },
   "get-task": { valid: { task_gid: "123" }, invalid: { task_gid: "not-a-gid" } },
   "list-comments": { valid: { task_gid: "123" }, invalid: { max_results: 501 } },
   "search-tasks": { valid: { query: "git-123" }, invalid: { query: "" } },
@@ -116,6 +140,12 @@ describe("agent capability and schema catalog", () => {
       "status",
       "operation-status",
       "my-tasks",
+      "list-projects",
+      "list-sections",
+      "list-project-memberships",
+      "list-custom-fields",
+      "get-custom-field",
+      "resolve-user",
       "git-current",
       "repository-asana",
       "repository-context",
@@ -133,6 +163,12 @@ describe("agent capability and schema catalog", () => {
       "asana-cli agent status",
       "asana-cli agent operation status UUID",
       "asana-cli agent my-tasks",
+      "asana-cli agent list-projects",
+      "asana-cli agent list-sections",
+      "asana-cli agent list-project-memberships",
+      "asana-cli agent list-custom-fields",
+      "asana-cli agent get-custom-field",
+      "asana-cli agent resolve-user",
       "asana-cli agent context --git-current",
       "asana-cli agent context --repository-asana",
       "asana-cli agent context --repository-context",
@@ -172,7 +208,15 @@ describe("agent capability and schema catalog", () => {
       },
     });
     for (const descriptor of AGENT_MANIFEST.actions) {
-      const minimum = descriptor.action === "repository-context"
+      const minimum = [
+        "repository-context",
+        "list-projects",
+        "list-sections",
+        "list-project-memberships",
+        "list-custom-fields",
+        "get-custom-field",
+        "resolve-user",
+      ].includes(descriptor.action)
         ? "0.5.0"
         : ["operation-status", "prepare-task-update", "prepare-comment", "apply"]
           .includes(descriptor.action)
@@ -427,6 +471,28 @@ describe("agent capability and schema catalog", () => {
       expect(taskPatchSchema.safeParse(fixture.patch).success).toBe(fixture.valid);
       expect(rejectedByPublishedNot(fixture.patch)).toBe(!fixture.valid);
     }
+
+    const customFieldPublication = singleActionSchema.parse(
+      (await runCli(["agent", "schema", "get-custom-field"])).value,
+    );
+    const selectionRule = z.looseObject({
+      if: z.looseObject({
+        properties: z.looseObject({
+          include_values: z.looseObject({ const: z.literal(false) }),
+        }),
+      }),
+      then: z.looseObject({
+        not: z.looseObject({
+          required: z.tuple([z.literal("max_content_bytes")]),
+        }),
+      }),
+    }).parse(customFieldPublication.action.input);
+    expect(selectionRule.if.properties.include_values.const).toBe(false);
+    expect(selectionRule.then.not.required).toEqual(["max_content_bytes"]);
+    expect(AGENT_ACTIONS["get-custom-field"].inputSchema.safeParse({
+      field_gid: "4400",
+      max_content_bytes: 1024,
+    }).success).toBe(false);
   });
 
   test("rejects an unknown schema action before authentication", async () => {

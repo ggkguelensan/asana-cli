@@ -47,6 +47,22 @@ ambiguous, the operation becomes `unknown` and must not be retried automatically
 `agent operation status UUID` command reports a bounded local snapshot but never reconciles or
 retries the remote effect. See the [operation recovery constraints](docs/operation-recovery.md).
 
+## Curated developer context
+
+`list-projects`, `list-sections`, `list-project-memberships`, `list-custom-fields`,
+`get-custom-field`, and `resolve-user` are authenticated bounded reads over fixed SDK methods.
+Collection actions require an explicit workspace or project scope, do not paginate by default,
+and cannot exceed 200 results. Returned objects are strict minimal projections rather than raw
+SDK resources.
+
+Custom-field option values are excluded by default. Explicit `--include-values` is bounded to
+500 values and one 64 KiB maximum UTF-8 content budget. User resolution returns only GID and
+optional name; it never returns email, photo, workspaces, or a directory listing. Project
+membership and every returned identifier are context only, never authorization or implicit
+target selection. All Asana-controlled names and values remain `external-untrusted`, and every
+write retains its independent live owner, membership, concurrency, and host-policy checks. See
+[the developer context contract](docs/developer-context.md).
+
 ## Trusted repository-to-Asana mapping
 
 `agent context --repository-asana` is a local read-only metadata lookup, not a repository

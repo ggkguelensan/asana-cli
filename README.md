@@ -242,6 +242,13 @@ asana-cli agent context --git-current-candidates --workspace 1200123456789 --com
 
 asana-cli agent my-tasks --max-results 20
 
+asana-cli agent list-projects --workspace 1200123456789
+asana-cli agent list-sections --project 1200987654321
+asana-cli agent list-project-memberships --project 1200987654321
+asana-cli agent list-custom-fields --workspace 1200123456789
+asana-cli agent get-custom-field --field 1200111222333
+asana-cli agent resolve-user --workspace 1200123456789 --user me
+
 asana-cli agent get-task --task 1200123456789
 
 asana-cli agent get-task --task 1200123456789 \
@@ -259,6 +266,12 @@ Read-команды принимают обычные строгие flags; со
 budget для task/comment content (по умолчанию 16 KiB, максимум 64 KiB). Превышение
 отражается в `content_budget`; это ограничение размера, не sanitizer. `api call`,
 `request`, file references и произвольные поля не входят в agent contract.
+
+Curated developer-context reads требуют явный workspace/project scope, по умолчанию не следуют
+pagination и имеют hard cap 200 результатов. Custom-field values возвращаются только по
+`get-custom-field --include-values` и ограничиваются общим byte budget; `resolve-user` никогда не
+возвращает email. Все имена и значения из Asana остаются `external-untrusted`, а membership или
+найденный GID не дают write authorization. Полный контракт: [developer context](docs/developer-context.md).
 
 `agent context --git-current` локально и только для чтения получает нормализованную Git-идентичность текущего worktree; PAT не нужен, запросов к Asana или удалённым сервисам нет. Это не lookup кандидатов в Asana. В ответе есть только ограниченные host, owner/name репозитория, branch (или `null` в detached HEAD), полный commit и ограниченные PR/issue tokens; raw remote URL, Git config, пути, raw Git output и stderr намеренно не возвращаются. Команда принимает ровно `--git-current`: stdin и дополнительные flags не поддерживаются.
 

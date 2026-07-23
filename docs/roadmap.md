@@ -12,6 +12,7 @@ commit [`81c1b7a`](https://github.com/ggkguelensan/asana-cli/commit/81c1b7afa789
 - [Release plan](release-plan.md) — последовательный scope и gate каждого release до `v1.0.0`.
 - [Implementation plan](implementation-plan.md) — порядок ближайших изменений и PR.
 - [Platform support](support-policy.md) — поддерживаемая macOS/Linux release matrix.
+- [Curated developer context](developer-context.md) — bounded project/section/membership/custom-field/user reads.
 - [Human local context](local-context.md) — DEV-014 alias/worktree state contract и recovery.
 - [Agent clients](agent-clients.md) — текущий контракт прямого использования из Codex CLI и Claude Code.
 - [Security model](../SECURITY.md) — гарантии, ограничения и threat model.

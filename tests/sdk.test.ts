@@ -50,4 +50,24 @@ describe("node-asana boundary", () => {
       next_page: null,
     });
   });
+
+  test("reports a sliced final SDK page as truncated even without a next-page token", async () => {
+    const page = {
+      data: [{ gid: "1" }, { gid: "2" }],
+      _response: { next_page: null },
+      nextPage: async () => ({ data: null }),
+    };
+    expect(await collectPages(
+      page,
+      true,
+      1,
+      z.looseObject({ gid: z.string() }),
+      "Asana collection",
+      true,
+    )).toEqual({
+      data: [{ gid: "1" }],
+      next_page: null,
+      truncated: true,
+    });
+  });
 });

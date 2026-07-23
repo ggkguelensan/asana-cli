@@ -10,6 +10,12 @@ import { CliError } from "./errors";
 export type DirectReadAction =
   | "status"
   | "my-tasks"
+  | "list-projects"
+  | "list-sections"
+  | "list-project-memberships"
+  | "list-custom-fields"
+  | "get-custom-field"
+  | "resolve-user"
   | "get-task"
   | "list-comments"
   | "search-tasks"
@@ -18,6 +24,12 @@ export type DirectReadAction =
 const directFlags = {
   status: [],
   "my-tasks": ["workspace", "completed", "limit", "paginate", "max-results"],
+  "list-projects": ["workspace", "archived", "limit", "paginate", "max-results"],
+  "list-sections": ["project", "limit", "paginate", "max-results"],
+  "list-project-memberships": ["project", "member", "limit", "paginate", "max-results"],
+  "list-custom-fields": ["workspace", "limit", "paginate", "max-results"],
+  "get-custom-field": ["field", "include-values", "max-content-bytes"],
+  "resolve-user": ["workspace", "user"],
   "get-task": ["task", "include", "max-content-bytes"],
   "list-comments": ["task", "limit", "paginate", "max-results", "max-content-bytes"],
   "search-tasks": ["query", "workspace", "all-assignees", "completed", "max-results"],
@@ -132,6 +144,35 @@ export async function readDirectAgentInput<Action extends DirectReadAction>(
     assignIfDefined(raw, "limit", integerValue(args, "limit"));
     assignIfDefined(raw, "paginate", booleanValue(args, "paginate"));
     assignIfDefined(raw, "max_results", integerValue(args, "max-results"));
+  } else if (action === "list-projects") {
+    raw.workspace_gid = requireValue(stringValue(args, "workspace"), "workspace");
+    assignIfDefined(raw, "archived", booleanValue(args, "archived"));
+    assignIfDefined(raw, "limit", integerValue(args, "limit"));
+    assignIfDefined(raw, "paginate", booleanValue(args, "paginate"));
+    assignIfDefined(raw, "max_results", integerValue(args, "max-results"));
+  } else if (
+    action === "list-sections" ||
+    action === "list-project-memberships"
+  ) {
+    raw.project_gid = requireValue(stringValue(args, "project"), "project");
+    if (action === "list-project-memberships") {
+      assignIfDefined(raw, "member_gid", stringValue(args, "member"));
+    }
+    assignIfDefined(raw, "limit", integerValue(args, "limit"));
+    assignIfDefined(raw, "paginate", booleanValue(args, "paginate"));
+    assignIfDefined(raw, "max_results", integerValue(args, "max-results"));
+  } else if (action === "list-custom-fields") {
+    raw.workspace_gid = requireValue(stringValue(args, "workspace"), "workspace");
+    assignIfDefined(raw, "limit", integerValue(args, "limit"));
+    assignIfDefined(raw, "paginate", booleanValue(args, "paginate"));
+    assignIfDefined(raw, "max_results", integerValue(args, "max-results"));
+  } else if (action === "get-custom-field") {
+    raw.field_gid = requireValue(stringValue(args, "field"), "field");
+    assignIfDefined(raw, "include_values", booleanValue(args, "include-values"));
+    assignIfDefined(raw, "max_content_bytes", integerValue(args, "max-content-bytes"));
+  } else if (action === "resolve-user") {
+    raw.workspace_gid = requireValue(stringValue(args, "workspace"), "workspace");
+    raw.user = requireValue(stringValue(args, "user"), "user");
   } else if (action === "get-task") {
     raw.task_gid = requireValue(stringValue(args, "task"), "task");
     raw.include = includeValues(args) ?? [];

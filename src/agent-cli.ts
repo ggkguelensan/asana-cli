@@ -66,6 +66,14 @@ import {
 import { type AsanaClient } from "./sdk";
 import type { OperationRepository } from "./operations/repository";
 import { operationStatusProjection } from "./operations/status-projection";
+import {
+  getCustomFieldContext,
+  listCustomFieldsContext,
+  listProjectMembershipsContext,
+  listProjectsContext,
+  listSectionsContext,
+  resolveUserContext,
+} from "./developer-context";
 
 type JsonObject = Record<string, unknown>;
 
@@ -207,6 +215,45 @@ export async function runAgentCommand(
       fields: AGENT_TASK_FIELDS,
     });
     return agentResult("my-tasks", projectTaskCollection(data, "TasksApi.getTasks"));
+  }
+
+  if (action === "list-projects") {
+    const input = await readDirectAgentInput(args, "list-projects");
+    return agentResult("list-projects", await listProjectsContext(client, input));
+  }
+
+  if (action === "list-sections") {
+    const input = await readDirectAgentInput(args, "list-sections");
+    return agentResult("list-sections", await listSectionsContext(client, input));
+  }
+
+  if (action === "list-project-memberships") {
+    const input = await readDirectAgentInput(args, "list-project-memberships");
+    return agentResult(
+      "list-project-memberships",
+      await listProjectMembershipsContext(client, input),
+    );
+  }
+
+  if (action === "list-custom-fields") {
+    const input = await readDirectAgentInput(args, "list-custom-fields");
+    return agentResult(
+      "list-custom-fields",
+      await listCustomFieldsContext(client, input),
+    );
+  }
+
+  if (action === "get-custom-field") {
+    const input = await readDirectAgentInput(args, "get-custom-field");
+    return agentResult(
+      "get-custom-field",
+      await getCustomFieldContext(client, input),
+    );
+  }
+
+  if (action === "resolve-user") {
+    const input = await readDirectAgentInput(args, "resolve-user");
+    return agentResult("resolve-user", await resolveUserContext(client, input));
   }
 
   if (action === "get-task") {

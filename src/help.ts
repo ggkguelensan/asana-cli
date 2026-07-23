@@ -31,6 +31,12 @@ AGENT CLIENTS (DIRECT CLI, NO MCP)
   asana-cli agent schema [ACTION]        JSON Schema for agent actions
   asana-cli agent status                 Validate auth for Codex/Claude
   asana-cli agent my-tasks --max-results 20
+  asana-cli agent list-projects --workspace GID
+  asana-cli agent list-sections --project GID
+  asana-cli agent list-project-memberships --project GID [--member GID]
+  asana-cli agent list-custom-fields --workspace GID
+  asana-cli agent get-custom-field --field GID [--include-values]
+  asana-cli agent resolve-user --workspace GID --user GID|me|EMAIL
   asana-cli agent get-task --task GID [--include notes]
   asana-cli agent list-comments --task GID [--max-content-bytes N]
   asana-cli agent find-git --query ID [--field GID]

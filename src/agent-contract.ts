@@ -4,14 +4,20 @@ import {
   findGitInputSchema,
   gitCurrentInputSchema,
   gitCurrentCandidatesInputSchema,
+  getCustomFieldInputSchema,
   getTaskInputSchema,
+  listCustomFieldsInputSchema,
   listCommentsInputSchema,
+  listProjectMembershipsInputSchema,
+  listProjectsInputSchema,
+  listSectionsInputSchema,
   myTasksInputSchema,
   operationStatusInputSchema,
   prepareCommentInputSchema,
   prepareTaskUpdateInputSchema,
   repositoryAsanaInputSchema,
   repositoryContextInputSchema,
+  resolveUserInputSchema,
   searchInputSchema,
   statusInputSchema,
 } from "./agent-action-schemas";
@@ -20,6 +26,16 @@ import { repositoryContextDataSchema } from "./repository-context";
 import { operationStatusProjectionSchema } from "./operations/status-projection";
 import { gitContextSchema } from "./git-context";
 import { gitCurrentCandidatesDataSchema, MAX_GIT_CURRENT_CANDIDATES } from "./git-current-candidates";
+import {
+  customFieldContextDataSchema,
+  customFieldListContextDataSchema,
+  MAX_CONTEXT_RESULTS,
+  MAX_CUSTOM_FIELD_VALUES,
+  projectListContextDataSchema,
+  projectMembershipListContextDataSchema,
+  resolvedUserContextDataSchema,
+  sectionListContextDataSchema,
+} from "./developer-context";
 import { AGENT_ERROR_SCHEMA_ID, CliError, errorPayloadSchema } from "./errors";
 import { readAgentJsonInput } from "./io";
 import { jsonObjectSchema, zodIssueSummary } from "./schemas";
@@ -213,6 +229,88 @@ const myTasksAction = defineAction(
   myTasksInputSchema,
 );
 
+const listProjectsAction = defineAction(
+  "list-projects",
+  {
+    operation: "projects.list",
+    effect: "read",
+    approval: "none",
+    limits: { max_input_bytes: MAX_AGENT_INPUT_BYTES, max_result_items: MAX_CONTEXT_RESULTS },
+    minimumCliVersion: "0.5.0",
+  },
+  listProjectsInputSchema,
+  projectListContextDataSchema,
+);
+
+const listSectionsAction = defineAction(
+  "list-sections",
+  {
+    operation: "sections.list",
+    effect: "read",
+    approval: "none",
+    limits: { max_input_bytes: MAX_AGENT_INPUT_BYTES, max_result_items: MAX_CONTEXT_RESULTS },
+    minimumCliVersion: "0.5.0",
+  },
+  listSectionsInputSchema,
+  sectionListContextDataSchema,
+);
+
+const listProjectMembershipsAction = defineAction(
+  "list-project-memberships",
+  {
+    operation: "project-memberships.list",
+    effect: "read",
+    approval: "none",
+    limits: { max_input_bytes: MAX_AGENT_INPUT_BYTES, max_result_items: MAX_CONTEXT_RESULTS },
+    minimumCliVersion: "0.5.0",
+  },
+  listProjectMembershipsInputSchema,
+  projectMembershipListContextDataSchema,
+);
+
+const listCustomFieldsAction = defineAction(
+  "list-custom-fields",
+  {
+    operation: "custom-fields.list",
+    effect: "read",
+    approval: "none",
+    limits: { max_input_bytes: MAX_AGENT_INPUT_BYTES, max_result_items: MAX_CONTEXT_RESULTS },
+    minimumCliVersion: "0.5.0",
+  },
+  listCustomFieldsInputSchema,
+  customFieldListContextDataSchema,
+);
+
+const getCustomFieldAction = defineAction(
+  "get-custom-field",
+  {
+    operation: "custom-field.get",
+    effect: "read",
+    approval: "none",
+    limits: {
+      max_input_bytes: MAX_AGENT_INPUT_BYTES,
+      max_result_items: MAX_CUSTOM_FIELD_VALUES,
+      max_content_bytes: 65_536,
+    },
+    minimumCliVersion: "0.5.0",
+  },
+  getCustomFieldInputSchema,
+  customFieldContextDataSchema,
+);
+
+const resolveUserAction = defineAction(
+  "resolve-user",
+  {
+    operation: "user.resolve",
+    effect: "read",
+    approval: "none",
+    limits: { max_input_bytes: MAX_AGENT_INPUT_BYTES, max_result_items: 1 },
+    minimumCliVersion: "0.5.0",
+  },
+  resolveUserInputSchema,
+  resolvedUserContextDataSchema,
+);
+
 const getTaskAction = defineAction(
   "get-task",
   {
@@ -308,6 +406,12 @@ export const AGENT_ACTIONS = {
   [statusAction.descriptor.action]: statusAction,
   [operationStatusAction.descriptor.action]: operationStatusAction,
   [myTasksAction.descriptor.action]: myTasksAction,
+  [listProjectsAction.descriptor.action]: listProjectsAction,
+  [listSectionsAction.descriptor.action]: listSectionsAction,
+  [listProjectMembershipsAction.descriptor.action]: listProjectMembershipsAction,
+  [listCustomFieldsAction.descriptor.action]: listCustomFieldsAction,
+  [getCustomFieldAction.descriptor.action]: getCustomFieldAction,
+  [resolveUserAction.descriptor.action]: resolveUserAction,
   [gitCurrentAction.descriptor.action]: gitCurrentAction,
   [repositoryAsanaAction.descriptor.action]: repositoryAsanaAction,
   [repositoryContextAction.descriptor.action]: repositoryContextAction,

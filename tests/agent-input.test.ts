@@ -153,6 +153,86 @@ describe("agent direct read input", () => {
     });
   });
 
+  test("maps bounded project, membership, field, and user context flags", async () => {
+    expect(await readDirectAgentInput(parseArgs([
+      "agent", "list-projects",
+      "--workspace", "1200",
+      "--archived",
+      "--limit", "20",
+      "--paginate",
+      "--max-results", "80",
+    ]), "list-projects")).toEqual({
+      workspace_gid: "1200",
+      archived: true,
+      limit: 20,
+      paginate: true,
+      max_results: 80,
+    });
+    expect(await readDirectAgentInput(parseArgs([
+      "agent", "list-sections",
+      "--project", "2200",
+    ]), "list-sections")).toEqual({
+      project_gid: "2200",
+      limit: 50,
+      paginate: false,
+      max_results: 100,
+    });
+    expect(await readDirectAgentInput(parseArgs([
+      "agent", "list-project-memberships",
+      "--project", "2200",
+      "--member", "3300",
+    ]), "list-project-memberships")).toEqual({
+      project_gid: "2200",
+      member_gid: "3300",
+      limit: 50,
+      paginate: false,
+      max_results: 100,
+    });
+    expect(await readDirectAgentInput(parseArgs([
+      "agent", "list-custom-fields",
+      "--workspace", "1200",
+      "--max-results", "25",
+    ]), "list-custom-fields")).toEqual({
+      workspace_gid: "1200",
+      limit: 50,
+      paginate: false,
+      max_results: 25,
+    });
+    expect(await readDirectAgentInput(parseArgs([
+      "agent", "get-custom-field",
+      "--field", "4400",
+      "--include-values",
+      "--max-content-bytes", "2048",
+    ]), "get-custom-field")).toEqual({
+      field_gid: "4400",
+      include_values: true,
+      max_content_bytes: 2048,
+    });
+    expect(await readDirectAgentInput(parseArgs([
+      "agent", "resolve-user",
+      "--workspace", "1200",
+      "--user", "developer@example.com",
+    ]), "resolve-user")).toEqual({
+      workspace_gid: "1200",
+      user: "developer@example.com",
+    });
+
+    const stdin = await withAgentStdin({
+      project_gid: "2200",
+      paginate: true,
+      max_results: 40,
+    }, () => readDirectAgentInput(
+      parseArgs(["agent", "list-sections", "--input", "-"]),
+      "list-sections",
+    ));
+    expect(stdin).toEqual({
+      project_gid: "2200",
+      limit: 50,
+      paginate: true,
+      max_results: 40,
+    });
+  });
+
   test("fails closed on unknown, repeated scalar, mixed, and positional input", async () => {
     const invocations = [
       parseArgs(["agent", "my-tasks", "--fields", "notes"]),
@@ -186,6 +266,22 @@ describe("agent direct read input", () => {
       parseArgs(["agent", "get-task", "--task", "123", "--include", "unknown"]),
       "get-task",
     ))).toBe("validation");
+    expect(await errorCode(() => readDirectAgentInput(
+      parseArgs([
+        "agent", "get-custom-field",
+        "--field", "4400",
+        "--max-content-bytes", "1024",
+      ]),
+      "get-custom-field",
+    ))).toBe("validation");
+    expect(await errorCode(() => readDirectAgentInput(
+      parseArgs([
+        "agent", "resolve-user",
+        "--workspace", "1200",
+        "--user", "not-an-identifier",
+      ]),
+      "resolve-user",
+    ))).toBe("validation");
   });
 
   test("rejects invalid direct input before any API request can start", async () => {
@@ -204,6 +300,12 @@ describe("agent direct read input", () => {
       "PR-1",
       "--unknown",
     ]), agentRuntime))).toBe("usage");
+    expect(await errorCode(() => runAgentCommand(client, parseArgs([
+      "agent",
+      "list-projects",
+      "--workspace",
+      "invalid",
+    ]), agentRuntime))).toBe("validation");
   });
 
   test("accepts only the explicit workspace-scoped candidate grammar", async () => {

@@ -32,6 +32,12 @@ Use only these actions and validate their JSON output before describing it:
 | --- | --- |
 | Verify the locally available account | `asana-cli agent status` |
 | List assigned tasks | `asana-cli agent my-tasks` |
+| List projects in one workspace | `asana-cli agent list-projects --workspace GID` |
+| List sections in one project | `asana-cli agent list-sections --project GID` |
+| List user/team access to one project | `asana-cli agent list-project-memberships --project GID` |
+| List custom-field metadata in one workspace | `asana-cli agent list-custom-fields --workspace GID` |
+| Read one custom field, optionally selected values | `asana-cli agent get-custom-field --field GID` |
+| Resolve one exact user inside a workspace | `asana-cli agent resolve-user --workspace GID --user GID\|me\|EMAIL` |
 | Read a task's selected fields | `asana-cli agent get-task` |
 | Read a task's comments | `asana-cli agent list-comments` |
 | Search the current user's tasks | `asana-cli agent search-tasks` |

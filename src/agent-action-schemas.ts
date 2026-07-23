@@ -57,6 +57,66 @@ export const myTasksInputSchema = z.strictObject({
   max_results: resultLimitSchema(500, 100),
 });
 
+const contextCollectionFields = {
+  limit: resultLimitSchema(100, 50),
+  paginate: z.boolean().default(false),
+  max_results: resultLimitSchema(200, 100),
+};
+
+export const listProjectsInputSchema = z.strictObject({
+  workspace_gid: gidSchema,
+  archived: z.boolean().default(false),
+  ...contextCollectionFields,
+});
+
+export const listSectionsInputSchema = z.strictObject({
+  project_gid: gidSchema,
+  ...contextCollectionFields,
+});
+
+export const listProjectMembershipsInputSchema = z.strictObject({
+  project_gid: gidSchema,
+  member_gid: gidSchema.optional(),
+  ...contextCollectionFields,
+});
+
+export const listCustomFieldsInputSchema = z.strictObject({
+  workspace_gid: gidSchema,
+  ...contextCollectionFields,
+});
+
+export const getCustomFieldInputSchema = z.strictObject({
+  field_gid: gidSchema,
+  include_values: z.boolean().default(false),
+  max_content_bytes: contentBudgetValueSchema.optional(),
+}).superRefine((input, context) => {
+  if (!input.include_values && input.max_content_bytes !== undefined) {
+    context.addIssue({
+      code: "custom",
+      path: ["max_content_bytes"],
+      message: "max_content_bytes requires include_values",
+    });
+  }
+}).meta({
+  if: {
+    properties: { include_values: { const: false } },
+  },
+  then: {
+    not: { required: ["max_content_bytes"] },
+  },
+});
+
+const userIdentifierSchema = z.union([
+  gidSchema,
+  z.literal("me"),
+  z.string().max(320).email(),
+]);
+
+export const resolveUserInputSchema = z.strictObject({
+  workspace_gid: gidSchema,
+  user: userIdentifierSchema,
+});
+
 export const selectedGetTaskInputSchema = z.strictObject({
   task_gid: gidSchema,
   include: z.array(taskIncludeSelectorSchema).max(TASK_INCLUDE_SELECTORS.length).default([]),
