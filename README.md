@@ -407,6 +407,10 @@ apply. Контракт: [project and section operations](docs/task-project-oper
 bounded fail-closed cycle proof. Контракт:
 [task dependency operations](docs/task-dependency-operations.md).
 
+`agent batch-tasks --input -` читает до 10 явных task GID одним fixed GET-only batch,
+с общими request/result/content budgets и отдельным безопасным outcome для каждой ошибки.
+Контракт: [bounded task batch reads](docs/batch-reads.md).
+
 `ASANA_CLI_AGENT_POLICY=read-write` — защита от случайного запуска, но не авторизация: агент технически способен сформировать environment сам. Настоящая граница записи — permission/approval policy Codex или Claude. Не разрешайте общую маску `asana-cli *`; auto-allow должен охватывать только конкретные read/prepare-команды, а `agent apply` должен всегда спрашивать человека.
 
 Full integration and direct-protocol guidance: [docs/agent-clients.md](docs/agent-clients.md). Threat model: [SECURITY.md](SECURITY.md).
@@ -445,6 +449,7 @@ bun run check
 - [Implementation plan](docs/implementation-plan.md) — текущее состояние и порядок ближайших PR для `v0.5`.
 - [Platform support policy](docs/support-policy.md) — поддерживаемые runtime/artifacts и executable gate.
 - [Task dependency operations](docs/task-dependency-operations.md) — exact dependency writes и cycle bounds.
+- [Bounded batch reads](docs/batch-reads.md) — общий budget и machine-readable partial failures.
 - [Human local context](docs/local-context.md) — aliases, worktree scope, CAS, хранение и recovery.
 - [Maintainer release procedure](docs/implementation-plan.md#maintainer-release-procedure) — version bump, evidence, tag и проверка следующей публикации.
 - [Swarm execution plan](docs/swarm-plan.md) — история выполненных waves, роли Terra/Sol/Luna и quality gates.

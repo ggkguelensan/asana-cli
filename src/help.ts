@@ -39,6 +39,7 @@ AGENT CLIENTS (DIRECT CLI, NO MCP)
   asana-cli agent resolve-user --workspace GID --user GID|me|EMAIL
   asana-cli agent resolve-task --reference REFERENCE
   asana-cli agent context --task GID [--include notes|field-values]
+  asana-cli agent batch-tasks --input -
   asana-cli agent get-task --task GID [--include notes]
   asana-cli agent list-comments --task GID [--max-content-bytes N]
   asana-cli agent find-git --query ID [--field GID]

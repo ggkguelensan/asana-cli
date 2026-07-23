@@ -115,6 +115,13 @@ Prepare and apply independently recheck both tasks' `modified_at` guards, curren
 the separate host-policy opt-in, and, for add, a bounded fail-closed cycle proof. See
 [agent task dependency operations](task-dependency-operations.md).
 
+## Bounded batch task reads
+
+`agent batch-tasks --input -` accepts 1–10 unique exact task GIDs and selected task fields. It
+constructs one fixed Asana Batch API request containing only allowlisted task GET actions. Results
+stay in input order, share one UTF-8 content budget, and expose each failure as bounded metadata
+without raw error bodies. See [bounded task batch reads](batch-reads.md).
+
 ## Authority and trust boundary
 
 These actions are reads, not authorization:

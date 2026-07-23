@@ -17,6 +17,7 @@ commit [`81c1b7a`](https://github.com/ggkguelensan/asana-cli/commit/81c1b7afa789
 - [Agent task creation](task-creation.md) — direct/subtask prepare/apply и revisioned repository templates.
 - [Project and section operations](task-project-operations.md) — exact membership/placement prepare/apply.
 - [Task dependency operations](task-dependency-operations.md) — exact relation writes и bounded cycle proof.
+- [Bounded batch reads](batch-reads.md) — fixed GET-only Batch API surface и partial outcomes.
 - [Agent clients](agent-clients.md) — текущий контракт прямого использования из Codex CLI и Claude Code.
 - [Security model](../SECURITY.md) — гарантии, ограничения и threat model.
 
@@ -167,7 +168,8 @@ Gate выхода:
 - local-only `agent context --git-current` для нормализованной Git identity текущего worktree без PAT или сети;
 - отдельный authenticated `agent context --git-current-candidates --workspace GID [--all-assignees] [--completed|--no-completed] [--field GID]` для максимум 20 Asana-кандидатов по этой identity; metadata/evidence остаются untrusted, а explicit canonical GID нужен для follow-up;
 - completed DEV-006 host-administered fixed-path repository-to-Asana mapping: local-only `agent context --repository-asana` returns one exact normalized host + owner/name workspace/project/optional Git-field match, requires no PAT/network, and never affects write policy, prepare/apply, or DEV-005 flags without explicit caller handoff;
-- batch reads с общими result/byte limits;
+- GET-only batch reads максимум для 10 exact task GIDs с общими request/result/byte limits и
+  machine-readable partial failures;
 - implementation candidate: exact task references use canonical `gid:`, v0/v1 `url:`,
   workspace-qualified `custom:`, and fully qualified `task:<project>/<alias>` forms; a title,
   Git token or search result remains candidate evidence, not a write target;

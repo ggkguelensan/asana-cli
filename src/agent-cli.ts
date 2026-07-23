@@ -55,6 +55,7 @@ import {
   taskMetadataProjection,
 } from "./agent-projections";
 import { ContentBudget } from "./content-budget";
+import { batchReadTasks } from "./batch-tasks";
 import {
   parseExternalData,
   taskListEnvelopeSchema,
@@ -275,6 +276,11 @@ export async function runAgentCommand(
         repositoryContext: runtime.repositoryContext,
       }),
     );
+  }
+
+  if (action === "batch-tasks") {
+    const input = await readStdinAgentInput(args, "batch-tasks");
+    return agentResult("batch-tasks", await batchReadTasks(client, input));
   }
 
   if (action === "get-task") {

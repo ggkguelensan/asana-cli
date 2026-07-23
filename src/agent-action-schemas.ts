@@ -10,6 +10,7 @@ const resultLimitSchema = (maximum: number, fallback: number) =>
 
 export const MAX_AGENT_CONTENT_BYTES = 65_536;
 export const DEFAULT_AGENT_CONTENT_BYTES = 16_384;
+export const MAX_BATCH_TASKS = 10;
 
 const contentBudgetValueSchema = z.number()
   .int()
@@ -135,6 +136,26 @@ export const taskContextInputSchema = z.strictObject({
     .max(TASK_CONTEXT_INCLUDES.length)
     .default([]),
   max_related_results: resultLimitSchema(100, 20),
+  max_content_bytes: contentBudgetSchema,
+});
+
+export const batchTasksInputSchema = z.strictObject({
+  task_gids: z.array(gidSchema)
+    .min(1)
+    .max(MAX_BATCH_TASKS)
+    .refine(
+      (taskGids) => new Set(taskGids).size === taskGids.length,
+      "task_gids must be unique",
+    )
+    .meta({ uniqueItems: true }),
+  include: z.array(taskIncludeSelectorSchema)
+    .max(TASK_INCLUDE_SELECTORS.length)
+    .refine(
+      (includes) => new Set(includes).size === includes.length,
+      "include selectors must be unique",
+    )
+    .default([])
+    .meta({ uniqueItems: true }),
   max_content_bytes: contentBudgetSchema,
 });
 

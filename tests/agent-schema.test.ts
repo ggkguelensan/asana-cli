@@ -123,6 +123,12 @@ const driftFixtures = {
     valid: { task_gid: "123", include: ["notes"], max_related_results: 10 },
     invalid: { task_gid: "123", max_related_results: 101 },
   },
+  "batch-tasks": {
+    valid: { task_gids: ["123", "124"], include: ["notes"] },
+    invalid: {
+      task_gids: Array.from({ length: 11 }, (_, index) => String(index + 1)),
+    },
+  },
   "resolve-task": {
     valid: { reference: "gid:123" },
     invalid: { reference: "Task title" },
@@ -210,6 +216,7 @@ describe("agent capability and schema catalog", () => {
       "get-custom-field",
       "resolve-user",
       "task-context",
+      "batch-tasks",
       "resolve-task",
       "git-current",
       "repository-asana",
@@ -243,6 +250,7 @@ describe("agent capability and schema catalog", () => {
       "asana-cli agent get-custom-field",
       "asana-cli agent resolve-user",
       "asana-cli agent context --task GID",
+      "asana-cli agent batch-tasks",
       "asana-cli agent resolve-task",
       "asana-cli agent context --git-current",
       "asana-cli agent context --repository-asana",
@@ -300,6 +308,7 @@ describe("agent capability and schema catalog", () => {
         "get-custom-field",
         "resolve-user",
         "task-context",
+        "batch-tasks",
         "resolve-task",
         "prepare-task-create",
         "prepare-subtask-create",

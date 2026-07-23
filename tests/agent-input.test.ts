@@ -8,6 +8,7 @@ import {
   readPrepareCommentAgentInput,
   readRepositoryAsanaAgentInput,
   readRepositoryContextAgentInput,
+  readStdinAgentInput,
   readTaskContextAgentInput,
 } from "../src/agent-input";
 import { parseArgs } from "../src/args";
@@ -466,6 +467,28 @@ describe("agent direct read input", () => {
       parseArgs(["agent", "status", "--input", "-"]),
       "status",
     ))).toEqual({});
+  });
+
+  test("batch tasks accepts only one strict stdin object", async () => {
+    expect(await withAgentStdin(
+      {
+        task_gids: ["123", "124"],
+        include: ["notes"],
+        max_content_bytes: 1024,
+      },
+      () => readStdinAgentInput(
+        parseArgs(["agent", "batch-tasks", "--input", "-"]),
+        "batch-tasks",
+      ),
+    )).toEqual({
+      task_gids: ["123", "124"],
+      include: ["notes"],
+      max_content_bytes: 1024,
+    });
+    expect(await errorCode(() => readStdinAgentInput(
+      parseArgs(["agent", "batch-tasks", "--task", "123"]),
+      "batch-tasks",
+    ))).toBe("usage");
   });
 });
 

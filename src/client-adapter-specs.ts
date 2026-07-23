@@ -127,6 +127,7 @@ export const CURATED_READ_COMMANDS = [
   "asana-cli agent resolve-user",
   "asana-cli agent resolve-task",
   "asana-cli agent context --task",
+  "asana-cli agent batch-tasks",
   "asana-cli agent get-task",
   "asana-cli agent list-comments",
   "asana-cli agent search-tasks",

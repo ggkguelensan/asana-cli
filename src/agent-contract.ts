@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   applyOperationInputSchema,
+  batchTasksInputSchema,
   findGitInputSchema,
   gitCurrentInputSchema,
   gitCurrentCandidatesInputSchema,
@@ -31,6 +32,9 @@ import {
   statusInputSchema,
   taskContextInputSchema,
 } from "./agent-action-schemas";
+import {
+  batchTasksDataSchema,
+} from "./batch-tasks";
 import { repositoryAsanaContextDataSchema } from "./repository-asana-mapping";
 import { repositoryContextDataSchema } from "./repository-context";
 import { operationStatusProjectionSchema } from "./operations/status-projection";
@@ -341,6 +345,23 @@ const taskContextAction = defineAction(
   taskContextDataSchema,
 );
 
+const batchTasksAction = defineAction(
+  "batch-tasks",
+  {
+    operation: "tasks.batch.get",
+    effect: "read",
+    approval: "none",
+    limits: {
+      max_input_bytes: MAX_AGENT_INPUT_BYTES,
+      max_result_items: 10,
+      max_content_bytes: 65_536,
+    },
+    minimumCliVersion: "0.5.0",
+  },
+  batchTasksInputSchema,
+  batchTasksDataSchema,
+);
+
 const resolveTaskAction = defineAction(
   "resolve-task",
   {
@@ -564,6 +585,7 @@ export const AGENT_ACTIONS = {
   [getCustomFieldAction.descriptor.action]: getCustomFieldAction,
   [resolveUserAction.descriptor.action]: resolveUserAction,
   [taskContextAction.descriptor.action]: taskContextAction,
+  [batchTasksAction.descriptor.action]: batchTasksAction,
   [resolveTaskAction.descriptor.action]: resolveTaskAction,
   [gitCurrentAction.descriptor.action]: gitCurrentAction,
   [repositoryAsanaAction.descriptor.action]: repositoryAsanaAction,
