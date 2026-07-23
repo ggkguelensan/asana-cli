@@ -174,6 +174,18 @@ const driftFixtures = {
       template_revision: 3,
     },
   },
+  "prepare-task-project-add": {
+    valid: { task_gid: "123", project_gid: "200", section_gid: "300" },
+    invalid: { task_gid: "123", project_gid: "invalid" },
+  },
+  "prepare-task-project-remove": {
+    valid: { task_gid: "123", project_gid: "200" },
+    invalid: { task_gid: "invalid", project_gid: "200" },
+  },
+  "prepare-task-section-move": {
+    valid: { task_gid: "123", project_gid: "200", section_gid: "300" },
+    invalid: { task_gid: "123", project_gid: "200", section_gid: "invalid" },
+  },
   apply: { valid: { operation_id: operationId }, invalid: { operation_id: "invalid" } },
 } satisfies Record<AgentActionName, DriftFixture>;
 
@@ -204,6 +216,9 @@ describe("agent capability and schema catalog", () => {
       "prepare-task-create",
       "prepare-subtask-create",
       "prepare-task-from-template",
+      "prepare-task-project-add",
+      "prepare-task-project-remove",
+      "prepare-task-section-move",
       "apply",
     ]);
     expect(AGENT_MANIFEST.actions).toHaveLength(AGENT_ACTION_NAMES.length);
@@ -232,6 +247,9 @@ describe("agent capability and schema catalog", () => {
       "asana-cli agent prepare-task-create",
       "asana-cli agent prepare-subtask-create",
       "asana-cli agent prepare-task-from-template",
+      "asana-cli agent prepare-task-project-add",
+      "asana-cli agent prepare-task-project-remove",
+      "asana-cli agent prepare-task-section-move",
     ]);
     expect(Object.keys(AGENT_MANIFEST.guarded_commands)).toEqual([
       "asana-cli agent apply",
@@ -274,6 +292,9 @@ describe("agent capability and schema catalog", () => {
         "prepare-task-create",
         "prepare-subtask-create",
         "prepare-task-from-template",
+        "prepare-task-project-add",
+        "prepare-task-project-remove",
+        "prepare-task-section-move",
       ].includes(descriptor.action)
         ? "0.5.0"
         : ["operation-status", "prepare-task-update", "prepare-comment", "apply"]

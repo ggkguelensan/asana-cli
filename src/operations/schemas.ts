@@ -24,7 +24,14 @@ export const operationStateSchema = z.enum([
   "expired",
 ]);
 
-export const operationNameSchema = z.enum(["task.update", "task.comment", "task.create"]);
+export const operationNameSchema = z.enum([
+  "task.update",
+  "task.comment",
+  "task.create",
+  "task.project.add",
+  "task.project.remove",
+  "task.section.move",
+]);
 
 const existingTaskOperationTargetSchema = z.strictObject({
   task_gid: gidSchema,
@@ -67,6 +74,20 @@ const taskCommentPayloadSchema = z.strictObject({
 const taskCreatePayloadSchema = z.strictObject({
   fields: expandedTaskCreateFieldsSchema,
   template: taskCreateTemplateMetadataSchema.optional(),
+});
+
+const taskProjectAddPayloadSchema = z.strictObject({
+  project_gid: gidSchema,
+  section_gid: gidSchema.optional(),
+});
+
+const taskProjectRemovePayloadSchema = z.strictObject({
+  project_gid: gidSchema,
+});
+
+const taskSectionMovePayloadSchema = z.strictObject({
+  project_gid: gidSchema,
+  section_gid: gidSchema,
 });
 
 const appliedResultSchema = z.strictObject({
@@ -124,6 +145,30 @@ const taskCommentRecordSchema = z.strictObject({
   payload: taskCommentPayloadSchema,
 });
 
+const taskProjectAddRecordSchema = z.strictObject({
+  ...recordBaseShape,
+  operation: z.literal("task.project.add"),
+  target: existingTaskOperationTargetSchema,
+  guards: existingTaskOperationGuardsSchema,
+  payload: taskProjectAddPayloadSchema,
+});
+
+const taskProjectRemoveRecordSchema = z.strictObject({
+  ...recordBaseShape,
+  operation: z.literal("task.project.remove"),
+  target: existingTaskOperationTargetSchema,
+  guards: existingTaskOperationGuardsSchema,
+  payload: taskProjectRemovePayloadSchema,
+});
+
+const taskSectionMoveRecordSchema = z.strictObject({
+  ...recordBaseShape,
+  operation: z.literal("task.section.move"),
+  target: existingTaskOperationTargetSchema,
+  guards: existingTaskOperationGuardsSchema,
+  payload: taskSectionMovePayloadSchema,
+});
+
 const taskCreateRecordSchema = z.strictObject({
   ...recordBaseShape,
   operation: z.literal("task.create"),
@@ -146,6 +191,9 @@ export const operationRecordFileSchema = z.discriminatedUnion("operation", [
   taskUpdateRecordSchema,
   taskCommentRecordSchema,
   taskCreateRecordSchema,
+  taskProjectAddRecordSchema,
+  taskProjectRemoveRecordSchema,
+  taskSectionMoveRecordSchema,
 ]).superRefine((record, context) => {
   const createdAt = Date.parse(record.created_at);
   const expiresAt = Date.parse(record.expires_at);
@@ -217,6 +265,27 @@ export const createOperationInputSchema = z.discriminatedUnion("operation", [
         message: "subtask creation requires an exact parent concurrency guard",
       });
     }
+  }),
+  z.strictObject({
+    ...createBaseShape,
+    operation: z.literal("task.project.add"),
+    target: existingTaskOperationTargetSchema,
+    guards: existingTaskOperationGuardsSchema,
+    payload: taskProjectAddPayloadSchema,
+  }),
+  z.strictObject({
+    ...createBaseShape,
+    operation: z.literal("task.project.remove"),
+    target: existingTaskOperationTargetSchema,
+    guards: existingTaskOperationGuardsSchema,
+    payload: taskProjectRemovePayloadSchema,
+  }),
+  z.strictObject({
+    ...createBaseShape,
+    operation: z.literal("task.section.move"),
+    target: existingTaskOperationTargetSchema,
+    guards: existingTaskOperationGuardsSchema,
+    payload: taskSectionMovePayloadSchema,
   }),
 ]);
 

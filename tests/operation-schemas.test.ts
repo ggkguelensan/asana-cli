@@ -192,4 +192,39 @@ describe("operation record schemas", () => {
       guards: { prepared_by_gid: "123456" },
     })).toThrow("task start_on requires due_on or due_at");
   });
+
+  test("stores each project and section mutation as one strict immutable operation", () => {
+    const base = {
+      target: { task_gid: "987654" },
+      guards,
+      ttl_ms: 60_000,
+    };
+    const add = createOperationRecord({
+      ...base,
+      operation: "task.project.add",
+      payload: { project_gid: "200", section_gid: "300" },
+    }, createdAt, operationId);
+    expect(add).toMatchObject({
+      operation: "task.project.add",
+      target: { task_gid: "987654" },
+      payload: { project_gid: "200", section_gid: "300" },
+    });
+    expect(parseOperationRecord(add)).toEqual(add);
+
+    expect(createOperationInputSchema.parse({
+      ...base,
+      operation: "task.project.remove",
+      payload: { project_gid: "200" },
+    })).toMatchObject({ operation: "task.project.remove" });
+    expect(createOperationInputSchema.parse({
+      ...base,
+      operation: "task.section.move",
+      payload: { project_gid: "200", section_gid: "300" },
+    })).toMatchObject({ operation: "task.section.move" });
+    expect(() => createOperationInputSchema.parse({
+      ...base,
+      operation: "task.section.move",
+      payload: { project_gid: "200" },
+    })).toThrow();
+  });
 });

@@ -351,6 +351,23 @@ export const prepareSubtaskCreateInputSchema = z.strictObject({
   task: taskCreateInputFieldsSchema,
 });
 
+export const prepareTaskProjectAddInputSchema = z.strictObject({
+  task_gid: gidSchema,
+  project_gid: gidSchema,
+  section_gid: gidSchema.optional(),
+});
+
+export const prepareTaskProjectRemoveInputSchema = z.strictObject({
+  task_gid: gidSchema,
+  project_gid: gidSchema,
+});
+
+export const prepareTaskSectionMoveInputSchema = z.strictObject({
+  task_gid: gidSchema,
+  project_gid: gidSchema,
+  section_gid: gidSchema,
+});
+
 export const prepareTaskFromTemplateInputSchema = z.strictObject({
   template: projectAliasSchema,
   template_revision: z.number().int().min(1).max(2_147_483_647),

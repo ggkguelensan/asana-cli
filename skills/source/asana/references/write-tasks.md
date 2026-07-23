@@ -1,8 +1,9 @@
 # Preparing task writes
 
 Only `prepare-task-update`, `prepare-comment`, `prepare-task-create`,
-`prepare-subtask-create`, and `prepare-task-from-template` may propose a write.
-They do not change Asana.
+`prepare-subtask-create`, `prepare-task-from-template`,
+`prepare-task-project-add`, `prepare-task-project-remove`, and
+`prepare-task-section-move` may propose a write. They do not change Asana.
 
 ## Prepare a task update
 
@@ -43,6 +44,20 @@ Inspect the complete expanded target and fields plus the returned template revis
 template digest, context revision, and context digest. Stop on missing, stale,
 ambiguous, or invalid storage. Never compensate with a fuzzy lookup or another file.
 Apply uses the immutable expansion and does not reread a changed template.
+
+## Prepare project and section placement
+
+Use `prepare-task-project-add --input -` to add one owned task to one exact
+workspace-local project, optionally in one exact section. Use
+`prepare-task-project-remove --input -` to remove one exact membership. Use
+`prepare-task-section-move --input -` only when the task already belongs to that
+project.
+
+Never use project add as an implicit reorder, choose a project/section by name, or
+combine multiple membership changes into one approval. Display the exact task,
+project, optional section, operation ID, hash, and expiry. Stop on already-present,
+absent, wrong-project section, stale, or policy-denied results. Apply revalidates the
+live membership and separate host opt-ins.
 
 ## Display and approval
 

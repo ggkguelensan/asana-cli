@@ -209,6 +209,10 @@ export async function getProject(client: AsanaClient, gid: string, fields: strin
   return invokeApiMethod(client, "ProjectsApi", "getProject", [gid, { opt_fields: fields }]);
 }
 
+export async function getSection(client: AsanaClient, gid: string, fields: string): Promise<unknown> {
+  return invokeApiMethod(client, "SectionsApi", "getSection", [gid, { opt_fields: fields }]);
+}
+
 export async function getTaskComments(
   client: AsanaClient,
   gid: string,
@@ -292,6 +296,45 @@ export async function createSubtask(
     { data },
     parentTaskGid,
     { opt_fields: fields },
+  ]);
+}
+
+export async function addTaskToProject(
+  client: AsanaClient,
+  taskGid: string,
+  projectGid: string,
+  sectionGid?: string,
+): Promise<unknown> {
+  return invokeApiMethod(client, "TasksApi", "addProjectForTask", [
+    {
+      data: {
+        project: projectGid,
+        ...(sectionGid === undefined ? {} : { section: sectionGid }),
+      },
+    },
+    taskGid,
+  ]);
+}
+
+export async function removeTaskFromProject(
+  client: AsanaClient,
+  taskGid: string,
+  projectGid: string,
+): Promise<unknown> {
+  return invokeApiMethod(client, "TasksApi", "removeProjectForTask", [
+    { data: { project: projectGid } },
+    taskGid,
+  ]);
+}
+
+export async function moveTaskToSection(
+  client: AsanaClient,
+  taskGid: string,
+  sectionGid: string,
+): Promise<unknown> {
+  return invokeApiMethod(client, "SectionsApi", "addTaskForSection", [
+    sectionGid,
+    { body: { data: { task: taskGid } } },
   ]);
 }
 

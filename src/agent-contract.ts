@@ -15,6 +15,9 @@ import {
   operationStatusInputSchema,
   prepareCommentInputSchema,
   prepareSubtaskCreateInputSchema,
+  prepareTaskProjectAddInputSchema,
+  prepareTaskProjectRemoveInputSchema,
+  prepareTaskSectionMoveInputSchema,
   prepareTaskFromTemplateInputSchema,
   prepareTaskCreateInputSchema,
   prepareTaskUpdateInputSchema,
@@ -476,6 +479,42 @@ const prepareTaskFromTemplateAction = defineAction(
   prepareTaskFromTemplateInputSchema,
 );
 
+const prepareTaskProjectAddAction = defineAction(
+  "prepare-task-project-add",
+  {
+    operation: "task.project.add.prepare",
+    effect: "prepare",
+    approval: "none",
+    limits: { max_input_bytes: MAX_AGENT_INPUT_BYTES },
+    minimumCliVersion: "0.5.0",
+  },
+  prepareTaskProjectAddInputSchema,
+);
+
+const prepareTaskProjectRemoveAction = defineAction(
+  "prepare-task-project-remove",
+  {
+    operation: "task.project.remove.prepare",
+    effect: "prepare",
+    approval: "none",
+    limits: { max_input_bytes: MAX_AGENT_INPUT_BYTES },
+    minimumCliVersion: "0.5.0",
+  },
+  prepareTaskProjectRemoveInputSchema,
+);
+
+const prepareTaskSectionMoveAction = defineAction(
+  "prepare-task-section-move",
+  {
+    operation: "task.section.move.prepare",
+    effect: "prepare",
+    approval: "none",
+    limits: { max_input_bytes: MAX_AGENT_INPUT_BYTES },
+    minimumCliVersion: "0.5.0",
+  },
+  prepareTaskSectionMoveInputSchema,
+);
+
 const applyOperationAction = defineAction(
   "apply",
   {
@@ -513,6 +552,9 @@ export const AGENT_ACTIONS = {
   [prepareTaskCreateAction.descriptor.action]: prepareTaskCreateAction,
   [prepareSubtaskCreateAction.descriptor.action]: prepareSubtaskCreateAction,
   [prepareTaskFromTemplateAction.descriptor.action]: prepareTaskFromTemplateAction,
+  [prepareTaskProjectAddAction.descriptor.action]: prepareTaskProjectAddAction,
+  [prepareTaskProjectRemoveAction.descriptor.action]: prepareTaskProjectRemoveAction,
+  [prepareTaskSectionMoveAction.descriptor.action]: prepareTaskSectionMoveAction,
   [applyOperationAction.descriptor.action]: applyOperationAction,
 };
 

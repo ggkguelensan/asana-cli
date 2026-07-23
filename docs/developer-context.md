@@ -98,6 +98,15 @@ then follows the same direct creation checks. Templates are untrusted advisory i
 change host policy; apply does not reread them. The complete input, policy, preview, and storage
 contract is in [agent task creation](task-creation.md).
 
+## Project and section mutation context
+
+`prepare-task-project-add`, `prepare-task-project-remove`, and
+`prepare-task-section-move` each store exactly one relation change. They require an owned task,
+an exact project in the task workspace, and, when present, an exact section in that project.
+Prepare and apply independently check current membership state, task `modified_at`, project scope,
+and separate host-policy opt-ins. Project add never doubles as a reorder; section move is the
+explicit placement action. See [agent project and section operations](task-project-operations.md).
+
 ## Authority and trust boundary
 
 These actions are reads, not authorization:
@@ -128,3 +137,7 @@ task URL forms follow Asana's documented
 [rich-text task links](https://developers.asana.com/docs/rich-text). Creation uses the official
 [create task](https://developers.asana.com/reference/createtask) and
 [create subtask](https://developers.asana.com/reference/createsubtaskfortask) endpoints.
+Project placement follows
+[add project](https://developers.asana.com/reference/addprojectfortask),
+[remove project](https://developers.asana.com/reference/removeprojectfortask), and
+[add task to section](https://developers.asana.com/reference/addtaskforsection).

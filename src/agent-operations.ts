@@ -6,19 +6,26 @@ import {
   taskPatchSchema,
   type prepareCommentInputSchema,
   type prepareSubtaskCreateInputSchema,
+  type prepareTaskProjectAddInputSchema,
+  type prepareTaskProjectRemoveInputSchema,
+  type prepareTaskSectionMoveInputSchema,
   type prepareTaskFromTemplateInputSchema,
   type prepareTaskCreateInputSchema,
   type prepareTaskUpdateInputSchema,
 } from "./agent-action-schemas";
 import {
   addTaskComment,
+  addTaskToProject,
   AGENT_USER_FIELDS,
   AGENT_TASK_FIELDS,
   createSubtask,
   createTask,
   getMe,
   getProject,
+  getSection,
   getTask,
+  moveTaskToSection,
+  removeTaskFromProject,
   STORY_FIELDS,
   updateTask,
 } from "./asana-commands";
@@ -47,6 +54,7 @@ import {
 import {
   describeTaskCommentWrite,
   describeTaskCreateWrite,
+  describeTaskProjectWrite,
   describeTaskUpdateWrite,
   evaluateScopedWritePolicy,
 } from "./write-policy";
@@ -64,6 +72,9 @@ const ownedTaskSchema = taskSchema.extend({
     project: z.looseObject({
       gid: z.string().regex(/^\d{1,64}$/),
     }).optional(),
+    section: z.looseObject({
+      gid: z.string().regex(/^\d{1,64}$/),
+    }).optional(),
   })).optional(),
 });
 
@@ -72,6 +83,14 @@ const writableProjectSchema = z.looseObject({
   name: z.string().optional(),
   archived: z.boolean(),
   workspace: z.looseObject({
+    gid: z.string().regex(/^\d{1,64}$/),
+  }),
+});
+
+const writableSectionSchema = z.looseObject({
+  gid: z.string().regex(/^\d{1,64}$/),
+  name: z.string().optional(),
+  project: z.looseObject({
     gid: z.string().regex(/^\d{1,64}$/),
   }),
 });
@@ -97,6 +116,17 @@ const taskCreateTargetPreviewSchema = z.strictObject({
     name: z.string().optional(),
   }),
   parent: targetPreviewSchema.optional(),
+});
+
+const projectMutationPreviewSchema = z.strictObject({
+  project: z.strictObject({
+    gid: z.string().regex(/^\d{1,64}$/),
+    name: z.string().optional(),
+  }),
+  section: z.strictObject({
+    gid: z.string().regex(/^\d{1,64}$/),
+    name: z.string().optional(),
+  }).optional(),
 });
 
 const preparedOperationViewSchema = z.discriminatedUnion("operation", [
@@ -133,11 +163,48 @@ const preparedOperationViewSchema = z.discriminatedUnion("operation", [
     expires_at: z.iso.datetime({ offset: true }),
     approval: approvalSchema,
   }),
+  z.strictObject({
+    operation_id: z.uuid(),
+    operation: z.literal("task.project.add"),
+    state: z.literal("prepared"),
+    target: targetPreviewSchema,
+    preview: projectMutationPreviewSchema,
+    plan_hash: z.string().regex(/^sha256:[0-9a-f]{64}$/),
+    expires_at: z.iso.datetime({ offset: true }),
+    approval: approvalSchema,
+  }),
+  z.strictObject({
+    operation_id: z.uuid(),
+    operation: z.literal("task.project.remove"),
+    state: z.literal("prepared"),
+    target: targetPreviewSchema,
+    preview: projectMutationPreviewSchema,
+    plan_hash: z.string().regex(/^sha256:[0-9a-f]{64}$/),
+    expires_at: z.iso.datetime({ offset: true }),
+    approval: approvalSchema,
+  }),
+  z.strictObject({
+    operation_id: z.uuid(),
+    operation: z.literal("task.section.move"),
+    state: z.literal("prepared"),
+    target: targetPreviewSchema,
+    preview: projectMutationPreviewSchema,
+    plan_hash: z.string().regex(/^sha256:[0-9a-f]{64}$/),
+    expires_at: z.iso.datetime({ offset: true }),
+    approval: approvalSchema,
+  }),
 ]);
 
 const appliedOperationViewSchema = z.strictObject({
   operation_id: z.uuid(),
-  operation: z.enum(["task.update", "task.comment", "task.create"]),
+  operation: z.enum([
+    "task.update",
+    "task.comment",
+    "task.create",
+    "task.project.add",
+    "task.project.remove",
+    "task.section.move",
+  ]),
   state: z.literal("applied"),
   target: z.union([
     z.strictObject({ task_gid: z.string().min(1) }),
@@ -159,13 +226,25 @@ type AppliedOperationView = z.output<typeof appliedOperationViewSchema>;
 type PrepareCommentInput = z.output<typeof prepareCommentInputSchema>;
 type PrepareTaskCreateInput = z.output<typeof prepareTaskCreateInputSchema>;
 type PrepareSubtaskCreateInput = z.output<typeof prepareSubtaskCreateInputSchema>;
+type PrepareTaskProjectAddInput = z.output<typeof prepareTaskProjectAddInputSchema>;
+type PrepareTaskProjectRemoveInput = z.output<typeof prepareTaskProjectRemoveInputSchema>;
+type PrepareTaskSectionMoveInput = z.output<typeof prepareTaskSectionMoveInputSchema>;
 type PrepareTaskFromTemplateInput = z.output<typeof prepareTaskFromTemplateInputSchema>;
 type PrepareTaskUpdateInput = z.output<typeof prepareTaskUpdateInputSchema>;
-type ExistingTaskOperationRecord = Extract<
+type ExistingTaskOperationRecord = Exclude<
   OperationRecord,
-  { operation: "task.update" | "task.comment" }
+  { operation: "task.create" }
 >;
 type TaskCreateOperationRecord = Extract<OperationRecord, { operation: "task.create" }>;
+type ProjectMutationOperationRecord = Extract<
+  OperationRecord,
+  {
+    operation:
+      | "task.project.add"
+      | "task.project.remove"
+      | "task.section.move";
+  }
+>;
 
 function ensureNoRegisteredSecret(value: unknown, operation: string): void {
   if (containsRegisteredSecret(value)) {
@@ -188,7 +267,7 @@ async function currentTaskContext(
     getTask(
       client,
       taskGid,
-      "gid,name,modified_at,completed,due_on,due_at,start_on,assignee,assignee.gid,assignee.name,permalink_url,workspace,workspace.gid,memberships,memberships.project,memberships.project.gid",
+      "gid,name,modified_at,completed,due_on,due_at,start_on,assignee,assignee.gid,assignee.name,permalink_url,workspace,workspace.gid,memberships,memberships.project,memberships.project.gid,memberships.section,memberships.section.gid",
     ),
   ]);
   return {
@@ -202,10 +281,43 @@ async function currentProjectContext(
   projectGid: string,
 ): Promise<z.output<typeof writableProjectSchema>> {
   return parseExternalData(
-    await getProject(client, projectGid, "gid,name,archived,workspace.gid"),
+    await getProject(client, projectGid, "gid,name,archived,workspace,workspace.gid"),
     writableProjectSchema,
     "ProjectsApi.getProject",
   );
+}
+
+async function currentSectionContext(
+  client: AsanaClient,
+  sectionGid: string,
+): Promise<z.output<typeof writableSectionSchema>> {
+  return parseExternalData(
+    await getSection(client, sectionGid, "gid,name,project,project.gid"),
+    writableSectionSchema,
+    "SectionsApi.getSection",
+  );
+}
+
+function taskProjectMembership(
+  task: z.output<typeof ownedTaskSchema>,
+  projectGid: string,
+): NonNullable<z.output<typeof ownedTaskSchema>["memberships"]>[number] | undefined {
+  return (task.memberships ?? []).find(
+    (membership) => membership.project?.gid === projectGid,
+  );
+}
+
+function assertSectionProject(
+  section: z.output<typeof writableSectionSchema>,
+  sectionGid: string,
+  projectGid: string,
+): void {
+  if (section.gid !== sectionGid || section.project.gid !== projectGid) {
+    throw new CliError(
+      "stale",
+      "The selected section does not belong to the selected project",
+    );
+  }
 }
 
 function assertCreateScope(
@@ -579,6 +691,173 @@ export class AgentOperationService {
     });
   }
 
+  async prepareTaskProjectAdd(
+    input: PrepareTaskProjectAddInput,
+  ): Promise<PreparedOperationView> {
+    const [{ user, task }, project, section] = await Promise.all([
+      currentTaskContext(this.#client, input.task_gid),
+      currentProjectContext(this.#client, input.project_gid),
+      input.section_gid === undefined
+        ? Promise.resolve(undefined)
+        : currentSectionContext(this.#client, input.section_gid),
+    ]);
+    assertTaskOwnedByCurrentUser(user.gid, task.assignee?.gid);
+    const workspaceGid = task.workspace?.gid;
+    if (!workspaceGid) {
+      throw new CliError("policy-denied", "The task workspace is unavailable");
+    }
+    assertCreateScope(user, project, workspaceGid, input.project_gid);
+    if (section && input.section_gid) {
+      assertSectionProject(section, input.section_gid, input.project_gid);
+    }
+    if (taskProjectMembership(task, input.project_gid)) {
+      throw new CliError(
+        "conflict",
+        "The task already belongs to the selected project; use section move when needed",
+      );
+    }
+    await this.#assertProjectMutationAllowed(
+      "task.project.add",
+      workspaceGid,
+      input.project_gid,
+    );
+    const record = await this.#repository.create({
+      operation: "task.project.add",
+      target: { task_gid: input.task_gid },
+      payload: {
+        project_gid: input.project_gid,
+        ...(input.section_gid === undefined ? {} : { section_gid: input.section_gid }),
+      },
+      guards: {
+        expected_modified_at: task.modified_at,
+        prepared_by_gid: user.gid,
+      },
+    });
+    await this.#appendAudit(record, { outcome: "prepared" });
+    return preparedOperationViewSchema.parse({
+      operation_id: record.id,
+      operation: record.operation,
+      state: record.state,
+      target: { gid: task.gid, name: task.name, permalink_url: task.permalink_url },
+      preview: {
+        project: { gid: project.gid, name: project.name },
+        ...(section === undefined
+          ? {}
+          : { section: { gid: section.gid, name: section.name } }),
+      },
+      plan_hash: record.plan_hash,
+      expires_at: record.expires_at,
+      approval: {
+        required: true,
+        reason: "This operation adds one Asana task to one project.",
+      },
+    });
+  }
+
+  async prepareTaskProjectRemove(
+    input: PrepareTaskProjectRemoveInput,
+  ): Promise<PreparedOperationView> {
+    const [{ user, task }, project] = await Promise.all([
+      currentTaskContext(this.#client, input.task_gid),
+      currentProjectContext(this.#client, input.project_gid),
+    ]);
+    assertTaskOwnedByCurrentUser(user.gid, task.assignee?.gid);
+    const workspaceGid = task.workspace?.gid;
+    if (!workspaceGid) {
+      throw new CliError("policy-denied", "The task workspace is unavailable");
+    }
+    assertCreateScope(user, project, workspaceGid, input.project_gid);
+    if (!taskProjectMembership(task, input.project_gid)) {
+      throw new CliError("conflict", "The task does not belong to the selected project");
+    }
+    await this.#assertProjectMutationAllowed(
+      "task.project.remove",
+      workspaceGid,
+      input.project_gid,
+    );
+    const record = await this.#repository.create({
+      operation: "task.project.remove",
+      target: { task_gid: input.task_gid },
+      payload: { project_gid: input.project_gid },
+      guards: {
+        expected_modified_at: task.modified_at,
+        prepared_by_gid: user.gid,
+      },
+    });
+    await this.#appendAudit(record, { outcome: "prepared" });
+    return preparedOperationViewSchema.parse({
+      operation_id: record.id,
+      operation: record.operation,
+      state: record.state,
+      target: { gid: task.gid, name: task.name, permalink_url: task.permalink_url },
+      preview: { project: { gid: project.gid, name: project.name } },
+      plan_hash: record.plan_hash,
+      expires_at: record.expires_at,
+      approval: {
+        required: true,
+        reason: "This operation removes one Asana task from one project.",
+      },
+    });
+  }
+
+  async prepareTaskSectionMove(
+    input: PrepareTaskSectionMoveInput,
+  ): Promise<PreparedOperationView> {
+    const [{ user, task }, project, section] = await Promise.all([
+      currentTaskContext(this.#client, input.task_gid),
+      currentProjectContext(this.#client, input.project_gid),
+      currentSectionContext(this.#client, input.section_gid),
+    ]);
+    assertTaskOwnedByCurrentUser(user.gid, task.assignee?.gid);
+    const workspaceGid = task.workspace?.gid;
+    if (!workspaceGid) {
+      throw new CliError("policy-denied", "The task workspace is unavailable");
+    }
+    assertCreateScope(user, project, workspaceGid, input.project_gid);
+    assertSectionProject(section, input.section_gid, input.project_gid);
+    const membership = taskProjectMembership(task, input.project_gid);
+    if (!membership) {
+      throw new CliError("conflict", "The task does not belong to the selected project");
+    }
+    if (membership.section?.gid === input.section_gid) {
+      throw new CliError("conflict", "The task is already in the selected section");
+    }
+    await this.#assertProjectMutationAllowed(
+      "task.section.move",
+      workspaceGid,
+      input.project_gid,
+    );
+    const record = await this.#repository.create({
+      operation: "task.section.move",
+      target: { task_gid: input.task_gid },
+      payload: {
+        project_gid: input.project_gid,
+        section_gid: input.section_gid,
+      },
+      guards: {
+        expected_modified_at: task.modified_at,
+        prepared_by_gid: user.gid,
+      },
+    });
+    await this.#appendAudit(record, { outcome: "prepared" });
+    return preparedOperationViewSchema.parse({
+      operation_id: record.id,
+      operation: record.operation,
+      state: record.state,
+      target: { gid: task.gid, name: task.name, permalink_url: task.permalink_url },
+      preview: {
+        project: { gid: project.gid, name: project.name },
+        section: { gid: section.gid, name: section.name },
+      },
+      plan_hash: record.plan_hash,
+      expires_at: record.expires_at,
+      approval: {
+        required: true,
+        reason: "This operation moves one Asana task to one project section.",
+      },
+    });
+  }
+
   async apply(operationId: string): Promise<AppliedOperationView> {
     const record = await requirePreparedOperation(this.#repository, operationId);
     ensureNoRegisteredSecret(record.payload, "Apply");
@@ -620,11 +899,15 @@ export class AgentOperationService {
     } else {
       const { user, task } = await currentTaskContext(this.#client, record.target.task_gid);
       assertApplyGuards(record, user.gid, task);
-      await this.#assertWriteAllowed(
-        task,
-        record.operation,
-        record.operation === "task.update" ? record.payload.changes : undefined,
-      );
+      if (record.operation === "task.update" || record.operation === "task.comment") {
+        await this.#assertWriteAllowed(
+          task,
+          record.operation,
+          record.operation === "task.update" ? record.payload.changes : undefined,
+        );
+      } else {
+        await this.#assertProjectMutationCurrent(record, user, task);
+      }
     }
 
     const claim = await this.#repository.compareAndSet({
@@ -710,6 +993,78 @@ export class AgentOperationService {
       // Malformed policy, malformed expanded fields, and storage failures deny writes alike.
     }
     throw new CliError("policy-denied", "The host write policy does not permit this task operation");
+  }
+
+  async #assertProjectMutationCurrent(
+    record: ProjectMutationOperationRecord,
+    user: z.output<typeof userSchema>,
+    task: z.output<typeof ownedTaskSchema>,
+  ): Promise<void> {
+    const sectionGid = record.operation === "task.project.remove"
+      ? undefined
+      : record.payload.section_gid;
+    const [project, section] = await Promise.all([
+      currentProjectContext(this.#client, record.payload.project_gid),
+      sectionGid === undefined
+        ? Promise.resolve(undefined)
+        : currentSectionContext(this.#client, sectionGid),
+    ]);
+    const workspaceGid = task.workspace?.gid;
+    if (!workspaceGid) {
+      throw new CliError("policy-denied", "The task workspace is unavailable");
+    }
+    assertCreateScope(user, project, workspaceGid, record.payload.project_gid);
+    if (section && sectionGid) {
+      assertSectionProject(section, sectionGid, record.payload.project_gid);
+    }
+    const membership = taskProjectMembership(task, record.payload.project_gid);
+    if (record.operation === "task.project.add" && membership) {
+      throw new CliError(
+        "stale",
+        "Task project membership changed after preparation; prepare a new operation",
+      );
+    }
+    if (record.operation !== "task.project.add" && !membership) {
+      throw new CliError(
+        "stale",
+        "Task project membership changed after preparation; prepare a new operation",
+      );
+    }
+    if (
+      record.operation === "task.section.move" &&
+      membership?.section?.gid === record.payload.section_gid
+    ) {
+      throw new CliError(
+        "stale",
+        "Task section membership changed after preparation; prepare a new operation",
+      );
+    }
+    await this.#assertProjectMutationAllowed(
+      record.operation,
+      workspaceGid,
+      record.payload.project_gid,
+    );
+  }
+
+  async #assertProjectMutationAllowed(
+    action: "task.project.add" | "task.project.remove" | "task.section.move",
+    workspaceGid: string,
+    projectGid: string,
+  ): Promise<void> {
+    try {
+      const candidate = describeTaskProjectWrite(action, {
+        workspace_gid: workspaceGid,
+        project_gids: [projectGid],
+      });
+      const decision = evaluateScopedWritePolicy(await this.#writePolicy.load(), candidate);
+      if (decision.allowed) return;
+    } catch {
+      // Malformed policy, malformed authoritative scope, and storage failures deny writes alike.
+    }
+    throw new CliError(
+      "policy-denied",
+      "The host write policy does not permit this task project operation",
+    );
   }
 
   async #appendApplyingAuditBeforeRemote(record: OperationRecord): Promise<void> {
@@ -821,6 +1176,43 @@ export class AgentOperationService {
         resource_gid: created.gid,
         resource_modified_at: created.modified_at,
       };
+    }
+    if (record.operation === "task.project.add") {
+      parseExternalData(
+        await addTaskToProject(
+          this.#client,
+          record.target.task_gid,
+          record.payload.project_gid,
+          record.payload.section_gid,
+        ),
+        z.looseObject({}),
+        "TasksApi.addProjectForTask",
+      );
+      return { outcome: "applied", resource_gid: record.target.task_gid };
+    }
+    if (record.operation === "task.project.remove") {
+      parseExternalData(
+        await removeTaskFromProject(
+          this.#client,
+          record.target.task_gid,
+          record.payload.project_gid,
+        ),
+        z.looseObject({}),
+        "TasksApi.removeProjectForTask",
+      );
+      return { outcome: "applied", resource_gid: record.target.task_gid };
+    }
+    if (record.operation === "task.section.move") {
+      parseExternalData(
+        await moveTaskToSection(
+          this.#client,
+          record.target.task_gid,
+          record.payload.section_gid,
+        ),
+        z.looseObject({}),
+        "SectionsApi.addTaskForSection",
+      );
+      return { outcome: "applied", resource_gid: record.target.task_gid };
     }
     if (record.operation === "task.update") {
       const changes = taskPatchSchema.parse(record.payload.changes);

@@ -397,6 +397,11 @@ payload повторно. Agent writes изменяют или создают о
 `.asana-cli/task-create-templates.json`, раскрываются в exact GIDs при prepare и не перечитываются
 при apply. Полный контракт: [agent task creation](docs/task-creation.md).
 
+Изменения project membership и section placement также разделены на отдельные
+`prepare-task-project-add`, `prepare-task-project-remove` и `prepare-task-section-move`;
+каждая операция требует exact GIDs, отдельного policy opt-in и повторной live-проверки перед
+apply. Контракт: [project and section operations](docs/task-project-operations.md).
+
 `ASANA_CLI_AGENT_POLICY=read-write` — защита от случайного запуска, но не авторизация: агент технически способен сформировать environment сам. Настоящая граница записи — permission/approval policy Codex или Claude. Не разрешайте общую маску `asana-cli *`; auto-allow должен охватывать только конкретные read/prepare-команды, а `agent apply` должен всегда спрашивать человека.
 
 Full integration and direct-protocol guidance: [docs/agent-clients.md](docs/agent-clients.md). Threat model: [SECURITY.md](SECURITY.md).

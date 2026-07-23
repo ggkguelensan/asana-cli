@@ -48,6 +48,9 @@ AGENT CLIENTS (DIRECT CLI, NO MCP)
   asana-cli agent prepare-task-create --input -
   asana-cli agent prepare-subtask-create --input -
   asana-cli agent prepare-task-from-template --input -
+  asana-cli agent prepare-task-project-add --input -
+  asana-cli agent prepare-task-project-remove --input -
+  asana-cli agent prepare-task-section-move --input -
   asana-cli agent apply --operation-id UUID
   asana-cli agent operation status UUID      Read local operation metadata
   asana-cli agent context --git-current     Read normalized local Git context

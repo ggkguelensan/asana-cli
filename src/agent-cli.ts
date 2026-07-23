@@ -441,6 +441,33 @@ export async function runAgentCommand(
     );
   }
 
+  if (action === "prepare-task-project-add") {
+    const input = await readStdinAgentInput(args, "prepare-task-project-add");
+    const service = new AgentOperationService(client, runtime.operations, runtime);
+    return agentResult(
+      "prepare-task-project-add",
+      await service.prepareTaskProjectAdd(input),
+    );
+  }
+
+  if (action === "prepare-task-project-remove") {
+    const input = await readStdinAgentInput(args, "prepare-task-project-remove");
+    const service = new AgentOperationService(client, runtime.operations, runtime);
+    return agentResult(
+      "prepare-task-project-remove",
+      await service.prepareTaskProjectRemove(input),
+    );
+  }
+
+  if (action === "prepare-task-section-move") {
+    const input = await readStdinAgentInput(args, "prepare-task-section-move");
+    const service = new AgentOperationService(client, runtime.operations, runtime);
+    return agentResult(
+      "prepare-task-section-move",
+      await service.prepareTaskSectionMove(input),
+    );
+  }
+
   if (action === "apply") {
     if (policy() !== "read-write") {
       throw new CliError(

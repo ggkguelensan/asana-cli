@@ -7,7 +7,14 @@ export const AUDIT_EVENT_FILE_FORMAT_VERSION = 2 as const;
 const hashSchema = z.string().regex(/^sha256:[0-9a-f]{64}$/);
 const timestampSchema = z.iso.datetime({ offset: true });
 
-export const auditActionSchema = z.enum(["task.update", "task.comment", "task.create"]);
+export const auditActionSchema = z.enum([
+  "task.update",
+  "task.comment",
+  "task.create",
+  "task.project.add",
+  "task.project.remove",
+  "task.section.move",
+]);
 export const auditFailureClassSchema = z.enum([
   "policy_denied",
   "validation",

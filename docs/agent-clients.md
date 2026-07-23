@@ -226,6 +226,15 @@ printf '%s' '{"parent_task_gid":"1203","project_gid":"1201","task":{"name":"Pagi
 
 printf '%s' '{"template":"feature","template_revision":3,"task":{"name":"Dependency writes"}}' |
   asana-cli agent prepare-task-from-template --input -
+
+printf '%s' '{"task_gid":"1200","project_gid":"1201","section_gid":"1202"}' |
+  asana-cli agent prepare-task-project-add --input -
+
+printf '%s' '{"task_gid":"1200","project_gid":"1201"}' |
+  asana-cli agent prepare-task-project-remove --input -
+
+printf '%s' '{"task_gid":"1200","project_gid":"1201","section_gid":"1203"}' |
+  asana-cli agent prepare-task-section-move --input -
 ```
 
 Prepare validates known credentials and the exact live workspace/project/task scope, then durably
@@ -257,6 +266,8 @@ or chooses recovery.
 Direct create fields and the fixed-root revisioned repository-template contract are documented in
 [agent task creation](task-creation.md). Templates are untrusted static defaults: prepare records
 their exact revision/digest and fully expanded GIDs; apply never rereads repository files.
+Exact project membership and section placement are documented in
+[agent project and section operations](task-project-operations.md).
 
 ## Host scoped write policy
 
@@ -284,7 +295,9 @@ system alias for that directory, but the hardened loader deliberately opens the 
     "task_update_fields": ["name", "assignee", "completed", "custom_fields"],
     "custom_field_gids": ["1202"],
     "allow_comments": true,
-    "allow_task_create": true
+    "allow_task_create": true,
+    "allow_project_membership_changes": true,
+    "allow_section_moves": true
   }]
 }
 ```
@@ -297,6 +310,10 @@ require `allow_comments`, and creation additionally requires `allow_task_create:
 `name` and `assignee` in `task_update_fields`. These checks are in addition to authenticated-owner,
 stale-record, registered-secret, and external-approval guards. A policy denial reveals neither
 policy values nor matching logic.
+
+Project add/remove require `allow_project_membership_changes`; section placement requires
+`allow_section_moves`. Both default to false and require the exact changed project in
+`project_gids`.
 
 ## Metadata-only audit trail
 

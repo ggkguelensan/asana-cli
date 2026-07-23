@@ -23,6 +23,7 @@ import type { ScopedWritePolicy } from "../src/write-policy";
 
 const firstOperationId = "00000000-0000-4000-8000-000000000101";
 const secondOperationId = "00000000-0000-4000-8000-000000000102";
+const thirdOperationId = "00000000-0000-4000-8000-000000000103";
 const preparedAt = "2026-07-15T10:00:00.000Z";
 const modifiedAt = "2026-07-15T09:00:00.000Z";
 
@@ -31,11 +32,13 @@ const permittedWritePolicy: HostScopedWritePolicyProvider = {
     schema: "asana-cli.scoped-write-policy.v1",
     scopes: [{
       workspace_gid: "100",
-      project_gids: ["200"],
+      project_gids: ["200", "201"],
       task_update_fields: ["name", "notes", "completed", "assignee", "due_on", "due_at", "start_on", "custom_fields"],
       custom_field_gids: ["300"],
       allow_comments: true,
       allow_task_create: true,
+      allow_project_membership_changes: true,
+      allow_section_moves: true,
     }],
   }),
 };
@@ -70,6 +73,11 @@ type FakeAsanaOptions = Readonly<{
   taskModifiedAt?: string;
   taskName?: string;
   taskPermalink?: string;
+  taskMemberships?: Array<{
+    project: { gid: string };
+    section?: { gid: string };
+  }>;
+  sectionProjectGid?: string;
   onWrite?: (trace: ApiTrace) => Promise<unknown>;
 }>;
 
@@ -116,6 +124,18 @@ function fakeAsana(options: FakeAsanaOptions = {}): {
           },
         };
       }
+      if (method === "GET" && path === "/sections/{section_gid}") {
+        return {
+          response: {},
+          data: {
+            data: {
+              gid: pathParams.section_gid,
+              name: "Selected section",
+              project: { gid: options.sectionProjectGid ?? "200" },
+            },
+          },
+        };
+      }
       if (method === "GET" && path === "/tasks/{task_gid}") {
         const assigneeGid = options.assigneeGid === undefined ? "1001" : options.assigneeGid;
         return {
@@ -130,7 +150,7 @@ function fakeAsana(options: FakeAsanaOptions = {}): {
                 : { gid: assigneeGid, name: "Developer" },
               permalink_url: options.taskPermalink ?? "https://app.asana.com/0/1/123",
               workspace: { gid: "100" },
-              memberships: [{ project: { gid: "200" } }],
+              memberships: options.taskMemberships ?? [{ project: { gid: "200" } }],
             },
           },
         };
@@ -486,6 +506,141 @@ describe("durable agent operation prepare", () => {
       },
     });
     expect(JSON.stringify(write)).not.toContain("Edited after prepare");
+  });
+
+  test("persists and applies exact project membership and section operations", async () => {
+    const addRepository = memoryRepository(firstOperationId);
+    const addAsana = fakeAsana({
+      taskMemberships: [{ project: { gid: "200" } }],
+      sectionProjectGid: "201",
+    });
+    const addService = new AgentOperationService(addAsana.client, addRepository, {
+      writePolicy: permittedWritePolicy,
+    });
+    const addPreview = await addService.prepareTaskProjectAdd({
+      task_gid: "123",
+      project_gid: "201",
+      section_gid: "301",
+    });
+    expect(addPreview).toMatchObject({
+      operation: "task.project.add",
+      target: { gid: "123", name: "Owned task" },
+      preview: {
+        project: { gid: "201", name: "Platform" },
+        section: { gid: "301", name: "Selected section" },
+      },
+    });
+    expect(await addRepository.get(firstOperationId)).toMatchObject({
+      operation: "task.project.add",
+      target: { task_gid: "123" },
+      payload: { project_gid: "201", section_gid: "301" },
+      guards: {
+        expected_modified_at: modifiedAt,
+        prepared_by_gid: "1001",
+      },
+    });
+    await addService.apply(firstOperationId);
+    await expect(addService.apply(firstOperationId)).rejects.toMatchObject({
+      code: "conflict",
+    });
+    expect(addAsana.traces.filter(
+      (trace) => trace.method === "POST" && trace.path === "/tasks/{task_gid}/addProject",
+    )).toHaveLength(1);
+    expect(addAsana.traces.find(
+      (trace) => trace.path === "/tasks/{task_gid}/addProject",
+    )?.body).toEqual({ data: { project: "201", section: "301" } });
+
+    const removeRepository = memoryRepository(secondOperationId);
+    const removeAsana = fakeAsana();
+    const removeService = new AgentOperationService(removeAsana.client, removeRepository, {
+      writePolicy: permittedWritePolicy,
+    });
+    await removeService.prepareTaskProjectRemove({
+      task_gid: "123",
+      project_gid: "200",
+    });
+    await removeService.apply(secondOperationId);
+    expect(removeAsana.traces.find(
+      (trace) => trace.path === "/tasks/{task_gid}/removeProject",
+    )?.body).toEqual({ data: { project: "200" } });
+
+    const moveRepository = memoryRepository(thirdOperationId);
+    const moveAsana = fakeAsana({
+      taskMemberships: [{
+        project: { gid: "200" },
+        section: { gid: "299" },
+      }],
+    });
+    const moveService = new AgentOperationService(moveAsana.client, moveRepository, {
+      writePolicy: permittedWritePolicy,
+    });
+    const movePreview = await moveService.prepareTaskSectionMove({
+      task_gid: "123",
+      project_gid: "200",
+      section_gid: "300",
+    });
+    expect(movePreview).toMatchObject({
+      operation: "task.section.move",
+      preview: {
+        project: { gid: "200" },
+        section: { gid: "300" },
+      },
+    });
+    await moveService.apply(thirdOperationId);
+    expect(moveAsana.traces.find(
+      (trace) => trace.path === "/sections/{section_gid}/addTask",
+    )).toMatchObject({
+      path_params: { section_gid: "300" },
+      body: { data: { task: "123" } },
+    });
+  });
+
+  test("rejects invalid or changed project relation state before a remote write", async () => {
+    const existingRepository = new FaultingOperationRepository(memoryRepository());
+    const existingAsana = fakeAsana();
+    const existingError = await caughtCliError(() => new AgentOperationService(
+      existingAsana.client,
+      existingRepository,
+      { writePolicy: permittedWritePolicy },
+    ).prepareTaskProjectAdd({
+      task_gid: "123",
+      project_gid: "200",
+    }));
+    expect(existingError.code).toBe("conflict");
+    expect(existingRepository.createCalls).toBe(0);
+
+    const wrongSectionRepository = new FaultingOperationRepository(memoryRepository());
+    const wrongSectionAsana = fakeAsana({
+      taskMemberships: [{ project: { gid: "200" } }],
+      sectionProjectGid: "200",
+    });
+    const wrongSectionError = await caughtCliError(() => new AgentOperationService(
+      wrongSectionAsana.client,
+      wrongSectionRepository,
+      { writePolicy: permittedWritePolicy },
+    ).prepareTaskProjectAdd({
+      task_gid: "123",
+      project_gid: "201",
+      section_gid: "301",
+    }));
+    expect(wrongSectionError.code).toBe("stale");
+    expect(wrongSectionRepository.createCalls).toBe(0);
+
+    const memberships = [{ project: { gid: "200" } }];
+    const staleRepository = memoryRepository(firstOperationId);
+    const staleAsana = fakeAsana({ taskMemberships: memberships });
+    const staleService = new AgentOperationService(staleAsana.client, staleRepository, {
+      writePolicy: permittedWritePolicy,
+    });
+    await staleService.prepareTaskProjectAdd({
+      task_gid: "123",
+      project_gid: "201",
+    });
+    memberships.push({ project: { gid: "201" } });
+    const staleError = await caughtCliError(() => staleService.apply(firstOperationId));
+    expect(staleError.code).toBe("stale");
+    expect((await staleRepository.inspect(firstOperationId))?.state).toBe("prepared");
+    expect(staleAsana.traces.filter((trace) => trace.method === "POST")).toEqual([]);
   });
 });
 

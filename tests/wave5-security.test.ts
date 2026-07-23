@@ -32,6 +32,7 @@ import { createClient, type AsanaClient } from "../src/sdk";
 import {
   describeTaskCommentWrite,
   describeTaskCreateWrite,
+  describeTaskProjectWrite,
   describeTaskUpdateWrite,
   evaluateScopedWritePolicy,
   type ScopedWritePolicy,
@@ -53,6 +54,8 @@ const permittedPolicy: ScopedWritePolicy = {
     custom_field_gids: ["300"],
     allow_comments: true,
     allow_task_create: false,
+    allow_project_membership_changes: false,
+    allow_section_moves: false,
   }],
 };
 
@@ -209,6 +212,39 @@ describe("host scoped write policy", () => {
             ...permittedPolicy.scopes[0]!,
             task_update_fields: ["name", "assignee", "custom_fields"],
             allow_task_create: true,
+          }],
+        },
+        expected: { allowed: true },
+      },
+      {
+        candidate: describeTaskProjectWrite("task.project.add", target),
+        expected: {
+          allowed: false,
+          reason: "project_membership_changes_not_allowed",
+        },
+      },
+      {
+        candidate: describeTaskProjectWrite("task.project.remove", target),
+        policy: {
+          ...permittedPolicy,
+          scopes: [{
+            ...permittedPolicy.scopes[0]!,
+            allow_project_membership_changes: true,
+          }],
+        },
+        expected: { allowed: true },
+      },
+      {
+        candidate: describeTaskProjectWrite("task.section.move", target),
+        expected: { allowed: false, reason: "section_moves_not_allowed" },
+      },
+      {
+        candidate: describeTaskProjectWrite("task.section.move", target),
+        policy: {
+          ...permittedPolicy,
+          scopes: [{
+            ...permittedPolicy.scopes[0]!,
+            allow_section_moves: true,
           }],
         },
         expected: { allowed: true },
