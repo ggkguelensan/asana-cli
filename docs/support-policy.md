@@ -19,9 +19,8 @@ Native Windows, FreeBSD и другие runtime не входят в support, CI
 запускать Linux artifact как Linux-среда, но отдельная интеграция с Windows Credential Manager,
 ACL или native paths не заявляется.
 
-Внутренние legacy path/policy adapters могут временно сохранять defensive `win32` branches для
-совместимости форматов и безопасной миграции исходников. Runtime gate выполняется до credential,
-filesystem или network access; наличие такого кода не является заявлением support.
+Production source не содержит native Windows loaders, path branches или platform-specific assets.
+Runtime gate выполняется до credential, filesystem или network access.
 
 ## Исторический release
 
@@ -38,6 +37,7 @@ filesystem или network access; наличие такого кода не яв
 - release workflow содержит ровно шесть перечисленных macOS/Linux targets;
 - publish зависит от полного supported build matrix;
 - cross-compile script отклоняет target вне canonical allowlist.
+- production source tree не содержит native Windows branches, loaders или assets.
 
 Проверка входит в `bun run check`. Изменение support matrix требует одновременного обновления
 policy, verifier, tests, CI, release workflow и пользовательской документации.

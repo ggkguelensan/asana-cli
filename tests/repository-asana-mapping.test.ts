@@ -10,14 +10,13 @@ import { CliError, normalizeError } from "../src/errors";
 import { MemoryOperationRepository } from "../src/operations/memory-repository";
 import {
   FixedFileRepositoryAsanaMappingProvider,
+  findRepositoryAsanaMapping,
   fixedRepositoryAsanaMappingPath,
   parseRepositoryAsanaMappingFile,
   type RepositoryAsanaMapping,
   type RepositoryAsanaMappingFile,
-  type WindowsRepositoryAsanaMappingCommandResult,
 } from "../src/repository-asana-mapping";
 
-const textEncoder = new TextEncoder();
 const directories: string[] = [];
 const operations = new MemoryOperationRepository();
 
@@ -44,17 +43,6 @@ function mappingFile(
   return {
     schema: "asana-cli.repository-asana-mapping.v1",
     mappings: [...mappings],
-  };
-}
-
-function windowsResult(
-  stdout: string,
-  options: Readonly<Partial<Pick<WindowsRepositoryAsanaMappingCommandResult, "stderr" | "exitCode">>> = {},
-): WindowsRepositoryAsanaMappingCommandResult {
-  return {
-    stdout: textEncoder.encode(stdout),
-    stderr: options.stderr ?? new Uint8Array(),
-    exitCode: options.exitCode ?? 0,
   };
 }
 
@@ -147,26 +135,22 @@ describe("trusted repository-to-Asana mapping", () => {
     }
   });
 
-  test("uses only the exact normalized host, owner, and repository name as the lookup key", async () => {
+  test("uses only the exact normalized host, owner, and repository name as the lookup key", () => {
     const otherMapping: RepositoryAsanaMapping = {
       remote: { host: "github.example" },
       repository: { owner: "Acme", name: "widgets-api" },
       workspace_gid: "1201",
     };
-    const encoded = Buffer.from(JSON.stringify(mappingFile([mapping, otherMapping]))).toString("base64");
-    const provider = new FixedFileRepositoryAsanaMappingProvider({
-      platform: "win32",
-      windowsCommandRunner: async () => windowsResult(encoded),
-    });
+    const file = mappingFile([mapping, otherMapping]);
 
-    await expect(provider.find(matchingIdentity)).resolves.toEqual(mapping);
+    expect(findRepositoryAsanaMapping(file, matchingIdentity)).toEqual(mapping);
     for (const identity of [
       { remote: { host: "github.example" }, repository: { owner: "acme", name: "widgets" } },
       { remote: { host: "github.example" }, repository: { owner: "Acme", name: "widget" } },
       { remote: { host: "github.example" }, repository: { owner: "Acme", name: "widgets-api-v2" } },
       { remote: { host: "git.example" }, repository: { owner: "Acme", name: "widgets" } },
     ]) {
-      await expect(provider.find(identity)).resolves.toBeUndefined();
+      expect(findRepositoryAsanaMapping(file, identity)).toBeUndefined();
     }
   });
 
@@ -177,10 +161,6 @@ describe("trusted repository-to-Asana mapping", () => {
     expect(fixedRepositoryAsanaMappingPath("linux")).toBe(
       "/etc/asana-cli/repository-asana-mapping.json",
     );
-    expect(fixedRepositoryAsanaMappingPath("win32")).toBe(
-      "C:\\ProgramData\\asana-cli\\repository-asana-mapping.json",
-    );
-
     const directory = await temporaryDirectory();
     const malformedPath = join(directory, "MAPPING_PATH_CANARY.json");
     const writablePath = join(directory, "writable.json");
@@ -205,54 +185,6 @@ describe("trusted repository-to-Asana mapping", () => {
     }
   });
 
-  test("uses one frozen fixed-path Windows inspector command and fails closed on untrusted payloads", async () => {
-    const callerPath = "C:\\untrusted\\MAPPING_PATH_CANARY.json";
-    const encoded = Buffer.from(JSON.stringify(mappingFile())).toString("base64");
-    let command: readonly string[] | undefined;
-    const provider = new FixedFileRepositoryAsanaMappingProvider({
-      platform: "win32",
-      path: callerPath,
-      windowsCommandRunner: async (receivedCommand) => {
-        command = receivedCommand;
-        return windowsResult(encoded);
-      },
-    });
-
-    await expect(provider.find(matchingIdentity)).resolves.toEqual(mapping);
-    expect(provider.path).toBe("C:\\ProgramData\\asana-cli\\repository-asana-mapping.json");
-    expect(command).toBeDefined();
-    expect(Object.isFrozen(command)).toBe(true);
-    expect(command?.slice(0, 5)).toEqual([
-      "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
-      "-NoLogo",
-      "-NoProfile",
-      "-NonInteractive",
-      "-Command",
-    ]);
-    expect(command?.[5]).toContain("$mappingPath = 'C:\\ProgramData\\asana-cli\\repository-asana-mapping.json'");
-    expect(command?.join("\n")).not.toContain(callerPath);
-
-    const malformedResults: readonly WindowsRepositoryAsanaMappingCommandResult[] = [
-      windowsResult(encoded, { exitCode: 1 }),
-      windowsResult(encoded, { stderr: textEncoder.encode("MAPPING_STDERR_CANARY") }),
-      windowsResult("not-base64!"),
-      windowsResult(Buffer.from("{}").toString("base64").replace(/=$/, "")),
-      windowsResult(Buffer.from("MAPPING_CONTENT_CANARY:not-json").toString("base64")),
-      windowsResult(Buffer.from(`${" ".repeat(49_153)}${JSON.stringify(mappingFile())}`).toString("base64")),
-    ];
-    for (const result of malformedResults) {
-      const error = await caughtCliError(() => new FixedFileRepositoryAsanaMappingProvider({
-        platform: "win32",
-        windowsCommandRunner: async () => result,
-      }).find(matchingIdentity));
-      expect(error).toEqual(new CliError(
-        "storage-invalid",
-        "Trusted repository-to-Asana mapping is unavailable",
-      ));
-      expect(JSON.stringify(error)).not.toContain("MAPPING_STDERR_CANARY");
-      expect(JSON.stringify(error)).not.toContain("MAPPING_CONTENT_CANARY");
-    }
-  });
 });
 
 describe("agent context --repository-asana", () => {

@@ -35,6 +35,7 @@ import {
   resolveOperationJournalDirectory,
   type OperationPathPlatform,
 } from "./paths";
+import { assertSupportedRuntimePlatform } from "../platform-support";
 
 const MAX_RECORD_BYTES = 1024 * 1024;
 const DIRECTORY_MODE = 0o700;
@@ -76,12 +77,9 @@ export class FileOperationRepository implements OperationRepository {
   readonly #idGenerator: OperationIdGenerator;
   readonly #lockTimeoutMs: number;
   readonly #lockRetryMs: number;
-  readonly #isPosix: boolean;
 
   constructor(options: FileOperationRepositoryOptions = {}) {
-    const platform = options.platform ?? (process.platform === "win32"
-      ? "win32"
-      : process.platform === "darwin" ? "darwin" : "linux");
+    const platform = options.platform ?? assertSupportedRuntimePlatform();
     this.baseDirectory = options.baseDirectory ?? resolveOperationJournalDirectory(
       options.environment,
       platform,
@@ -91,7 +89,6 @@ export class FileOperationRepository implements OperationRepository {
     this.#idGenerator = options.idGenerator ?? randomUUID;
     this.#lockTimeoutMs = z.number().int().nonnegative().max(30_000).parse(options.lockTimeoutMs ?? 1_000);
     this.#lockRetryMs = z.number().int().positive().max(1_000).parse(options.lockRetryMs ?? 10);
-    this.#isPosix = platform !== "win32";
   }
 
   async create(input: CreateOperationInput): Promise<OperationRecord> {
@@ -168,7 +165,7 @@ export class FileOperationRepository implements OperationRepository {
         throw new OperationJournalError("INSECURE_STORAGE", "Operation journal path is not a real directory");
       }
       this.#assertOwner(stats.uid, "Operation journal directory");
-      if (this.#isPosix) await chmod(this.baseDirectory, DIRECTORY_MODE);
+      await chmod(this.baseDirectory, DIRECTORY_MODE);
     } catch (error: unknown) {
       if (error instanceof OperationJournalError) throw error;
       throw storageError("Unable to initialize operation journal directory", error);
@@ -187,14 +184,19 @@ export class FileOperationRepository implements OperationRepository {
       throw new OperationJournalError("INSECURE_STORAGE", "Operation journal path is not a real directory");
     }
     this.#assertOwner(stats.uid, "Operation journal directory");
-    if (this.#isPosix && (stats.mode & 0o077) !== 0) {
+    if ((stats.mode & 0o077) !== 0) {
       throw new OperationJournalError("INSECURE_STORAGE", "Operation journal directory has insecure permissions");
     }
     return true;
   }
 
   #assertOwner(owner: number, label: string): void {
-    if (!this.#isPosix || typeof process.getuid !== "function") return;
+    if (typeof process.getuid !== "function") {
+      throw new OperationJournalError(
+        "INSECURE_STORAGE",
+        "Current user cannot be determined for operation journal ownership checks",
+      );
+    }
     if (owner !== process.getuid()) {
       throw new OperationJournalError("INSECURE_STORAGE", `${label} is owned by another user`);
     }
@@ -213,7 +215,7 @@ export class FileOperationRepository implements OperationRepository {
       throw new OperationJournalError("INSECURE_STORAGE", `Operation ${id} is not a regular file`);
     }
     this.#assertOwner(stats.uid, `Operation ${id}`);
-    if (this.#isPosix && (stats.mode & 0o077) !== 0) {
+    if ((stats.mode & 0o077) !== 0) {
       throw new OperationJournalError("INSECURE_STORAGE", `Operation ${id} has insecure permissions`);
     }
     if (stats.size > MAX_RECORD_BYTES) {
@@ -253,9 +255,9 @@ export class FileOperationRepository implements OperationRepository {
       await handle.sync();
       await handle.close();
       handle = undefined;
-      if (this.#isPosix) await chmod(temporary, FILE_MODE);
+      await chmod(temporary, FILE_MODE);
       await rename(temporary, path);
-      if (this.#isPosix) await chmod(path, FILE_MODE);
+      await chmod(path, FILE_MODE);
       await this.#syncDirectory();
     } catch (error: unknown) {
       if (handle) await handle.close().catch(() => undefined);
@@ -265,7 +267,6 @@ export class FileOperationRepository implements OperationRepository {
   }
 
   async #syncDirectory(): Promise<void> {
-    if (!this.#isPosix) return;
     const directory = await open(this.baseDirectory, constants.O_RDONLY);
     try {
       await directory.sync();
@@ -302,7 +303,7 @@ export class FileOperationRepository implements OperationRepository {
         ownedIdentity = { dev: stats.dev, ino: stats.ino };
         await handle.writeFile(`${JSON.stringify(lock)}\n`, "utf8");
         await handle.sync();
-        if (this.#isPosix) await chmod(path, FILE_MODE);
+        await chmod(path, FILE_MODE);
         await handle.close();
         handle = undefined;
         return lock;
@@ -350,7 +351,7 @@ export class FileOperationRepository implements OperationRepository {
       const stats = await lstat(path);
       if (stats.isSymbolicLink() || !stats.isFile()) throw new Error("lock is not a regular file");
       this.#assertOwner(stats.uid, `Operation lock ${id}`);
-      if (this.#isPosix && (stats.mode & 0o077) !== 0) throw new Error("lock permissions are insecure");
+      if ((stats.mode & 0o077) !== 0) throw new Error("lock permissions are insecure");
       const value: unknown = JSON.parse(await readFile(path, "utf8"));
       const lock = lockFileSchema.parse(value);
       if (lock.operation_id !== id) throw new Error("lock operation ID does not match");

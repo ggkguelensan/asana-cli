@@ -3,6 +3,7 @@ import {
   extractReleaseTargets,
   parseRequestedBuildTarget,
   RELEASE_TARGETS,
+  verifyPosixOnlyProductionSources,
   verifySupportMatrix,
 } from "../scripts/check-support-matrix";
 
@@ -87,5 +88,22 @@ describe("supported build and release matrix", () => {
       releaseWorkflow,
       supportPolicy: supportPolicy.replace("`asana-cli-linux-x64`", "`missing-linux-x64`"),
     })).toThrow("does not document asana-cli-linux-x64");
+  });
+
+  test("rejects dormant native Windows implementation branches and assets", () => {
+    expect(() => verifyPosixOnlyProductionSources([{
+      path: "src/storage.ts",
+      content: 'if (process.platform === "win32") return legacyPath;',
+    }])).toThrow("src/storage.ts");
+
+    expect(() => verifyPosixOnlyProductionSources([{
+      path: "assets/windows-loader.ps1",
+      content: "",
+    }])).toThrow("assets/windows-loader.ps1");
+
+    expect(() => verifyPosixOnlyProductionSources([{
+      path: "src/storage.ts",
+      content: "const root = environment.XDG_STATE_HOME;",
+    }])).not.toThrow();
   });
 });

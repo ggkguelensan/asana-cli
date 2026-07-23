@@ -99,7 +99,6 @@ async function lstatOrNull(path: string) {
   }
 }
 function assertPrivatePosixEntry(stats: { uid: number; mode: number }, label: string): void {
-  if (process.platform === "win32") return;
   const effectiveUserId = process.geteuid?.();
   if (effectiveUserId === undefined) {
     throw new CliError("internal", "Current effective user cannot be determined for integration lifecycle safety");
@@ -510,7 +509,6 @@ export async function planUninstallIntegration(value: unknown): Promise<Integrat
 }
 
 async function syncDirectory(path: string): Promise<void> {
-  if (process.platform === "win32") return;
   const handle = await open(path, constants.O_RDONLY);
   try {
     await handle.sync();

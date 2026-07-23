@@ -102,10 +102,8 @@ describe("file operation repository", () => {
 
     expect(loaded).toEqual(record);
     expect(await readdir(baseDirectory)).toEqual([`${operationId}.json`]);
-    if (process.platform !== "win32") {
-      expect((await stat(baseDirectory)).mode & 0o777).toBe(0o700);
-      expect((await stat(operationRecordPath(baseDirectory, operationId))).mode & 0o777).toBe(0o600);
-    }
+    expect((await stat(baseDirectory)).mode & 0o777).toBe(0o700);
+    expect((await stat(operationRecordPath(baseDirectory, operationId))).mode & 0o777).toBe(0o600);
   });
 
   test("serializes concurrent CAS across repository instances so only one succeeds", async () => {
@@ -212,7 +210,7 @@ describe("file operation repository", () => {
     await repository.get(operationId);
     const path = operationRecordPath(baseDirectory, operationId);
     await writeFile(path, JSON.stringify({ id: operationId, state: "prepared" }), { mode: 0o600 });
-    if (process.platform !== "win32") await chmod(path, 0o600);
+    await chmod(path, 0o600);
 
     await expect(repository.get(operationId)).rejects.toMatchObject({ code: "INVALID_RECORD" });
   });
@@ -236,7 +234,7 @@ describe("file operation repository", () => {
       pid: 999_999,
       created_at: "2026-07-15T09:00:00.000Z",
     }), { mode: 0o600 });
-    if (process.platform !== "win32") await chmod(lockPath, 0o600);
+    await chmod(lockPath, 0o600);
 
     expect((await repository.get(operationId))?.state).toBe("prepared");
     await expect(repository.compareAndSet({

@@ -1,39 +1,33 @@
-import { isAbsolute, join, win32 } from "node:path";
+import { isAbsolute, join } from "node:path";
 import { z } from "zod";
+import {
+  assertSupportedRuntimePlatform,
+  type SupportedRuntimePlatform,
+} from "../platform-support";
 
 const auditPathEnvironmentSchema = z.object({
   HOME: z.string().min(1).optional(),
   XDG_STATE_HOME: z.string().min(1).optional(),
-  LOCALAPPDATA: z.string().min(1).optional(),
 });
 
-export type AuditPathPlatform = "darwin" | "linux" | "win32";
+export type AuditPathPlatform = SupportedRuntimePlatform;
 
-function requireAbsolute(path: string, platform: AuditPathPlatform, source: string): string {
-  const absolute = platform === "win32" ? win32.isAbsolute(path) : isAbsolute(path);
-  if (!absolute) throw new Error(`${source} must be an absolute path`);
+function requireAbsolute(path: string, source: string): string {
+  if (!isAbsolute(path)) throw new Error(`${source} must be an absolute path`);
   return path;
 }
 
 export function resolveAuditLogDirectory(
   environment: Record<string, string | undefined> = process.env,
-  platform: AuditPathPlatform = process.platform === "win32"
-    ? "win32"
-    : process.platform === "darwin" ? "darwin" : "linux",
+  platform: AuditPathPlatform = assertSupportedRuntimePlatform(),
 ): string {
   const env = auditPathEnvironmentSchema.parse(environment);
 
-  if (platform === "win32") {
-    const localAppData = env.LOCALAPPDATA ?? (env.HOME ? win32.join(env.HOME, "AppData", "Local") : undefined);
-    if (!localAppData) throw new Error("LOCALAPPDATA or HOME is required for the audit log");
-    return win32.join(requireAbsolute(localAppData, platform, "LOCALAPPDATA"), "asana-cli", "audit");
-  }
-
   if (env.XDG_STATE_HOME) {
-    return join(requireAbsolute(env.XDG_STATE_HOME, platform, "XDG_STATE_HOME"), "asana-cli", "audit");
+    return join(requireAbsolute(env.XDG_STATE_HOME, "XDG_STATE_HOME"), "asana-cli", "audit");
   }
   if (!env.HOME) throw new Error("HOME is required for the audit log");
-  const home = requireAbsolute(env.HOME, platform, "HOME");
+  const home = requireAbsolute(env.HOME, "HOME");
   if (platform === "darwin") {
     return join(home, "Library", "Application Support", "asana-cli", "audit");
   }

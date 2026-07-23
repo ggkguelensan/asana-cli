@@ -20,6 +20,10 @@ import {
   qualifiedTaskAliasSchema,
 } from "./repository-context";
 import { gidSchema } from "./schemas";
+import {
+  assertSupportedRuntimePlatform,
+  type SupportedRuntimePlatform,
+} from "./platform-support";
 
 const DIRECTORY_MODE = 0o700;
 const FILE_MODE = 0o600;
@@ -96,7 +100,7 @@ const contextStateEnvironmentSchema = z.object({
   XDG_STATE_HOME: z.string().min(1).optional(),
 });
 
-export type ContextStatePlatform = "darwin" | "linux";
+export type ContextStatePlatform = SupportedRuntimePlatform;
 
 export type AliasSnapshot = Readonly<{
   revision: number;
@@ -161,7 +165,7 @@ export interface ContextStateStore {
 
 export function resolveContextStateDirectory(
   environment: Record<string, string | undefined> = process.env,
-  platform: ContextStatePlatform = process.platform === "darwin" ? "darwin" : "linux",
+  platform: ContextStatePlatform = assertSupportedRuntimePlatform(),
 ): string {
   const parsed = contextStateEnvironmentSchema.parse(environment);
   if (platform === "linux" && parsed.XDG_STATE_HOME) {

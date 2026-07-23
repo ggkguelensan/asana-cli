@@ -1,5 +1,5 @@
-import { readFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { readdir, readFile } from "node:fs/promises";
+import { join, relative, resolve } from "node:path";
 import { z } from "zod";
 import { SUPPORTED_RUNTIME_PLATFORMS } from "../src/platform-support";
 
@@ -60,6 +60,29 @@ export const RELEASE_TARGETS = Object.freeze([
 const packageSchema = z.looseObject({
   scripts: z.record(z.string(), z.string()),
 });
+
+export type ProductionSource = Readonly<{
+  path: string;
+  content: string;
+}>;
+
+const nativeWindowsSourcePattern = /\bwindows\b|\bwin32\b|localappdata|powershell|systemroot|\bwindir\b/i;
+const nativeWindowsFilePattern = /windows|\.ps1$/i;
+
+export function verifyPosixOnlyProductionSources(
+  sources: readonly ProductionSource[],
+): void {
+  for (const source of sources) {
+    if (
+      nativeWindowsFilePattern.test(source.path) ||
+      nativeWindowsSourcePattern.test(source.content)
+    ) {
+      throw new Error(
+        `Production source contains a native Windows implementation: ${source.path}`,
+      );
+    }
+  }
+}
 
 function stableJson(value: unknown): string {
   if (value === null || typeof value === "boolean" || typeof value === "number" || typeof value === "string") {
@@ -146,11 +169,12 @@ export function verifySupportMatrix(input: Readonly<{
 }
 
 async function main(): Promise<void> {
-  const [packageText, ciWorkflow, releaseWorkflow, supportPolicy] = await Promise.all([
+  const [packageText, ciWorkflow, releaseWorkflow, supportPolicy, productionSources] = await Promise.all([
     readFile(resolve(projectRoot, "package.json"), "utf8"),
     readFile(resolve(projectRoot, ".github/workflows/ci.yml"), "utf8"),
     readFile(resolve(projectRoot, ".github/workflows/release.yml"), "utf8"),
     readFile(resolve(projectRoot, "docs/support-policy.md"), "utf8"),
+    readProductionSources(),
   ]);
   verifySupportMatrix({
     packageJson: JSON.parse(packageText) as unknown,
@@ -158,9 +182,45 @@ async function main(): Promise<void> {
     releaseWorkflow,
     supportPolicy,
   });
+  verifyPosixOnlyProductionSources(productionSources);
   process.stdout.write(
-    `Support matrix verified: ${RELEASE_TARGETS.length} macOS/Linux release targets; native Windows excluded\n`,
+    `Support matrix verified: ${RELEASE_TARGETS.length} macOS/Linux release targets; production sources are POSIX-only\n`,
   );
+}
+
+async function readProductionSources(): Promise<readonly ProductionSource[]> {
+  const sources: ProductionSource[] = [];
+  const visit = async (directory: string): Promise<void> => {
+    let entries;
+    try {
+      entries = await readdir(directory, { withFileTypes: true });
+    } catch (error: unknown) {
+      if (
+        error &&
+        typeof error === "object" &&
+        "code" in error &&
+        error.code === "ENOENT"
+      ) {
+        return;
+      }
+      throw error;
+    }
+    entries.sort((left, right) => left.name.localeCompare(right.name));
+    for (const entry of entries) {
+      const path = join(directory, entry.name);
+      if (entry.isDirectory()) {
+        await visit(path);
+      } else if (entry.isFile()) {
+        sources.push({
+          path: relative(projectRoot, path),
+          content: await readFile(path, "utf8"),
+        });
+      }
+    }
+  };
+  await visit(resolve(projectRoot, "src"));
+  await visit(resolve(projectRoot, "assets"));
+  return sources;
 }
 
 if (import.meta.main) {
