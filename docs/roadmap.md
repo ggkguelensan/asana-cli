@@ -12,6 +12,7 @@ commit [`81c1b7a`](https://github.com/ggkguelensan/asana-cli/commit/81c1b7afa789
 - [Release plan](release-plan.md) — последовательный scope и gate каждого release до `v1.0.0`.
 - [Implementation plan](implementation-plan.md) — порядок ближайших изменений и PR.
 - [Platform support](support-policy.md) — поддерживаемая macOS/Linux release matrix.
+- [Human local context](local-context.md) — DEV-014 alias/worktree state contract и recovery.
 - [Agent clients](agent-clients.md) — текущий контракт прямого использования из Codex CLI и Claude Code.
 - [Security model](../SECURITY.md) — гарантии, ограничения и threat model.
 
@@ -164,7 +165,10 @@ Gate выхода:
 - exact human task references: canonical `gid:`, `url:`, workspace-qualified `custom:`, and fully qualified `task:<project>/<alias>` forms; a title, Git token or search result remains candidate evidence, not a write target;
 - deterministic `slug-v1` for display aliases: vendored Unicode/transliteration rules, lowercase ASCII output, and a stable code/GID locator before the decorative title slug; renamed titles do not retarget an alias;
 - completed DEV-012 repository context: local-only `agent context --repository-context` reads exactly the untrusted fixed-root `.asana-cli/repository-context.json` v1 manifest (bounded strict project/section/custom-field/task mappings, revision and fresh semantic digest) without a PAT or network. It exposes exact canonical `task:<project>/<alias>` immutable-GID aliases but never resolves, selects, injects, authorizes, merges, or establishes precedence; no includes, interpolation, scripts, URLs, repository-defined authorization, or cache exist. DEV-013 owns resolution, DEV-014 lifecycle/state, and DEV-015 templates;
-- human-only alias lifecycle (`set`, explicit CAS `replace`, `remove`, `activate`, bounded history/clear) and `quick` task card; aliases are shared by linked worktrees, while active/recent selection is worktree-local;
+- human-only alias lifecycle (`set`, explicit CAS `replace`, `remove`, `activate`, bounded
+  history/clear) and local `quick` locator; aliases are shared by linked worktrees, while
+  active/recent selection is worktree-local. This stores no task card/content and performs no
+  network read; task context and live resolution remain DEV-003/DEV-013;
 - bounded `agent context --alias` и `agent context --git-current-candidates` resolution: zero/single/multiple/truncated matches остаются candidates и никогда не selected implicitly;
 - owner-controlled local context state outside the checkout: versioned Zod snapshots, opaque repository/worktree identities, atomic locked updates, retention/erasure, restrictive permissions and no task/comment content, credentials, raw paths, remotes or branch names;
 - live revalidation before prepare/apply: aliases/templates resolve to immutable GIDs, but host policy, membership, owner and concurrency guards remain authoritative;

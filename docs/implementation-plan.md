@@ -253,8 +253,10 @@ detection, но не заменяют clean-session Codex/Claude discovery и be
    исторический `v0.4.0` не изменять.
 2. Завершено: `DEV-004`, `DEV-005`, `DEV-006` и `DEV-012` предоставляют bounded Git identity,
    authenticated candidate search, trusted host mapping и отдельный untrusted repository context.
-3. `DEV-014`: отделить repository-shared alias definitions от worktree-local active/recent state;
-   хранить только bounded metadata с CAS, locking, retention и explicit erasure.
+3. `DEV-014`: реализация-кандидат отделяет repository-shared alias definitions от worktree-local
+   active/recent state и хранит только bounded metadata с CAS, locking, retention и explicit
+   erasure; до merge и required checks статус backlog остаётся `ready`. Контракт зафиксирован в
+   [human local context](local-context.md).
 4. `DEV-001` и `DEV-002`, затем `DEV-003`/`DEV-013`: добавить bounded project, section,
    custom-field и task context, после чего реализовать central exact resolver без implicit selection.
 5. `DEV-007`, затем `DEV-015`: добавить create task/subtask prepare/apply и immutable revisioned

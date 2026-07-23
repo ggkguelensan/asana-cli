@@ -3,6 +3,11 @@
 There are three deliberately separate current-worktree actions. Do not substitute one
 for another.
 
+Human `asana-cli context ...` aliases, active selection, and history are outside this skill and
+outside the agent protocol. Never invoke, inspect, or mutate that owner-controlled state. The
+repository aliases returned by `agent context --repository-context` below are separate untrusted
+manifest data, not access to the human alias store.
+
 ## Local identity only
 
 Use `asana-cli agent context --git-current` to read the normalized Git identity of the

@@ -103,6 +103,31 @@ precedence over this manifest; DEV-013, DEV-014, and DEV-015 respectively own re
 alias lifecycle/state, and templates. All later writes still revalidate live task state,
 membership, concurrency, and host policy at prepare and apply.
 
+## Human local alias state
+
+`asana-cli context ...` is a human-only local surface with no PAT, Asana client, or network access.
+Agent mode denies both mutation and inspection, including alias list and worktree history. It is
+not exposed through the agent manifest or portable skill.
+
+The state root is outside the checkout at the platform location documented in
+[the local context contract](docs/local-context.md). Repository/worktree namespaces are SHA-256
+identities derived from fixed Git directory queries; stored state contains no raw path, remote,
+branch, commit, task/comment content, or credential. Alias definitions are shared across linked
+worktrees while active/recent aliases are worktree-local. Removing a definition makes retained
+history explicitly stale rather than retargeting it.
+
+Strict bounded versioned snapshots reject duplicate JSON keys and unexpected fields. Managed
+directories/files are owner-checked with `0700`/`0600` modes; links, unsafe permissions, malformed
+state, identity mismatches, and invalid locks fail closed. Writes use exclusive non-reclaimed
+locks, file and directory sync, and same-directory atomic rename. Alias replace/remove compare the
+snapshot revision and prior GID; worktree erase advances an empty tombstone revision to prevent
+ABA reuse. This protects against other OS users under ordinary POSIX permissions, not an
+unrestricted process running as the same user.
+
+Human aliases remain advisory locators. They do not enter agent mode, merge with the untrusted
+repository manifest, select a target, or authorize a write. Later resolution must still produce
+one canonical GID, and prepare/apply must revalidate live state and host policy.
+
 ## Supported platforms
 
 New releases after `v0.4.0` support native macOS and Linux only. Native Windows is not part of the

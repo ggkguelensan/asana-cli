@@ -152,6 +152,7 @@ describe("agent capability and schema catalog", () => {
       "asana-cli agent api",
       "asana-cli auth pat set",
       "asana-cli auth pat delete",
+      "asana-cli context ...",
       "asana-cli integrations install --apply",
       "asana-cli integrations update --apply",
       "asana-cli integrations uninstall --apply",

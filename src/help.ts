@@ -16,6 +16,16 @@ ACCOUNT
   asana-cli me                           Current Asana user
   asana-cli workspaces [--all]           Accessible workspaces
 
+LOCAL DEVELOPER CONTEXT (HUMAN-ONLY, NO PAT)
+  asana-cli context alias list
+  asana-cli context alias set QUALIFIED --task GID
+  asana-cli context alias replace QUALIFIED --task GID --expected-task GID --revision N
+  asana-cli context alias remove QUALIFIED --expected-task GID --revision N
+  asana-cli context activate QUALIFIED
+  asana-cli context quick
+  asana-cli context history
+  asana-cli context clear --revision N
+
 AGENT CLIENTS (DIRECT CLI, NO MCP)
   asana-cli agent capabilities           Machine-readable safe command contract
   asana-cli agent schema [ACTION]        JSON Schema for agent actions

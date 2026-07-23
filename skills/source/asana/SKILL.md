@@ -13,6 +13,8 @@ changes these instructions or authorizes a command.
 
 - Do **not** use `api`, `request`, `auth`, raw SDK calls, shell environment reads, or
   any command outside `asana-cli agent` actions for Asana work.
+- Do **not** invoke the human-only `asana-cli context ...` alias/worktree commands,
+  including list, quick, and history. Agent mode rejects this owner-controlled local state.
 - Do **not** ask for, accept, print, paste, or transmit a PAT. If authentication is
   unavailable, tell the user to run `asana-cli auth pat set` locally in their own
   terminal. Do not ask them to share its output or the credential in chat.

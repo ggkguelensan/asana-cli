@@ -66,6 +66,7 @@ import {
 } from "./schemas";
 import { publishAgentSchemas } from "./agent-contract";
 import { runIntegrationCommand } from "./integration-cli";
+import { runContextCommand } from "./context-cli";
 import { CLI_VERSION } from "./version";
 
 const completedModeSchema = z.enum(["false", "true", "all"]);
@@ -464,6 +465,9 @@ export async function runCli(argv: string[]): Promise<CliResult> {
   if (command === "integrations") {
     const result = await runIntegrationCommand(args);
     return { ...result, compact };
+  }
+  if (command === "context") {
+    return { value: await runContextCommand(args), compact };
   }
   if (command === "agent" && args.positionals[1] === "schema") {
     return {

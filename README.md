@@ -117,6 +117,27 @@ asana-cli task comment 1200123456789 "Текст" --dry-run
 
 JSON/text options принимают literal, `@file` или `-` для stdin.
 
+## Локальные aliases и worktree context
+
+Human-only команды сохраняют exact task aliases и активный выбор текущего Git worktree локально,
+без PAT и сети:
+
+```sh
+asana-cli context alias set task:platform/dev-014--local-context --task 1200000000001
+asana-cli context alias list
+asana-cli context activate task:platform/dev-014--local-context
+asana-cli context quick
+asana-cli context history
+```
+
+Alias definitions общие для linked worktrees одного repository, а active/recent history
+изолирована для каждого worktree. `replace`, `remove` и `clear` используют явные revision/CAS
+guards; история ограничена 20 aliases и удаляется явно. State хранится вне checkout в
+owner-only atomic snapshots и содержит только opaque Git identities, exact aliases и task GIDs —
+без raw path/remote/branch, task/comment content или credentials. В agent mode вся эта поверхность,
+включая list/history, запрещена. Полная грамматика, storage boundary и recovery описаны в
+[human local context contract](docs/local-context.md).
+
 ## Поиск задач по Git-номерам
 
 ```sh
@@ -371,6 +392,7 @@ bun run check
 - [Backlog](docs/backlog.md) — приоритеты, зависимости и acceptance criteria.
 - [Implementation plan](docs/implementation-plan.md) — текущее состояние и порядок ближайших PR для `v0.5`.
 - [Platform support policy](docs/support-policy.md) — поддерживаемые runtime/artifacts и executable gate.
+- [Human local context](docs/local-context.md) — aliases, worktree scope, CAS, хранение и recovery.
 - [Maintainer release procedure](docs/implementation-plan.md#maintainer-release-procedure) — version bump, evidence, tag и проверка следующей публикации.
 - [Swarm execution plan](docs/swarm-plan.md) — история выполненных waves, роли Terra/Sol/Luna и quality gates.
 
