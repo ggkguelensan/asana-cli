@@ -21,6 +21,7 @@ jobs:
 
   native-windows-host-policy:
     runs-on: windows-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
       - uses: oven-sh/setup-bun@v2
