@@ -24,6 +24,7 @@
     "check:package-content": "bun run --no-env-file scripts/check-package-content.ts",
     "check:project-plan": "bun run --no-env-file scripts/check-project-plan.ts",
     "check:support-matrix": "bun run --no-env-file scripts/check-support-matrix.ts",
+    "test:integration-lifecycle": "bun run --no-env-file scripts/integration-lifecycle-e2e.ts dist/asana-cli",
     "release:preflight": "bun run --no-env-file scripts/release-preflight.ts",
     "check": "bun run typecheck && bun run check:generated-integrations && bun run check:project-plan && bun run check:support-matrix && bun run build && bun run check:package-content && bun test && ./dist/asana-cli --version"
   },

@@ -159,9 +159,17 @@ describe("pre-PAT integration commands", () => {
       schema: z.string(),
       bundle_version: z.string(),
       agent_protocol_version: z.number(),
+      runtime: z.looseObject({
+        platform: z.enum(["darwin", "linux"]),
+        architecture: z.enum(["arm64", "x64"]),
+      }),
       clients: z.record(z.string(), z.unknown()),
     }).parse(parseOutput(listed.stdout));
     expect(list.schema).toBe("asana-cli.integration-bundle.v1");
+    expect(list.runtime).toEqual({
+      platform: z.enum(["darwin", "linux"]).parse(process.platform),
+      architecture: z.enum(["arm64", "x64"]).parse(process.arch),
+    });
     expect(Object.keys(list.clients).sort()).toEqual(["claude-code", "codex", "generic-agent-skills"]);
 
     const detected = await runIntegration([

@@ -36,7 +36,9 @@ Runtime gate выполняется до credential, filesystem или network a
 - CI не содержит native Windows gate;
 - release workflow содержит ровно шесть перечисленных macOS/Linux targets;
 - publish зависит от полного supported build matrix;
-- cross-compile script отклоняет target вне canonical allowlist.
+- cross-compile script отклоняет target вне canonical allowlist;
+- собранный бинарник проходит native integration lifecycle на macOS и Linux в CI;
+- каждый release target, включая musl, публикует JSON evidence полного lifecycle.
 - production source tree не содержит native Windows branches, loaders или assets.
 
 Проверка входит в `bun run check`. Изменение support matrix требует одновременного обновления

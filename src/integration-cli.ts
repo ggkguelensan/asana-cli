@@ -220,6 +220,10 @@ export async function runIntegrationCommand(args: ParsedArgs): Promise<{ value?:
         schema: EMBEDDED_INTEGRATION_BUNDLE.schema,
         bundle_version: EMBEDDED_INTEGRATION_BUNDLE.bundle_version,
         agent_protocol_version: EMBEDDED_INTEGRATION_BUNDLE.agent_protocol_version,
+        runtime: {
+          platform: process.platform,
+          architecture: process.arch,
+        },
         clients: INTEGRATION_CLIENTS,
       },
     };

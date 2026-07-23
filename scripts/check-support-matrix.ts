@@ -157,6 +157,19 @@ export function verifySupportMatrix(input: Readonly<{
   if (!/^\s+needs:\s+build\s*$/m.test(input.releaseWorkflow)) {
     throw new Error("Release publish job must depend on the complete supported build matrix");
   }
+  if (
+    !input.ciWorkflow.includes("native-integration-lifecycle:") ||
+    !input.ciWorkflow.includes("runner: [ubuntu-latest, macos-14]") ||
+    !input.ciWorkflow.includes("bun run test:integration-lifecycle")
+  ) {
+    throw new Error("CI must run the compiled integration lifecycle on native macOS and Linux");
+  }
+  if (
+    !input.releaseWorkflow.includes("scripts/integration-lifecycle-e2e.ts") ||
+    !input.releaseWorkflow.includes('dist/${{ matrix.output }}.lifecycle.json')
+  ) {
+    throw new Error("Every release target must publish compiled integration lifecycle evidence");
+  }
 
   for (const releaseTarget of RELEASE_TARGETS) {
     if (!input.supportPolicy.includes(`\`${releaseTarget.output}\``)) {

@@ -23,8 +23,21 @@ const releaseWorkflow = [
     `            output: ${target.output}`,
     `            runner: ${target.runner}`,
   ]),
+  "    steps:",
+  "      - run: bun run --no-env-file scripts/integration-lifecycle-e2e.ts \"dist/${{ matrix.output }}\" > \"dist/${{ matrix.output }}.lifecycle.json\"",
   "  publish:",
   "    needs: build",
+  "",
+].join("\n");
+
+const ciWorkflow = [
+  "jobs:",
+  "  native-integration-lifecycle:",
+  "    strategy:",
+  "      matrix:",
+  "        runner: [ubuntu-latest, macos-14]",
+  "    steps:",
+  "      - run: bun run test:integration-lifecycle",
   "",
 ].join("\n");
 
@@ -47,7 +60,7 @@ describe("supported build and release matrix", () => {
   test("accepts an exact POSIX support matrix", () => {
     expect(() => verifySupportMatrix({
       packageJson: { scripts: packageScripts },
-      ciWorkflow: "jobs:\n  check:\n    runs-on: ubuntu-latest\n",
+      ciWorkflow,
       releaseWorkflow,
       supportPolicy,
     })).not.toThrow();
@@ -61,21 +74,21 @@ describe("supported build and release matrix", () => {
           "build:windows-x64": "bun run scripts/build.ts bun-windows-x64-baseline out.exe",
         },
       },
-      ciWorkflow: "jobs:\n  check:\n    runs-on: ubuntu-latest\n",
+      ciWorkflow,
       releaseWorkflow,
       supportPolicy,
     })).toThrow("package.json exposes a native Windows build command");
 
     expect(() => verifySupportMatrix({
       packageJson: { scripts: packageScripts },
-      ciWorkflow: "jobs:\n  check:\n    runs-on: windows-latest\n",
+      ciWorkflow: `${ciWorkflow}\n  legacy:\n    runs-on: windows-latest\n`,
       releaseWorkflow,
       supportPolicy,
     })).toThrow("CI workflow contains a native Windows gate");
 
     expect(() => verifySupportMatrix({
       packageJson: { scripts: packageScripts },
-      ciWorkflow: "jobs:\n  check:\n    runs-on: ubuntu-latest\n",
+      ciWorkflow,
       releaseWorkflow: `${releaseWorkflow}\n# powershell verifier\n`,
       supportPolicy,
     })).toThrow("Release workflow contains a native Windows target or gate");
@@ -84,7 +97,7 @@ describe("supported build and release matrix", () => {
   test("rejects drift between policy documentation and release artifacts", () => {
     expect(() => verifySupportMatrix({
       packageJson: { scripts: packageScripts },
-      ciWorkflow: "jobs:\n  check:\n    runs-on: ubuntu-latest\n",
+      ciWorkflow,
       releaseWorkflow,
       supportPolicy: supportPolicy.replace("`asana-cli-linux-x64`", "`missing-linux-x64`"),
     })).toThrow("does not document asana-cli-linux-x64");
