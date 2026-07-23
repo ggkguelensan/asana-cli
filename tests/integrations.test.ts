@@ -13,6 +13,7 @@ import {
 import { INTEGRATION_CLIENTS } from "../integrations/clients";
 import {
   INTEGRATION_MANIFEST_FILE,
+  doctorIntegration,
   inspectIntegration,
   integrationManifestSchema,
   planUninstallIntegration,
@@ -56,6 +57,19 @@ const executionResultSchema = z.looseObject({ plan: planSchema, execution: execu
 const doctorSchema = z.looseObject({
   inspection: inspectionSchema,
   inherited_credentials: z.array(z.enum(["ASANA_ACCESS_TOKEN", "ASANA_PAT"])),
+  credential_sources: z.looseObject({
+    effective: z.enum(["ASANA_ACCESS_TOKEN", "ASANA_PAT", "os-credential-store", "none", "unknown"]),
+    environment: z.looseObject({ status: z.enum(["clear", "inherited"]) }),
+    os_credential_store: z.looseObject({
+      status: z.enum(["configured", "absent", "unavailable", "not-checked"]),
+    }),
+  }),
+  warnings: z.array(z.looseObject({ code: z.string() })),
+  permission_review: z.looseObject({
+    status: z.enum(["not-provided", "no-known-broad-permissions", "unsafe"]),
+    checked_rules: z.number(),
+    findings: z.array(z.looseObject({ rule_index: z.number(), code: z.string() })),
+  }),
   suggested_never_auto_allow: z.array(z.string()),
 });
 
@@ -167,11 +181,29 @@ describe("pre-PAT integration commands", () => {
     const pat = "DOCTOR_PAT_CANARY_987654";
     const doctor = await runIntegration([
       "integrations", "doctor", "--client", "codex", "--scope", "project",
+      "--skip-credential-store",
+      "--auto-allow", "asana-cli agent status",
+      "--auto-allow", "asana-cli api *",
+      "--auto-allow", "/usr/local/bin/asana-cli agent apply --operation-id *",
     ], { cwd: project, home, env: { ASANA_ACCESS_TOKEN: accessToken, ASANA_PAT: pat } });
     expect(doctor.exitCode).toBe(0);
     const doctorResult = doctorSchema.parse(parseOutput(doctor.stdout));
     expect(doctorResult.inspection.state).toBe("absent");
     expect(doctorResult.inherited_credentials).toEqual(["ASANA_ACCESS_TOKEN", "ASANA_PAT"]);
+    expect(doctorResult.credential_sources.effective).toBe("ASANA_ACCESS_TOKEN");
+    expect(doctorResult.credential_sources.environment.status).toBe("inherited");
+    expect(doctorResult.credential_sources.os_credential_store.status).toBe("not-checked");
+    expect(doctorResult.warnings.map((warning) => warning.code)).toEqual([
+      "inherited-environment-credential",
+    ]);
+    expect(doctorResult.permission_review).toMatchObject({
+      status: "unsafe",
+      checked_rules: 3,
+      findings: [
+        { rule_index: 1, code: "raw-api" },
+        { rule_index: 2, code: "write-apply" },
+      ],
+    });
     expect(doctorResult.suggested_never_auto_allow).toEqual(["api", "request", "auth", "apply"]);
     expect(`${doctor.stdout}${doctor.stderr}`).not.toContain(accessToken);
     expect(`${doctor.stdout}${doctor.stderr}`).not.toContain(pat);
@@ -214,6 +246,75 @@ describe("pre-PAT integration commands", () => {
       );
       expect(result.inspection.state, target.scope).toBe("absent");
     }
+  });
+
+  test("reports credential-store states without returning secrets or storage errors", async () => {
+    const root = await temporaryDirectory();
+    const project = join(root, "project");
+    await mkdir(project);
+    const input = {
+      target: { client: "codex", scope: "project", project_directory: project },
+      environment: {},
+    } as const;
+    const secret = "DOCTOR_STORED_PAT_CANARY_938245";
+
+    const configured = await doctorIntegration(input, {
+      read_stored_pat: async () => secret,
+    });
+    expect(configured.credential_sources.effective).toBe("os-credential-store");
+    expect(configured.credential_sources.os_credential_store.status).toBe("configured");
+    expect(JSON.stringify(configured)).not.toContain(secret);
+
+    const absent = await doctorIntegration(input, {
+      read_stored_pat: async () => null,
+    });
+    expect(absent.credential_sources.effective).toBe("none");
+    expect(absent.credential_sources.os_credential_store.status).toBe("absent");
+
+    const unavailable = await doctorIntegration(input, {
+      read_stored_pat: async () => {
+        throw new Error(`credential backend leaked ${secret}`);
+      },
+    });
+    expect(unavailable.credential_sources.effective).toBe("unknown");
+    expect(unavailable.credential_sources.os_credential_store.status).toBe("unavailable");
+    expect(unavailable.warnings.map((warning) => warning.code)).toContain("credential-store-unavailable");
+    expect(JSON.stringify(unavailable)).not.toContain(secret);
+  });
+
+  test("doctor detects known broad permission examples without echoing their text", async () => {
+    const root = await temporaryDirectory();
+    const home = join(root, "home");
+    const project = join(root, "project");
+    await Promise.all([mkdir(home), mkdir(project)]);
+    const canary = "PERMISSION_RULE_CANARY_735921";
+    const rules = [
+      "Bash(asana-cli *)",
+      "allow:/opt/asana/bin/asana-cli request *",
+      "Bash(asana-cli auth pat get)",
+      "Bash(asana-cli agent *)",
+      "asana-cli integrations update --apply",
+      `unrecognized-host-syntax ${canary}`,
+    ];
+    const result = await runIntegration([
+      "integrations", "doctor", "--client", "claude-code", "--scope", "project",
+      "--skip-credential-store",
+      ...rules.flatMap((rule) => ["--auto-allow", rule]),
+    ], { cwd: project, home });
+    expect(result.exitCode).toBe(0);
+    const parsed = doctorSchema.parse(parseOutput(result.stdout));
+    expect(parsed.permission_review).toMatchObject({
+      status: "unsafe",
+      checked_rules: rules.length,
+      findings: [
+        { rule_index: 0, code: "broad-cli" },
+        { rule_index: 1, code: "raw-request" },
+        { rule_index: 2, code: "credential-management" },
+        { rule_index: 3, code: "broad-agent" },
+        { rule_index: 4, code: "integration-lifecycle-apply" },
+      ],
+    });
+    expect(`${result.stdout}${result.stderr}`).not.toContain(canary);
   });
 
   test("rejects malformed client, scope, duplicate options, and ambiguous write confirmation", async () => {

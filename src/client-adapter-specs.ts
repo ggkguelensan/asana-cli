@@ -160,6 +160,80 @@ export const PROHIBITED_AGENT_COMMANDS = [
   "asana-cli integrations uninstall --apply",
 ] as const;
 
+const broadPermissionCodeSchema = z.enum([
+  "broad-cli",
+  "raw-api",
+  "raw-request",
+  "credential-management",
+  "broad-agent",
+  "write-apply",
+  "integration-lifecycle-apply",
+]);
+export type BroadPermissionCode = z.output<typeof broadPermissionCodeSchema>;
+
+export const permissionReviewSchema = z.strictObject({
+  status: z.enum(["not-provided", "no-known-broad-permissions", "unsafe"]),
+  checked_rules: z.number().int().min(0).max(100),
+  findings: z.array(z.strictObject({
+    rule_index: z.number().int().min(0).max(99),
+    code: broadPermissionCodeSchema,
+  })).max(100),
+});
+export type PermissionReview = z.output<typeof permissionReviewSchema>;
+
+function permissionCommandTail(rule: string): string | undefined {
+  const normalized = rule.trim().toLowerCase().replace(/\s+/g, " ");
+  const match = /(?:^|[\s"'`([{,:=])(?:\/?[a-z0-9._-]+\/)*asana-cli(?=$|\s)/.exec(normalized);
+  if (!match) return undefined;
+  return normalized.slice((match.index ?? 0) + match[0].length).trim();
+}
+
+function broadPermissionCode(rule: string): BroadPermissionCode | undefined {
+  const tail = permissionCommandTail(rule);
+  if (tail === undefined) return undefined;
+  const tokens = tail.split(" ").map((token) => token.replace(/[)\]},;]+$/g, ""));
+  if (tail === "" || ["*", "**"].includes(tokens[0] ?? "")) return "broad-cli";
+  const command = tokens[0];
+  if (command === "api" || command === "api*") return "raw-api";
+  if (command === "request" || command === "request*") return "raw-request";
+  if (command === "auth" || command === "auth*") return "credential-management";
+  if (command !== "agent" && command !== "agent*") {
+    if (
+      command === "integrations" &&
+      ["install", "update", "uninstall", "*", "**"].includes(tokens[1] ?? "") &&
+      (tokens.includes("--apply") || ["*", "**"].includes(tokens[1] ?? ""))
+    ) {
+      return "integration-lifecycle-apply";
+    }
+    return undefined;
+  }
+  if (command === "agent*" || tokens.length === 1 || ["*", "**"].includes(tokens[1] ?? "")) {
+    return "broad-agent";
+  }
+  if (tokens[1] === "apply" || tokens[1] === "apply*") return "write-apply";
+  return undefined;
+}
+
+/**
+ * Detects known dangerous asana-cli permission prefixes without echoing the
+ * supplied host rule. Unknown policy syntaxes are deliberately not called safe.
+ */
+export function reviewAutoAllowCommands(commands: readonly string[]): PermissionReview {
+  const findings = commands.flatMap((command, ruleIndex) => {
+    const code = broadPermissionCode(command);
+    return code ? [{ rule_index: ruleIndex, code }] : [];
+  });
+  return permissionReviewSchema.parse({
+    status: commands.length === 0
+      ? "not-provided"
+      : findings.length > 0
+        ? "unsafe"
+        : "no-known-broad-permissions",
+    checked_rules: commands.length,
+    findings,
+  });
+}
+
 export const clientPolicyGuidanceSchema = z.strictObject({
   client: clientAdapterIdSchema,
   autoAllow: z.strictObject({

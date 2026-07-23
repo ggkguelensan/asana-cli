@@ -28,9 +28,33 @@ asana-cli integrations install --client codex --scope project --apply
 ```
 
 `update` and `uninstall` likewise require exactly one of `--dry-run` or `--apply`.
-`status` verifies ownership and SHA-256 hashes; `diff` produces the next install/update plan;
-`doctor` checks only local integration state and inherited credential *names*; and
+`status` verifies ownership and SHA-256 hashes; `diff` produces the next install/update plan; and
 `policy CLIENT` prints narrow suggested command policy without writing any client configuration.
+
+`doctor` checks local integration state, reports credential-source presence, and can inspect
+examples of host auto-allow rules:
+
+```sh
+asana-cli integrations doctor \
+  --client codex \
+  --scope project \
+  --auto-allow 'asana-cli agent status' \
+  --auto-allow 'Bash(asana-cli api *)'
+```
+
+The result distinguishes inherited `ASANA_ACCESS_TOKEN`/`ASANA_PAT`, the OS credential store, no
+credential, and an unavailable store. It reports environment variable names but never credential
+values or credential-store error details. An inherited credential produces an explicit warning.
+Credential precedence is `ASANA_ACCESS_TOKEN` → `ASANA_PAT` → OS credential store.
+
+Each `--auto-allow` is bounded and repeatable. The doctor reports only the rule index and a fixed
+finding code, not the supplied rule text. It detects known broad/raw `asana-cli`, `api`, `request`,
+`auth`, `agent *`, `agent apply`, and integration lifecycle apply patterns, including common host
+wrappers and absolute executable paths. `no-known-broad-permissions` means only that none of these
+patterns matched; it is not a general proof that an arbitrary host policy is safe.
+
+`--skip-credential-store` is available for isolated fixtures where the OS service cannot be
+accessed. It is reported honestly as `not-checked`; do not use it for a real credential diagnosis.
 
 The manager refuses unmanaged, modified, malformed, or unsafe targets. It stages an owned bundle
 and atomically replaces it only after manifest checks. It never writes `AGENTS.md`, `CLAUDE.md`,

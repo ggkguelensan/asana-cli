@@ -11,7 +11,9 @@ import {
   rm,
 } from "node:fs/promises";
 import { dirname, join, relative, sep } from "node:path";
+import { reviewAutoAllowCommands, type PermissionReview } from "../client-adapter-specs";
 import { CliError } from "../errors";
+import { storedPat } from "../pat-store";
 import {
   assertManifestTarget,
   createIntegrationManifest,
@@ -721,20 +723,88 @@ export async function diffIntegration(value: unknown): Promise<IntegrationPlan> 
   return planInstallOrUpdateIntegration(value);
 }
 
-/** Reports only booleans and fixed policy guidance; credential values are never read into results. */
-export async function doctorIntegration(value: unknown): Promise<Readonly<{
+export type IntegrationCredentialStoreStatus = "configured" | "absent" | "unavailable" | "not-checked";
+export type IntegrationCredentialSource =
+  | "ASANA_ACCESS_TOKEN"
+  | "ASANA_PAT"
+  | "os-credential-store"
+  | "none"
+  | "unknown";
+
+export type IntegrationDoctorResult = Readonly<{
   inspection: IntegrationInspection;
   inherited_credentials: readonly ("ASANA_ACCESS_TOKEN" | "ASANA_PAT")[];
+  credential_sources: Readonly<{
+    effective: IntegrationCredentialSource;
+    precedence: readonly ["ASANA_ACCESS_TOKEN", "ASANA_PAT", "os-credential-store"];
+    environment: Readonly<{
+      status: "clear" | "inherited";
+      names: readonly ("ASANA_ACCESS_TOKEN" | "ASANA_PAT")[];
+    }>;
+    os_credential_store: Readonly<{ status: IntegrationCredentialStoreStatus }>;
+  }>;
+  warnings: readonly Readonly<{
+    code: "inherited-environment-credential" | "credential-store-unavailable";
+    message: string;
+  }>[];
+  permission_review: PermissionReview;
   suggested_never_auto_allow: readonly ["api", "request", "auth", "apply"];
-}>> {
+}>;
+
+/**
+ * Reports credential presence and fixed policy guidance, but never returns,
+ * logs, or validates a credential value.
+ */
+export async function doctorIntegration(
+  value: unknown,
+  options: Readonly<{ read_stored_pat?: () => Promise<string | null> }> = {},
+): Promise<IntegrationDoctorResult> {
   const input: IntegrationDoctorInput = integrationDoctorInputSchema.parse(value);
   const environment = input.environment ?? process.env;
   const inheritedCredentials: ("ASANA_ACCESS_TOKEN" | "ASANA_PAT")[] = [];
   if (environment.ASANA_ACCESS_TOKEN?.trim()) inheritedCredentials.push("ASANA_ACCESS_TOKEN");
   if (environment.ASANA_PAT?.trim()) inheritedCredentials.push("ASANA_PAT");
+  let credentialStoreStatus: IntegrationCredentialStoreStatus = "not-checked";
+  if (input.probe_credential_store) {
+    try {
+      credentialStoreStatus = await (options.read_stored_pat ?? storedPat)() ? "configured" : "absent";
+    } catch {
+      credentialStoreStatus = "unavailable";
+    }
+  }
+  const warnings: IntegrationDoctorResult["warnings"][number][] = [];
+  if (inheritedCredentials.length > 0) {
+    warnings.push({
+      code: "inherited-environment-credential",
+      message: "The agent process inherits an Asana credential from its environment.",
+    });
+  }
+  if (credentialStoreStatus === "unavailable") {
+    warnings.push({
+      code: "credential-store-unavailable",
+      message: "The OS credential store could not be inspected.",
+    });
+  }
+  const effective: IntegrationCredentialSource = inheritedCredentials[0]
+    ?? (credentialStoreStatus === "configured"
+      ? "os-credential-store"
+      : credentialStoreStatus === "unavailable"
+        ? "unknown"
+        : "none");
   return {
     inspection: await inspectIntegration(input.target),
     inherited_credentials: inheritedCredentials,
+    credential_sources: {
+      effective,
+      precedence: ["ASANA_ACCESS_TOKEN", "ASANA_PAT", "os-credential-store"],
+      environment: {
+        status: inheritedCredentials.length > 0 ? "inherited" : "clear",
+        names: inheritedCredentials,
+      },
+      os_credential_store: { status: credentialStoreStatus },
+    },
+    warnings,
+    permission_review: reviewAutoAllowCommands(input.auto_allow_commands),
     suggested_never_auto_allow: ["api", "request", "auth", "apply"],
   };
 }

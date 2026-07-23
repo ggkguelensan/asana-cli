@@ -67,7 +67,7 @@ INTEGRATIONS (STATIC SKILL BUNDLE, NO MCP)
   asana-cli integrations list
   asana-cli integrations detect --client CLIENT --scope user|project
   asana-cli integrations status --client CLIENT --scope user|project
-  asana-cli integrations doctor --client CLIENT --scope user|project
+  asana-cli integrations doctor --client CLIENT --scope user|project [--auto-allow COMMAND]...
   asana-cli integrations policy CLIENT
   asana-cli integrations install --client CLIENT --scope user|project --dry-run|--apply
   asana-cli integrations update --client CLIENT --scope user|project --dry-run|--apply

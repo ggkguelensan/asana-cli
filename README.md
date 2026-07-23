@@ -216,7 +216,9 @@ asana-cli integrations install --client codex --scope project --apply
 `install`, `update`, and `uninstall` require exactly one of `--dry-run` or `--apply`. The manager
 uses a manifest and SHA-256 hashes for every managed artifact, stages changes atomically, and refuses
 unmanaged, modified, malformed, or unsafe targets. `status`, `diff`, and `doctor` are local
-read-only checks; `doctor` reports only inherited credential variable names, never their values.
+read-only checks. `doctor` reports credential-source presence without values or backend error
+details, warns when the agent inherits PAT-bearing environment variables, and audits repeatable
+`--auto-allow COMMAND` examples for known broad `api`, `request`, `auth`, and apply patterns.
 
 The only managed paths are the client discovery roots (`.agents/skills/asana` for Generic Agent
 Skills and Codex, or `.claude/skills/asana` for Claude Code) plus their ownership manifest. Integrations never

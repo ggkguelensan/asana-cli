@@ -16,7 +16,7 @@ import {
   clientAdapterDetectionProbes,
   renderClientPolicyGuidance,
 } from "./client-adapter-specs";
-import { booleanFlag, stringFlag, type ParsedArgs } from "./args";
+import { booleanFlag, flagStrings, stringFlag, type ParsedArgs } from "./args";
 import { CliError } from "./errors";
 import {
   diffIntegration,
@@ -62,6 +62,28 @@ function requireAllowedFlags(args: ParsedArgs, allowed: readonly string[]): void
       throw new CliError("usage", `--${name} may be provided only once`);
     }
   }
+}
+
+function doctorOptions(args: ParsedArgs): Readonly<{
+  auto_allow_commands: string[];
+  probe_credential_store: boolean;
+}> {
+  requireAllowedFlags(
+    { ...args, flags: Object.fromEntries(Object.entries(args.flags).filter(([name]) => name !== "auto-allow")) },
+    ["client", "scope", "compact", "skip-credential-store"],
+  );
+  const rawAutoAllow = args.flags["auto-allow"];
+  if (
+    rawAutoAllow === true ||
+    rawAutoAllow === false ||
+    (Array.isArray(rawAutoAllow) && rawAutoAllow.some((value) => value === "true" || value === "false"))
+  ) {
+    throw new CliError("usage", "--auto-allow requires a command value");
+  }
+  return {
+    auto_allow_commands: flagStrings(args, "auto-allow"),
+    probe_credential_store: !booleanFlag(args, "skip-credential-store"),
+  };
 }
 
 function integrationClientOption(value: unknown, label: "--client" | "CLIENT") {
@@ -211,15 +233,17 @@ export async function runIntegrationCommand(args: ParsedArgs): Promise<{ value?:
 
   requireExactPositionals(args, 2, `asana-cli integrations ${action} --client CLIENT --scope user|project`);
   const mutation = action === "install" || action === "update" || action === "uninstall";
-  requireAllowedFlags(args, mutation ? ["client", "scope", "dry-run", "apply", "compact"] : ["client", "scope", "compact"]);
+  const doctorInput = action === "doctor" ? doctorOptions(args) : undefined;
+  if (action !== "doctor") {
+    requireAllowedFlags(args, mutation ? ["client", "scope", "dry-run", "apply", "compact"] : ["client", "scope", "compact"]);
+  }
   const target = integrationTarget(args);
 
   if (action === "detect") return { value: await detectIntegration(target) };
   if (action === "status") return { value: await inspectIntegration(target) };
-  if (action === "doctor") return { value: await doctorIntegration({ target }) };
+  if (action === "doctor") return { value: await doctorIntegration({ target, ...doctorInput }) };
   if (action === "diff") return { value: await diffIntegration(bundleForTarget(target)) };
 
   const mode = executionMode(args, action);
   return { value: await mutateIntegration(action, target, mode) };
 }
-

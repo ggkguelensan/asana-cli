@@ -93,5 +93,11 @@ export type IntegrationBundleInput = z.output<typeof integrationBundleInputSchem
 export const integrationDoctorInputSchema = z.strictObject({
   target: integrationTargetInputSchema,
   environment: z.record(z.string(), z.string().optional()).optional(),
+  probe_credential_store: z.boolean().default(true),
+  auto_allow_commands: z
+    .array(z.string().trim().min(1).max(1_024))
+    .max(100)
+    .refine((commands) => new Set(commands).size === commands.length, "auto-allow commands must be unique")
+    .default([]),
 });
 export type IntegrationDoctorInput = z.output<typeof integrationDoctorInputSchema>;
