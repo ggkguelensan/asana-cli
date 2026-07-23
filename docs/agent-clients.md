@@ -217,29 +217,46 @@ printf '%s' '{"task_gid":"1201","patch":{"name":"New name","completed":true}}' |
   asana-cli agent prepare-task-update --input -
 
 asana-cli agent prepare-comment --task 1201 --text 'Implemented in PR-418'
+
+printf '%s' '{"workspace_gid":"1200","project_gid":"1201","task":{"name":"DEV-011 batch reads"}}' |
+  asana-cli agent prepare-task-create --input -
+
+printf '%s' '{"parent_task_gid":"1203","project_gid":"1201","task":{"name":"Pagination fixture"}}' |
+  asana-cli agent prepare-subtask-create --input -
+
+printf '%s' '{"template":"feature","template_revision":3,"task":{"name":"Dependency writes"}}' |
+  asana-cli agent prepare-task-from-template --input -
 ```
 
-Prepare validates task ownership and known credentials, then durably stores an immutable local
-operation with a TTL. It returns `.result.data.operation_id`, target, bounded preview, hash and
-expiry. Review that response. After explicit user approval, pass only its UUID:
+Prepare validates known credentials and the exact live workspace/project/task scope, then durably
+stores an immutable local operation with a TTL. Creation always expands the authenticated user as
+the assignee; subtask creation also requires an owned parent and records its `modified_at` guard.
+It returns `.result.data.operation_id`, target, bounded complete preview, hash and expiry. Review
+that response. After explicit user approval, pass only its UUID:
 
 ```sh
 ASANA_CLI_AGENT_POLICY=read-write \
   asana-cli agent apply --operation-id 00000000-0000-4000-8000-000000000000
 ```
 
-`apply` does not accept the task patch or comment text. It reloads the operation, rechecks the
-authenticated user, assignee and `modified_at`, then uses a compare-and-set transition so only one
-local caller can start the write. An expired, stale or already-applied operation fails without a
-write. `applying` and `unknown` are never retried automatically.
+`apply` does not accept a patch, comment, or create payload. It reloads the operation, rechecks the
+authenticated user, exact project/workspace, assignee and applicable `modified_at` guard, then
+uses a compare-and-set transition so only one local caller can start the write. An expired, stale
+or already-applied operation fails without a write. `applying` and `unknown` are never retried
+automatically.
 
 If `unknown-result` is returned, the request may have reached Asana. Do not repeat `apply`; inspect
 Asana separately and obtain explicit human direction. A comment could otherwise be duplicated.
 
 `asana-cli agent operation status UUID` is a local, read-only diagnostic command. It validates
 only the UUID, reads the immutable journal snapshot without acquiring or reclaiming a lock, and
-returns state, task target, timestamps, result metadata, and a next-step hint. It never loads a PAT or
-SDK client, calls Asana, changes a record, prints the task/comment payload, or chooses recovery.
+returns state, bounded target GIDs, timestamps, result metadata, and a next-step hint. It never
+loads a PAT or SDK client, calls Asana, changes a record, prints the task/comment/create payload,
+or chooses recovery.
+
+Direct create fields and the fixed-root revisioned repository-template contract are documented in
+[agent task creation](task-creation.md). Templates are untrusted static defaults: prepare records
+their exact revision/digest and fully expanded GIDs; apply never rereads repository files.
 
 ## Host scoped write policy
 
@@ -264,26 +281,31 @@ system alias for that directory, but the hardened loader deliberately opens the 
   "scopes": [{
     "workspace_gid": "1200",
     "project_gids": ["1201"],
-    "task_update_fields": ["completed", "custom_fields"],
+    "task_update_fields": ["name", "assignee", "completed", "custom_fields"],
     "custom_field_gids": ["1202"],
-    "allow_comments": true
+    "allow_comments": true,
+    "allow_task_create": true
   }]
 }
 ```
 
-At both `prepare-*` and `apply`, the CLI fetches the task's current workspace and project
-memberships from Asana. The task must be in an allowed workspace and at least one allowed project;
-updates must use only listed fields and custom fields, and comments require `allow_comments`. This
-is in addition to authenticated-owner, stale-record, registered-secret, and external-approval
-guards. A policy denial reveals neither policy values nor matching logic.
+At both `prepare-*` and `apply`, the CLI fetches current scope from Asana. Existing tasks must be
+in an allowed workspace and at least one allowed project; a create target must be the exact
+allowed workspace/project. Updates and creates use only listed fields/custom fields, comments
+require `allow_comments`, and creation additionally requires `allow_task_create: true`. Omitted
+`allow_task_create` defaults to false for existing v1 policy files. A create always requires
+`name` and `assignee` in `task_update_fields`. These checks are in addition to authenticated-owner,
+stale-record, registered-secret, and external-approval guards. A policy denial reveals neither
+policy values nor matching logic.
 
 ## Metadata-only audit trail
 
 The composition root writes a separate metadata-only audit event for each `prepared`, `applying`,
 `applied`, and `unknown` lifecycle state. It is not the operation journal. Events contain only the
-operation UUID, task GID, action, plan/record hashes, timestamp, and bounded result metadata; they
-cannot contain task names, patches, comment text, credentials, headers, raw responses, or raw
-errors. The local audit path is `~/Library/Application Support/asana-cli/audit` on macOS and
+operation UUID, bounded target GIDs, action, plan/record hashes, timestamp, and bounded result
+metadata; they cannot contain task names, create fields, patches, comment text, credentials,
+headers, raw responses, or raw errors. The local audit path is
+`~/Library/Application Support/asana-cli/audit` on macOS and
 `$XDG_STATE_HOME/asana-cli/audit` (or `~/.local/state/asana-cli/audit`) on Linux.
 
 If required audit persistence fails before a remote write, the write is not started. If persistence

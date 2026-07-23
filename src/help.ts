@@ -45,6 +45,9 @@ AGENT CLIENTS (DIRECT CLI, NO MCP)
   asana-cli agent my-tasks --input -     Compatible JSON stdin mode
   asana-cli agent prepare-task-update --input -
   asana-cli agent prepare-comment --task GID --text TEXT
+  asana-cli agent prepare-task-create --input -
+  asana-cli agent prepare-subtask-create --input -
+  asana-cli agent prepare-task-from-template --input -
   asana-cli agent apply --operation-id UUID
   asana-cli agent operation status UUID      Read local operation metadata
   asana-cli agent context --git-current     Read normalized local Git context

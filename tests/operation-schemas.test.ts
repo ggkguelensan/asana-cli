@@ -145,4 +145,51 @@ describe("operation record schemas", () => {
       ttl_ms: 60_000,
     })).toThrow();
   });
+
+  test("requires complete immutable task-create targets, assignee, and subtask guards", () => {
+    const task = createOperationRecord({
+      operation: "task.create",
+      target: { workspace_gid: "100", project_gid: "200" },
+      payload: {
+        fields: {
+          name: "Create me",
+          assignee_gid: "123456",
+          custom_fields: { "300": "ready" },
+        },
+      },
+      guards: { prepared_by_gid: "123456" },
+      ttl_ms: 60_000,
+    }, createdAt, operationId);
+    expect(task).toMatchObject({
+      operation: "task.create",
+      target: { workspace_gid: "100", project_gid: "200" },
+      payload: { fields: { assignee_gid: "123456" } },
+    });
+
+    expect(() => createOperationInputSchema.parse({
+      operation: "task.create",
+      target: {
+        workspace_gid: "100",
+        project_gid: "200",
+        parent_task_gid: "987654",
+      },
+      payload: {
+        fields: { name: "Missing parent guard", assignee_gid: "123456" },
+      },
+      guards: { prepared_by_gid: "123456" },
+    })).toThrow("subtask creation requires an exact parent concurrency guard");
+
+    expect(() => createOperationInputSchema.parse({
+      operation: "task.create",
+      target: { workspace_gid: "100", project_gid: "200" },
+      payload: {
+        fields: {
+          name: "Invalid start date",
+          assignee_gid: "123456",
+          start_on: "2026-08-01",
+        },
+      },
+      guards: { prepared_by_gid: "123456" },
+    })).toThrow("task start_on requires due_on or due_at");
+  });
 });

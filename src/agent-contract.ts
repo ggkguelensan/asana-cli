@@ -14,6 +14,9 @@ import {
   myTasksInputSchema,
   operationStatusInputSchema,
   prepareCommentInputSchema,
+  prepareSubtaskCreateInputSchema,
+  prepareTaskFromTemplateInputSchema,
+  prepareTaskCreateInputSchema,
   prepareTaskUpdateInputSchema,
   repositoryAsanaInputSchema,
   repositoryContextInputSchema,
@@ -425,6 +428,54 @@ const prepareCommentAction = defineAction(
   prepareCommentInputSchema,
 );
 
+const prepareTaskCreateAction = defineAction(
+  "prepare-task-create",
+  {
+    operation: "task.create.prepare",
+    effect: "prepare",
+    approval: "none",
+    limits: {
+      max_input_bytes: MAX_AGENT_INPUT_BYTES,
+      max_text_chars: 8_000,
+      max_custom_fields: 50,
+    },
+    minimumCliVersion: "0.5.0",
+  },
+  prepareTaskCreateInputSchema,
+);
+
+const prepareSubtaskCreateAction = defineAction(
+  "prepare-subtask-create",
+  {
+    operation: "subtask.create.prepare",
+    effect: "prepare",
+    approval: "none",
+    limits: {
+      max_input_bytes: MAX_AGENT_INPUT_BYTES,
+      max_text_chars: 8_000,
+      max_custom_fields: 50,
+    },
+    minimumCliVersion: "0.5.0",
+  },
+  prepareSubtaskCreateInputSchema,
+);
+
+const prepareTaskFromTemplateAction = defineAction(
+  "prepare-task-from-template",
+  {
+    operation: "task.create-from-template.prepare",
+    effect: "prepare",
+    approval: "none",
+    limits: {
+      max_input_bytes: MAX_AGENT_INPUT_BYTES,
+      max_text_chars: 8_000,
+      max_custom_fields: 50,
+    },
+    minimumCliVersion: "0.5.0",
+  },
+  prepareTaskFromTemplateInputSchema,
+);
+
 const applyOperationAction = defineAction(
   "apply",
   {
@@ -459,6 +510,9 @@ export const AGENT_ACTIONS = {
   [findGitAction.descriptor.action]: findGitAction,
   [prepareTaskUpdateAction.descriptor.action]: prepareTaskUpdateAction,
   [prepareCommentAction.descriptor.action]: prepareCommentAction,
+  [prepareTaskCreateAction.descriptor.action]: prepareTaskCreateAction,
+  [prepareSubtaskCreateAction.descriptor.action]: prepareSubtaskCreateAction,
+  [prepareTaskFromTemplateAction.descriptor.action]: prepareTaskFromTemplateAction,
   [applyOperationAction.descriptor.action]: applyOperationAction,
 };
 

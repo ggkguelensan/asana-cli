@@ -18,7 +18,7 @@ protocol.
   still wants the change, prepare a fresh operation and show its new preview.
 - **Already applied:** report the completed state. Never apply the same ID again.
 - **Unknown result:** report that the write may have reached Asana and stop. Never
-  automatically retry or prepare a duplicate comment/update.
+  automatically retry or prepare a duplicate comment, update, task, or subtask.
 - **Network or service failure before preparation:** report it and wait for the user
   to request another bounded attempt.
 

@@ -82,6 +82,22 @@ require `--include field-values`. All selected and metadata names share one UTF-
 time, and optional size. Download, permanent, and view URLs are not requested or returned, and
 the CLI never opens or downloads an attachment.
 
+## Task creation context
+
+`prepare-task-create` requires an exact workspace GID and active project GID.
+`prepare-subtask-create` requires an exact project GID and an existing parent assigned to the
+authenticated user. Both actions expand the authenticated user as assignee, validate the live
+project/workspace relationship, apply the fixed host scope policy, and store one immutable
+approval-required operation. Subtasks additionally record the parent's exact `modified_at` as an
+apply-time concurrency guard.
+
+`prepare-task-from-template` reads only structured static defaults from the fixed repository-root
+`.asana-cli/task-create-templates.json`. It resolves project/custom-field aliases through the
+DEV-012 repository-context manifest, records both revisions/digests and every expanded GID, and
+then follows the same direct creation checks. Templates are untrusted advisory input and never
+change host policy; apply does not reread them. The complete input, policy, preview, and storage
+contract is in [agent task creation](task-creation.md).
+
 ## Authority and trust boundary
 
 These actions are reads, not authorization:
@@ -109,4 +125,6 @@ Task-context semantics follow the official endpoints for
 Workspace-qualified Custom ID resolution uses the official
 [Custom ID endpoint](https://developers.asana.com/reference/gettaskforcustomid); accepted v0/v1
 task URL forms follow Asana's documented
-[rich-text task links](https://developers.asana.com/docs/rich-text).
+[rich-text task links](https://developers.asana.com/docs/rich-text). Creation uses the official
+[create task](https://developers.asana.com/reference/createtask) and
+[create subtask](https://developers.asana.com/reference/createsubtaskfortask) endpoints.

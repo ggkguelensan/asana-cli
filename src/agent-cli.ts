@@ -77,6 +77,7 @@ import {
 } from "./developer-context";
 import { getTaskContext } from "./task-context";
 import { resolveTaskReference } from "./task-reference";
+import type { TaskCreateTemplateProvider } from "./task-create-templates";
 
 type JsonObject = Record<string, unknown>;
 
@@ -416,6 +417,30 @@ export async function runAgentCommand(
     return agentResult("prepare-comment", await service.prepareComment(input));
   }
 
+  if (action === "prepare-task-create") {
+    const input = await readStdinAgentInput(args, "prepare-task-create");
+    const service = new AgentOperationService(client, runtime.operations, runtime);
+    return agentResult("prepare-task-create", await service.prepareTaskCreate(input));
+  }
+
+  if (action === "prepare-subtask-create") {
+    const input = await readStdinAgentInput(args, "prepare-subtask-create");
+    const service = new AgentOperationService(client, runtime.operations, runtime);
+    return agentResult(
+      "prepare-subtask-create",
+      await service.prepareSubtaskCreate(input),
+    );
+  }
+
+  if (action === "prepare-task-from-template") {
+    const input = await readStdinAgentInput(args, "prepare-task-from-template");
+    const service = new AgentOperationService(client, runtime.operations, runtime);
+    return agentResult(
+      "prepare-task-from-template",
+      await service.prepareTaskFromTemplate(input),
+    );
+  }
+
   if (action === "apply") {
     if (policy() !== "read-write") {
       throw new CliError(
@@ -495,4 +520,5 @@ export interface AgentCommandRuntime {
   writePolicy?: HostScopedWritePolicyProvider;
   audit?: MetadataAuditStore;
   repositoryContext?: RepositoryContextManifestProvider;
+  taskCreateTemplates?: TaskCreateTemplateProvider;
 }

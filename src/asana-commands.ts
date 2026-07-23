@@ -205,6 +205,10 @@ export async function getTask(client: AsanaClient, gid: string, fields: string):
   return invokeApiMethod(client, "TasksApi", "getTask", [gid, { opt_fields: fields }]);
 }
 
+export async function getProject(client: AsanaClient, gid: string, fields: string): Promise<unknown> {
+  return invokeApiMethod(client, "ProjectsApi", "getProject", [gid, { opt_fields: fields }]);
+}
+
 export async function getTaskComments(
   client: AsanaClient,
   gid: string,
@@ -263,6 +267,30 @@ export async function addTaskComment(
   return invokeApiMethod(client, "StoriesApi", "createStoryForTask", [
     { data: content },
     gid,
+    { opt_fields: fields },
+  ]);
+}
+
+export async function createTask(
+  client: AsanaClient,
+  data: Record<string, unknown>,
+  fields: string,
+): Promise<unknown> {
+  return invokeApiMethod(client, "TasksApi", "createTask", [
+    { data },
+    { opt_fields: fields },
+  ]);
+}
+
+export async function createSubtask(
+  client: AsanaClient,
+  parentTaskGid: string,
+  data: Record<string, unknown>,
+  fields: string,
+): Promise<unknown> {
+  return invokeApiMethod(client, "TasksApi", "createSubtaskForTask", [
+    { data },
+    parentTaskGid,
     { opt_fields: fields },
   ]);
 }

@@ -1,5 +1,8 @@
 import { z } from "zod";
-import { taskPatchSchema } from "./agent-action-schemas";
+import {
+  expandedTaskCreateFieldsSchema,
+  taskPatchSchema,
+} from "./agent-action-schemas";
 import { gidSchema } from "./schemas";
 
 export const SCOPED_WRITE_POLICY_SCHEMA = "asana-cli.scoped-write-policy.v1" as const;
@@ -28,6 +31,7 @@ const scopedWritePolicyScopeSchema = z.strictObject({
     .refine(uniqueValues, "write fields must be unique"),
   custom_field_gids: gidAllowlistSchema,
   allow_comments: z.boolean(),
+  allow_task_create: z.boolean().default(false),
 }).superRefine((scope, context) => {
   const customFieldsAllowed = scope.task_update_fields.includes("custom_fields");
   if (customFieldsAllowed !== (scope.custom_field_gids.length > 0)) {
@@ -96,9 +100,34 @@ const taskCommentWriteCandidateSchema = z.strictObject({
   target: writeTargetScopeSchema,
 });
 
+const taskCreateWriteCandidateSchema = z.strictObject({
+  action: z.literal("task.create"),
+  target: writeTargetScopeSchema,
+  write_fields: z.array(taskUpdateWriteFieldSchema)
+    .min(1)
+    .max(taskUpdateWriteFieldSchema.options.length)
+    .refine(uniqueValues, "write fields must be unique"),
+  custom_field_gids: z.array(gidSchema).max(50).refine(
+    uniqueValues,
+    "custom field identifiers must be unique",
+  ),
+}).superRefine((candidate, context) => {
+  const hasCustomFields = candidate.write_fields.includes("custom_fields");
+  if (hasCustomFields !== (candidate.custom_field_gids.length > 0)) {
+    context.addIssue({
+      code: "custom",
+      path: ["custom_field_gids"],
+      message: hasCustomFields
+        ? "custom_field_gids must describe every custom field write"
+        : "custom_field_gids must be empty without a custom_fields write",
+    });
+  }
+});
+
 export const scopedWriteCandidateSchema = z.discriminatedUnion("action", [
   taskUpdateWriteCandidateSchema,
   taskCommentWriteCandidateSchema,
+  taskCreateWriteCandidateSchema,
 ]);
 
 export type ScopedWriteCandidate = z.output<typeof scopedWriteCandidateSchema>;
@@ -111,6 +140,7 @@ export const scopedWritePolicyDenialSchema = z.enum([
   "write_field_not_allowed",
   "custom_field_not_allowed",
   "comments_not_allowed",
+  "task_create_not_allowed",
 ]);
 
 export const scopedWritePolicyDecisionSchema = z.discriminatedUnion("allowed", [
@@ -151,6 +181,25 @@ export function describeTaskCommentWrite(targetValue: unknown): ScopedWriteCandi
   });
 }
 
+export function describeTaskCreateWrite(
+  targetValue: unknown,
+  fieldsValue: unknown,
+): ScopedWriteCandidate {
+  const target = writeTargetScopeSchema.parse(targetValue);
+  const fields = expandedTaskCreateFieldsSchema.parse(fieldsValue);
+  const writeFields = Object.keys(fields)
+    .filter((field) => field !== "assignee_gid" && field !== "custom_fields");
+  writeFields.push("assignee");
+  const customFieldGids = fields.custom_fields ? Object.keys(fields.custom_fields) : [];
+  if (customFieldGids.length > 0) writeFields.push("custom_fields");
+  return taskCreateWriteCandidateSchema.parse({
+    action: "task.create",
+    target,
+    write_fields: writeFields,
+    custom_field_gids: customFieldGids,
+  });
+}
+
 /**
  * Evaluates only a parsed host policy and metadata-only write candidate. Any malformed
  * policy or candidate is denied; there is no permissive fallback.
@@ -176,6 +225,9 @@ export function evaluateScopedWritePolicy(
 
   if (candidate.action === "task.comment") {
     return scope.allow_comments ? { allowed: true } : deny("comments_not_allowed");
+  }
+  if (candidate.action === "task.create" && !scope.allow_task_create) {
+    return deny("task_create_not_allowed");
   }
 
   if (!candidate.write_fields.every((field) => scope.task_update_fields.includes(field))) {

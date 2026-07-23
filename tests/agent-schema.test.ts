@@ -139,6 +139,41 @@ const driftFixtures = {
     valid: { task_gid: "123", text: "Comment" },
     invalid: { task_gid: "123", text: "" },
   },
+  "prepare-task-create": {
+    valid: {
+      workspace_gid: "100",
+      project_gid: "200",
+      task: { name: "Implement feature" },
+    },
+    invalid: {
+      workspace_gid: "100",
+      project_gid: "invalid",
+      task: { name: "Implement feature" },
+    },
+  },
+  "prepare-subtask-create": {
+    valid: {
+      parent_task_gid: "123",
+      project_gid: "200",
+      task: { name: "Add tests" },
+    },
+    invalid: {
+      parent_task_gid: "invalid",
+      project_gid: "200",
+      task: { name: "Add tests" },
+    },
+  },
+  "prepare-task-from-template": {
+    valid: {
+      template: "feature",
+      template_revision: 3,
+      task: { name: "Implement feature" },
+    },
+    invalid: {
+      template: "Feature",
+      template_revision: 3,
+    },
+  },
   apply: { valid: { operation_id: operationId }, invalid: { operation_id: "invalid" } },
 } satisfies Record<AgentActionName, DriftFixture>;
 
@@ -166,6 +201,9 @@ describe("agent capability and schema catalog", () => {
       "find-git",
       "prepare-task-update",
       "prepare-comment",
+      "prepare-task-create",
+      "prepare-subtask-create",
+      "prepare-task-from-template",
       "apply",
     ]);
     expect(AGENT_MANIFEST.actions).toHaveLength(AGENT_ACTION_NAMES.length);
@@ -191,6 +229,9 @@ describe("agent capability and schema catalog", () => {
       "asana-cli agent find-git",
       "asana-cli agent prepare-task-update",
       "asana-cli agent prepare-comment",
+      "asana-cli agent prepare-task-create",
+      "asana-cli agent prepare-subtask-create",
+      "asana-cli agent prepare-task-from-template",
     ]);
     expect(Object.keys(AGENT_MANIFEST.guarded_commands)).toEqual([
       "asana-cli agent apply",
@@ -230,6 +271,9 @@ describe("agent capability and schema catalog", () => {
         "resolve-user",
         "task-context",
         "resolve-task",
+        "prepare-task-create",
+        "prepare-subtask-create",
+        "prepare-task-from-template",
       ].includes(descriptor.action)
         ? "0.5.0"
         : ["operation-status", "prepare-task-update", "prepare-comment", "apply"]
@@ -439,6 +483,11 @@ describe("agent capability and schema catalog", () => {
       task_gid: "123",
       patch: {},
     }).success).toBe(false);
+    expect(AGENT_ACTIONS["prepare-task-create"].inputSchema.safeParse({
+      workspace_gid: "100",
+      project_gid: "200",
+      task: { name: "Invalid start", start_on: "2026-07-15" },
+    }).success).toBe(false);
   });
 
   test("publishes JSON Schema metadata for runtime object refinements", async () => {
@@ -485,6 +534,32 @@ describe("agent capability and schema catalog", () => {
       expect(taskPatchSchema.safeParse(fixture.patch).success).toBe(fixture.valid);
       expect(rejectedByPublishedNot(fixture.patch)).toBe(!fixture.valid);
     }
+
+    const createPublication = singleActionSchema.parse(
+      (await runCli(["agent", "schema", "prepare-task-create"])).value,
+    );
+    const createDateRules = z.looseObject({
+      properties: z.looseObject({
+        task: z.looseObject({
+          not: z.looseObject({
+            required: z.tuple([z.literal("due_on"), z.literal("due_at")]),
+          }),
+          if: z.looseObject({
+            required: z.tuple([z.literal("start_on")]),
+          }),
+          then: z.looseObject({
+            anyOf: z.tuple([
+              z.looseObject({ required: z.tuple([z.literal("due_on")]) }),
+              z.looseObject({ required: z.tuple([z.literal("due_at")]) }),
+            ]),
+          }),
+        }),
+      }),
+    }).parse(createPublication.action.input).properties.task;
+    expect(createDateRules.not.required).toEqual(["due_on", "due_at"]);
+    expect(createDateRules.if.required).toEqual(["start_on"]);
+    expect(createDateRules.then.anyOf.map((rule) => rule.required[0]))
+      .toEqual(["due_on", "due_at"]);
 
     const customFieldPublication = singleActionSchema.parse(
       (await runCli(["agent", "schema", "get-custom-field"])).value,

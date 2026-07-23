@@ -1,14 +1,23 @@
 import { z } from "zod";
 import {
+  expandedTaskCreateFieldsSchema,
+  taskCreateInputFieldsSchema,
+  taskCreateTemplateMetadataSchema,
   taskPatchSchema,
   type prepareCommentInputSchema,
+  type prepareSubtaskCreateInputSchema,
+  type prepareTaskFromTemplateInputSchema,
+  type prepareTaskCreateInputSchema,
   type prepareTaskUpdateInputSchema,
 } from "./agent-action-schemas";
 import {
   addTaskComment,
   AGENT_USER_FIELDS,
   AGENT_TASK_FIELDS,
+  createSubtask,
+  createTask,
   getMe,
+  getProject,
   getTask,
   STORY_FIELDS,
   updateTask,
@@ -32,7 +41,12 @@ import {
 import type { AsanaClient } from "./sdk";
 import { containsRegisteredSecret } from "./security";
 import {
+  FixedFileTaskCreateTemplateProvider,
+  type TaskCreateTemplateProvider,
+} from "./task-create-templates";
+import {
   describeTaskCommentWrite,
+  describeTaskCreateWrite,
   describeTaskUpdateWrite,
   evaluateScopedWritePolicy,
 } from "./write-policy";
@@ -53,6 +67,15 @@ const ownedTaskSchema = taskSchema.extend({
   })).optional(),
 });
 
+const writableProjectSchema = z.looseObject({
+  gid: z.string().regex(/^\d{1,64}$/),
+  name: z.string().optional(),
+  archived: z.boolean(),
+  workspace: z.looseObject({
+    gid: z.string().regex(/^\d{1,64}$/),
+  }),
+});
+
 const targetPreviewSchema = z.strictObject({
   gid: z.string().min(1),
   name: z.string().optional(),
@@ -62,6 +85,18 @@ const targetPreviewSchema = z.strictObject({
 const approvalSchema = z.strictObject({
   required: z.literal(true),
   reason: z.string().min(1),
+});
+
+const taskCreateTargetPreviewSchema = z.strictObject({
+  workspace: z.strictObject({
+    gid: z.string().regex(/^\d{1,64}$/),
+    name: z.string().optional(),
+  }),
+  project: z.strictObject({
+    gid: z.string().regex(/^\d{1,64}$/),
+    name: z.string().optional(),
+  }),
+  parent: targetPreviewSchema.optional(),
 });
 
 const preparedOperationViewSchema = z.discriminatedUnion("operation", [
@@ -85,13 +120,33 @@ const preparedOperationViewSchema = z.discriminatedUnion("operation", [
     expires_at: z.iso.datetime({ offset: true }),
     approval: approvalSchema,
   }),
+  z.strictObject({
+    operation_id: z.uuid(),
+    operation: z.literal("task.create"),
+    state: z.literal("prepared"),
+    target: taskCreateTargetPreviewSchema,
+    preview: z.strictObject({
+      fields: expandedTaskCreateFieldsSchema,
+    }),
+    template: taskCreateTemplateMetadataSchema.optional(),
+    plan_hash: z.string().regex(/^sha256:[0-9a-f]{64}$/),
+    expires_at: z.iso.datetime({ offset: true }),
+    approval: approvalSchema,
+  }),
 ]);
 
 const appliedOperationViewSchema = z.strictObject({
   operation_id: z.uuid(),
-  operation: z.enum(["task.update", "task.comment"]),
+  operation: z.enum(["task.update", "task.comment", "task.create"]),
   state: z.literal("applied"),
-  target: z.strictObject({ task_gid: z.string().min(1) }),
+  target: z.union([
+    z.strictObject({ task_gid: z.string().min(1) }),
+    z.strictObject({
+      workspace_gid: z.string().regex(/^\d{1,64}$/),
+      project_gid: z.string().regex(/^\d{1,64}$/),
+      parent_task_gid: z.string().regex(/^\d{1,64}$/).optional(),
+    }),
+  ]),
   result: z.strictObject({
     outcome: z.literal("applied"),
     resource_gid: z.string().min(1).optional(),
@@ -102,7 +157,15 @@ const appliedOperationViewSchema = z.strictObject({
 type PreparedOperationView = z.output<typeof preparedOperationViewSchema>;
 type AppliedOperationView = z.output<typeof appliedOperationViewSchema>;
 type PrepareCommentInput = z.output<typeof prepareCommentInputSchema>;
+type PrepareTaskCreateInput = z.output<typeof prepareTaskCreateInputSchema>;
+type PrepareSubtaskCreateInput = z.output<typeof prepareSubtaskCreateInputSchema>;
+type PrepareTaskFromTemplateInput = z.output<typeof prepareTaskFromTemplateInputSchema>;
 type PrepareTaskUpdateInput = z.output<typeof prepareTaskUpdateInputSchema>;
+type ExistingTaskOperationRecord = Extract<
+  OperationRecord,
+  { operation: "task.update" | "task.comment" }
+>;
+type TaskCreateOperationRecord = Extract<OperationRecord, { operation: "task.create" }>;
 
 function ensureNoRegisteredSecret(value: unknown, operation: string): void {
   if (containsRegisteredSecret(value)) {
@@ -134,6 +197,52 @@ async function currentTaskContext(
   };
 }
 
+async function currentProjectContext(
+  client: AsanaClient,
+  projectGid: string,
+): Promise<z.output<typeof writableProjectSchema>> {
+  return parseExternalData(
+    await getProject(client, projectGid, "gid,name,archived,workspace.gid"),
+    writableProjectSchema,
+    "ProjectsApi.getProject",
+  );
+}
+
+function assertCreateScope(
+  user: z.output<typeof userSchema>,
+  project: z.output<typeof writableProjectSchema>,
+  workspaceGid: string,
+  projectGid: string,
+): void {
+  if (
+    user.workspaces?.some((workspace) => workspace.gid === workspaceGid) !== true ||
+    project.gid !== projectGid ||
+    project.workspace.gid !== workspaceGid ||
+    project.archived
+  ) {
+    throw new CliError(
+      "policy-denied",
+      "Agent contract may create tasks only in an active, accessible project in the selected workspace",
+    );
+  }
+}
+
+function assertParentCreateScope(
+  task: z.output<typeof ownedTaskSchema>,
+  workspaceGid: string,
+  projectGid: string,
+): void {
+  if (
+    task.workspace?.gid !== workspaceGid ||
+    !(task.memberships ?? []).some((membership) => membership.project?.gid === projectGid)
+  ) {
+    throw new CliError(
+      "policy-denied",
+      "The parent task is not in the selected workspace and project",
+    );
+  }
+}
+
 function assertTaskOwnedByCurrentUser(
   userGid: string,
   assigneeGid: string | undefined,
@@ -147,7 +256,7 @@ function assertTaskOwnedByCurrentUser(
 }
 
 function assertApplyGuards(
-  record: OperationRecord,
+  record: ExistingTaskOperationRecord,
   userGid: string,
   task: z.output<typeof ownedTaskSchema>,
 ): void {
@@ -164,6 +273,27 @@ function assertApplyGuards(
       "Task changed after the operation was prepared; prepare a new operation",
     );
   }
+}
+
+function assertCreateApplyGuards(
+  record: TaskCreateOperationRecord,
+  userGid: string,
+  parent: z.output<typeof ownedTaskSchema> | undefined,
+): void {
+  if (userGid !== record.guards.prepared_by_gid) {
+    throw new CliError(
+      "policy-denied",
+      "Operation was prepared by a different authenticated Asana user",
+    );
+  }
+  if (record.target.parent_task_gid === undefined) return;
+  if (!parent || record.guards.expected_parent_modified_at !== parent.modified_at) {
+    throw new CliError(
+      "stale",
+      "Parent task changed after the operation was prepared; prepare a new operation",
+    );
+  }
+  assertTaskOwnedByCurrentUser(userGid, parent.assignee?.gid);
 }
 
 function operationStateError(record: OperationRecord): CliError {
@@ -242,6 +372,7 @@ async function bestEffortMarkUnknown(
 export type AgentOperationServiceOptions = Readonly<{
   writePolicy?: HostScopedWritePolicyProvider;
   audit?: MetadataAuditStore;
+  taskCreateTemplates?: TaskCreateTemplateProvider;
 }>;
 
 export class AgentOperationService {
@@ -249,6 +380,7 @@ export class AgentOperationService {
   readonly #repository: OperationRepository;
   readonly #writePolicy: HostScopedWritePolicyProvider;
   readonly #audit: MetadataAuditStore;
+  readonly #taskCreateTemplates: TaskCreateTemplateProvider;
 
   constructor(
     client: AsanaClient,
@@ -259,6 +391,8 @@ export class AgentOperationService {
     this.#repository = repository;
     this.#writePolicy = options.writePolicy ?? new FixedFileHostScopedWritePolicyProvider();
     this.#audit = options.audit ?? new FileMetadataAuditStore();
+    this.#taskCreateTemplates = options.taskCreateTemplates ??
+      new FixedFileTaskCreateTemplateProvider();
   }
 
   async prepareTaskUpdate(input: PrepareTaskUpdateInput): Promise<PreparedOperationView> {
@@ -315,16 +449,183 @@ export class AgentOperationService {
     });
   }
 
+  async prepareTaskCreate(input: PrepareTaskCreateInput): Promise<PreparedOperationView> {
+    return this.#prepareTaskCreate(input);
+  }
+
+  async prepareTaskFromTemplate(
+    input: PrepareTaskFromTemplateInput,
+  ): Promise<PreparedOperationView> {
+    ensureNoRegisteredSecret(input.task, "Task template overrides");
+    const resolved = await this.#taskCreateTemplates.resolve(
+      input.template,
+      input.template_revision,
+    );
+    ensureNoRegisteredSecret(resolved.defaults, "Task template");
+    const mergedCustomFields = {
+      ...(resolved.defaults.custom_fields ?? {}),
+      ...(input.task.custom_fields ?? {}),
+    };
+    const task = taskCreateInputFieldsSchema.parse({
+      ...resolved.defaults,
+      ...input.task,
+      ...(Object.keys(mergedCustomFields).length === 0
+        ? {}
+        : { custom_fields: mergedCustomFields }),
+    });
+    return this.#prepareTaskCreate({
+      workspace_gid: resolved.workspace_gid,
+      project_gid: resolved.project_gid,
+      task,
+    }, resolved.metadata);
+  }
+
+  async #prepareTaskCreate(
+    input: PrepareTaskCreateInput,
+    template?: z.output<typeof taskCreateTemplateMetadataSchema>,
+  ): Promise<PreparedOperationView> {
+    ensureNoRegisteredSecret(input.task, "Task creation");
+    const [userResult, project] = await Promise.all([
+      getMe(this.#client, AGENT_USER_FIELDS),
+      currentProjectContext(this.#client, input.project_gid),
+    ]);
+    const user = parseExternalData(userResult, userSchema, "UsersApi.getUser");
+    assertCreateScope(user, project, input.workspace_gid, input.project_gid);
+    const fields = expandedTaskCreateFieldsSchema.parse({
+      ...input.task,
+      assignee_gid: user.gid,
+    });
+    await this.#assertTaskCreateAllowed(input.workspace_gid, input.project_gid, fields);
+    const record = await this.#repository.create({
+      operation: "task.create",
+      target: {
+        workspace_gid: input.workspace_gid,
+        project_gid: input.project_gid,
+      },
+      payload: {
+        fields,
+        ...(template === undefined ? {} : { template }),
+      },
+      guards: { prepared_by_gid: user.gid },
+    });
+    await this.#appendAudit(record, { outcome: "prepared" });
+    const workspace = user.workspaces?.find((entry) => entry.gid === input.workspace_gid);
+    return preparedOperationViewSchema.parse({
+      operation_id: record.id,
+      operation: record.operation,
+      state: record.state,
+      target: {
+        workspace: { gid: input.workspace_gid, name: workspace?.name },
+        project: { gid: project.gid, name: project.name },
+      },
+      preview: { fields },
+      ...(template === undefined ? {} : { template }),
+      plan_hash: record.plan_hash,
+      expires_at: record.expires_at,
+      approval: { required: true, reason: "This operation creates one Asana task." },
+    });
+  }
+
+  async prepareSubtaskCreate(input: PrepareSubtaskCreateInput): Promise<PreparedOperationView> {
+    ensureNoRegisteredSecret(input.task, "Subtask creation");
+    const [{ user, task: parent }, project] = await Promise.all([
+      currentTaskContext(this.#client, input.parent_task_gid),
+      currentProjectContext(this.#client, input.project_gid),
+    ]);
+    assertTaskOwnedByCurrentUser(user.gid, parent.assignee?.gid);
+    const workspaceGid = parent.workspace?.gid;
+    if (!workspaceGid) {
+      throw new CliError("policy-denied", "The parent task workspace is unavailable");
+    }
+    assertCreateScope(user, project, workspaceGid, input.project_gid);
+    assertParentCreateScope(parent, workspaceGid, input.project_gid);
+    const fields = expandedTaskCreateFieldsSchema.parse({
+      ...input.task,
+      assignee_gid: user.gid,
+    });
+    await this.#assertTaskCreateAllowed(workspaceGid, input.project_gid, fields);
+    const record = await this.#repository.create({
+      operation: "task.create",
+      target: {
+        workspace_gid: workspaceGid,
+        project_gid: input.project_gid,
+        parent_task_gid: parent.gid,
+      },
+      payload: { fields },
+      guards: {
+        prepared_by_gid: user.gid,
+        expected_parent_modified_at: parent.modified_at,
+      },
+    });
+    await this.#appendAudit(record, { outcome: "prepared" });
+    const workspace = user.workspaces?.find((entry) => entry.gid === workspaceGid);
+    return preparedOperationViewSchema.parse({
+      operation_id: record.id,
+      operation: record.operation,
+      state: record.state,
+      target: {
+        workspace: { gid: workspaceGid, name: workspace?.name },
+        project: { gid: project.gid, name: project.name },
+        parent: {
+          gid: parent.gid,
+          name: parent.name,
+          permalink_url: parent.permalink_url,
+        },
+      },
+      preview: { fields },
+      plan_hash: record.plan_hash,
+      expires_at: record.expires_at,
+      approval: { required: true, reason: "This operation creates one Asana subtask." },
+    });
+  }
+
   async apply(operationId: string): Promise<AppliedOperationView> {
     const record = await requirePreparedOperation(this.#repository, operationId);
     ensureNoRegisteredSecret(record.payload, "Apply");
-    const { user, task } = await currentTaskContext(this.#client, record.target.task_gid);
-    assertApplyGuards(record, user.gid, task);
-    await this.#assertWriteAllowed(
-      task,
-      record.operation,
-      record.operation === "task.update" ? record.payload.changes : undefined,
-    );
+    if (record.operation === "task.create") {
+      const [userResult, project, parentResult] = await Promise.all([
+        getMe(this.#client, AGENT_USER_FIELDS),
+        currentProjectContext(this.#client, record.target.project_gid),
+        record.target.parent_task_gid === undefined
+          ? Promise.resolve(undefined)
+          : getTask(
+            this.#client,
+            record.target.parent_task_gid,
+            "gid,name,modified_at,assignee.gid,workspace.gid,memberships.project.gid",
+          ),
+      ]);
+      const user = parseExternalData(userResult, userSchema, "UsersApi.getUser");
+      const parent = parentResult === undefined
+        ? undefined
+        : parseExternalData(parentResult, ownedTaskSchema, "TasksApi.getTask");
+      assertCreateScope(
+        user,
+        project,
+        record.target.workspace_gid,
+        record.target.project_gid,
+      );
+      assertCreateApplyGuards(record, user.gid, parent);
+      if (parent) {
+        assertParentCreateScope(
+          parent,
+          record.target.workspace_gid,
+          record.target.project_gid,
+        );
+      }
+      await this.#assertTaskCreateAllowed(
+        record.target.workspace_gid,
+        record.target.project_gid,
+        record.payload.fields,
+      );
+    } else {
+      const { user, task } = await currentTaskContext(this.#client, record.target.task_gid);
+      assertApplyGuards(record, user.gid, task);
+      await this.#assertWriteAllowed(
+        task,
+        record.operation,
+        record.operation === "task.update" ? record.payload.changes : undefined,
+      );
+    }
 
     const claim = await this.#repository.compareAndSet({
       id: record.id,
@@ -393,6 +694,24 @@ export class AgentOperationService {
     throw new CliError("policy-denied", "The host write policy does not permit this task operation");
   }
 
+  async #assertTaskCreateAllowed(
+    workspaceGid: string,
+    projectGid: string,
+    fields: unknown,
+  ): Promise<void> {
+    try {
+      const candidate = describeTaskCreateWrite({
+        workspace_gid: workspaceGid,
+        project_gids: [projectGid],
+      }, fields);
+      const decision = evaluateScopedWritePolicy(await this.#writePolicy.load(), candidate);
+      if (decision.allowed) return;
+    } catch {
+      // Malformed policy, malformed expanded fields, and storage failures deny writes alike.
+    }
+    throw new CliError("policy-denied", "The host write policy does not permit this task operation");
+  }
+
   async #appendApplyingAuditBeforeRemote(record: OperationRecord): Promise<void> {
     try {
       await this.#appendAudit(record, { outcome: "applying" });
@@ -428,7 +747,9 @@ export class AgentOperationService {
     try {
       await this.#audit.append({
         operation_id: record.id,
-        target_task_gid: record.target.task_gid,
+        target: record.operation === "task.create"
+          ? { kind: "task-create", ...record.target }
+          : { kind: "task", task_gid: record.target.task_gid },
         action: record.operation,
         plan_hash: record.plan_hash,
         record_hash: record.record_hash,
@@ -449,7 +770,9 @@ export class AgentOperationService {
     try {
       await this.#audit.append({
         operation_id: record.id,
-        target_task_gid: record.target.task_gid,
+        target: record.operation === "task.create"
+          ? { kind: "task-create", ...record.target }
+          : { kind: "task", task_gid: record.target.task_gid },
         action: record.operation,
         plan_hash: record.plan_hash,
         record_hash: record.record_hash,
@@ -465,6 +788,40 @@ export class AgentOperationService {
     resource_gid?: string;
     resource_modified_at?: string;
   }> {
+    if (record.operation === "task.create") {
+      const fields = expandedTaskCreateFieldsSchema.parse(record.payload.fields);
+      const {
+        assignee_gid: assignee,
+        ...taskFields
+      } = fields;
+      const data = {
+        ...taskFields,
+        assignee,
+        projects: [record.target.project_gid],
+        ...(record.target.parent_task_gid === undefined
+          ? { workspace: record.target.workspace_gid }
+          : {}),
+      };
+      const created = parseExternalData(
+        record.target.parent_task_gid === undefined
+          ? await createTask(this.#client, data, AGENT_TASK_FIELDS)
+          : await createSubtask(
+            this.#client,
+            record.target.parent_task_gid,
+            data,
+            AGENT_TASK_FIELDS,
+          ),
+        taskSchema,
+        record.target.parent_task_gid === undefined
+          ? "TasksApi.createTask"
+          : "TasksApi.createSubtaskForTask",
+      );
+      return {
+        outcome: "applied",
+        resource_gid: created.gid,
+        resource_modified_at: created.modified_at,
+      };
+    }
     if (record.operation === "task.update") {
       const changes = taskPatchSchema.parse(record.payload.changes);
       const updated = parseExternalData(

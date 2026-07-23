@@ -83,7 +83,7 @@ describe("memory operation repository", () => {
     guards.prepared_by_gid = "2";
 
     const stored = await repository.get(operationId);
-    expect(stored?.target.task_gid).toBe("987654");
+    expect(stored?.operation === "task.comment" ? stored.target.task_gid : undefined).toBe("987654");
     expect(stored?.payload).toEqual(input.payload);
     expect(stored?.guards.prepared_by_gid).toBe("123456");
   });

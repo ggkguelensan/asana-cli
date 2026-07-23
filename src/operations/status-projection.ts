@@ -8,9 +8,16 @@ import {
 
 const timestampSchema = z.iso.datetime({ offset: true });
 
-const statusTargetSchema = z.strictObject({
-  task_gid: z.string().regex(/^\d{1,64}$/),
-});
+const statusTargetSchema = z.union([
+  z.strictObject({
+    task_gid: z.string().regex(/^\d{1,64}$/),
+  }),
+  z.strictObject({
+    workspace_gid: z.string().regex(/^\d{1,64}$/),
+    project_gid: z.string().regex(/^\d{1,64}$/),
+    parent_task_gid: z.string().regex(/^\d{1,64}$/).optional(),
+  }),
+]);
 
 const statusResultSchema = z.discriminatedUnion("outcome", [
   z.strictObject({
@@ -101,7 +108,7 @@ export function operationStatusProjection(
     operation_id: record.id,
     operation: record.operation,
     state: record.state,
-    target: { task_gid: record.target.task_gid },
+    target: record.target,
     created_at: record.created_at,
     expires_at: record.expires_at,
     is_expired: isExpired,

@@ -35,6 +35,7 @@ const permittedWritePolicy: HostScopedWritePolicyProvider = {
       task_update_fields: ["name", "notes", "completed", "assignee", "due_on", "due_at", "start_on", "custom_fields"],
       custom_field_gids: ["300"],
       allow_comments: true,
+      allow_task_create: true,
     }],
   }),
 };
@@ -93,7 +94,26 @@ function fakeAsana(options: FakeAsanaOptions = {}): {
       if (method === "GET" && path === "/users/{user_gid}") {
         return {
           response: {},
-          data: { data: { gid: options.userGid ?? "1001", name: "Developer" } },
+          data: {
+            data: {
+              gid: options.userGid ?? "1001",
+              name: "Developer",
+              workspaces: [{ gid: "100", name: "Engineering" }],
+            },
+          },
+        };
+      }
+      if (method === "GET" && path === "/projects/{project_gid}") {
+        return {
+          response: {},
+          data: {
+            data: {
+              gid: pathParams.project_gid,
+              name: "Platform",
+              archived: false,
+              workspace: { gid: "100" },
+            },
+          },
         };
       }
       if (method === "GET" && path === "/tasks/{task_gid}") {
@@ -120,7 +140,13 @@ function fakeAsana(options: FakeAsanaOptions = {}): {
           ? await options.onWrite(trace)
           : method === "PUT"
             ? { gid: pathParams.task_gid, modified_at: "2026-07-15T10:01:00.000Z" }
-            : { gid: "9001", type: "comment", text: "created" };
+            : path === "/tasks/{task_gid}/stories"
+              ? { gid: "9001", type: "comment", text: "created" }
+              : {
+                gid: "9002",
+                name: "Created task",
+                modified_at: "2026-07-15T10:01:00.000Z",
+              };
         return { response: {}, data: { data: resource } };
       }
       throw new Error("Unexpected fake Asana call");
@@ -299,6 +325,168 @@ describe("durable agent operation prepare", () => {
     expect(repository.createCalls).toBe(0);
     expect(asana.traces.filter((trace) => trace.method !== "GET")).toEqual([]);
   });
+
+  test("persists fully expanded task and subtask creation plans before approval", async () => {
+    const taskRepository = memoryRepository(firstOperationId);
+    const taskAsana = fakeAsana();
+    const taskPreview = await new AgentOperationService(
+      taskAsana.client,
+      taskRepository,
+      { writePolicy: permittedWritePolicy },
+    ).prepareTaskCreate({
+      workspace_gid: "100",
+      project_gid: "200",
+      task: {
+        name: "Implement exact create",
+        notes: "Bounded notes",
+        custom_fields: { "300": "ready" },
+      },
+    });
+    expect(await taskRepository.get(firstOperationId)).toMatchObject({
+      operation: "task.create",
+      target: { workspace_gid: "100", project_gid: "200" },
+      payload: {
+        fields: {
+          name: "Implement exact create",
+          notes: "Bounded notes",
+          assignee_gid: "1001",
+          custom_fields: { "300": "ready" },
+        },
+      },
+      guards: { prepared_by_gid: "1001" },
+    });
+    expect(taskPreview).toMatchObject({
+      operation: "task.create",
+      target: {
+        workspace: { gid: "100", name: "Engineering" },
+        project: { gid: "200", name: "Platform" },
+      },
+      preview: {
+        fields: {
+          name: "Implement exact create",
+          assignee_gid: "1001",
+        },
+      },
+      approval: { required: true },
+    });
+
+    const subtaskRepository = memoryRepository(secondOperationId);
+    const subtaskAsana = fakeAsana();
+    const subtaskPreview = await new AgentOperationService(
+      subtaskAsana.client,
+      subtaskRepository,
+      { writePolicy: permittedWritePolicy },
+    ).prepareSubtaskCreate({
+      parent_task_gid: "123",
+      project_gid: "200",
+      task: { name: "Add exact tests" },
+    });
+    expect(await subtaskRepository.get(secondOperationId)).toMatchObject({
+      operation: "task.create",
+      target: {
+        workspace_gid: "100",
+        project_gid: "200",
+        parent_task_gid: "123",
+      },
+      payload: {
+        fields: { name: "Add exact tests", assignee_gid: "1001" },
+      },
+      guards: {
+        prepared_by_gid: "1001",
+        expected_parent_modified_at: modifiedAt,
+      },
+    });
+    expect(subtaskPreview).toMatchObject({
+      target: {
+        parent: { gid: "123", name: "Owned task" },
+      },
+      approval: { required: true },
+    });
+  });
+
+  test("records template revision and digests while apply ignores later template edits", async () => {
+    const repository = memoryRepository(firstOperationId);
+    const asana = fakeAsana();
+    let templateReads = 0;
+    let templateName = "Original template name";
+    const service = new AgentOperationService(asana.client, repository, {
+      writePolicy: permittedWritePolicy,
+      taskCreateTemplates: {
+        resolve: async () => {
+          templateReads += 1;
+          return {
+            metadata: {
+              schema: "asana-cli.task-create-templates.v1",
+              alias: "feature",
+              revision: 3,
+              digest: `sha256:${"a".repeat(64)}`,
+              context_revision: 7,
+              context_digest: `sha256:${"b".repeat(64)}`,
+            },
+            workspace_gid: "100",
+            project_gid: "200",
+            defaults: {
+              name: templateName,
+              notes: "Static checklist",
+              custom_fields: { "300": "ready" },
+            },
+          };
+        },
+      },
+    });
+    const preview = await service.prepareTaskFromTemplate({
+      template: "feature",
+      template_revision: 3,
+      task: { name: "Explicit task name" },
+    });
+    expect(preview).toMatchObject({
+      target: {
+        workspace: { gid: "100" },
+        project: { gid: "200" },
+      },
+      preview: {
+        fields: {
+          name: "Explicit task name",
+          notes: "Static checklist",
+          assignee_gid: "1001",
+          custom_fields: { "300": "ready" },
+        },
+      },
+      template: {
+        alias: "feature",
+        revision: 3,
+        digest: `sha256:${"a".repeat(64)}`,
+        context_revision: 7,
+        context_digest: `sha256:${"b".repeat(64)}`,
+      },
+    });
+    expect(await repository.get(firstOperationId)).toMatchObject({
+      operation: "task.create",
+      payload: {
+        fields: {
+          name: "Explicit task name",
+          notes: "Static checklist",
+        },
+        template: {
+          alias: "feature",
+          revision: 3,
+          digest: `sha256:${"a".repeat(64)}`,
+        },
+      },
+    });
+
+    templateName = "Edited after prepare";
+    await service.apply(firstOperationId);
+    expect(templateReads).toBe(1);
+    const write = asana.traces.find((trace) => trace.method === "POST");
+    expect(write?.body).toMatchObject({
+      data: {
+        name: "Explicit task name",
+        notes: "Static checklist",
+      },
+    });
+    expect(JSON.stringify(write)).not.toContain("Edited after prepare");
+  });
 });
 
 describe("durable agent operation apply", () => {
@@ -363,6 +551,93 @@ describe("durable agent operation apply", () => {
       state: "applied",
       result: { outcome: "applied", resource_gid: "9001" },
     });
+  });
+
+  test("creates one task or subtask from the immutable record and never repeats it", async () => {
+    const taskRepository = memoryRepository(firstOperationId);
+    await taskRepository.create({
+      operation: "task.create",
+      target: { workspace_gid: "100", project_gid: "200" },
+      payload: {
+        fields: {
+          name: "Immutable task",
+          assignee_gid: "1001",
+          due_on: "2026-08-01",
+        },
+      },
+      guards: { prepared_by_gid: "1001" },
+      ttl_ms: 60_000,
+    });
+    const taskAsana = fakeAsana();
+    const taskService = new AgentOperationService(
+      taskAsana.client,
+      taskRepository,
+      { writePolicy: permittedWritePolicy },
+    );
+    await expect(taskService.apply(firstOperationId)).resolves.toMatchObject({
+      operation: "task.create",
+      state: "applied",
+      result: { resource_gid: "9002" },
+    });
+    const taskWrites = taskAsana.traces.filter((trace) => trace.method === "POST");
+    expect(taskWrites).toEqual([expect.objectContaining({
+      path: "/tasks",
+      body: {
+        data: {
+          name: "Immutable task",
+          assignee: "1001",
+          due_on: "2026-08-01",
+          projects: ["200"],
+          workspace: "100",
+        },
+      },
+    })]);
+    taskAsana.traces.splice(0);
+    expect((await caughtCliError(() => taskService.apply(firstOperationId))).code).toBe("conflict");
+    expect(taskAsana.traces).toEqual([]);
+
+    const subtaskRepository = memoryRepository(secondOperationId);
+    await subtaskRepository.create({
+      operation: "task.create",
+      target: {
+        workspace_gid: "100",
+        project_gid: "200",
+        parent_task_gid: "123",
+      },
+      payload: {
+        fields: {
+          name: "Immutable subtask",
+          assignee_gid: "1001",
+        },
+      },
+      guards: {
+        prepared_by_gid: "1001",
+        expected_parent_modified_at: modifiedAt,
+      },
+      ttl_ms: 60_000,
+    });
+    const subtaskAsana = fakeAsana();
+    await expect(new AgentOperationService(
+      subtaskAsana.client,
+      subtaskRepository,
+      { writePolicy: permittedWritePolicy },
+    ).apply(secondOperationId)).resolves.toMatchObject({
+      operation: "task.create",
+      result: { resource_gid: "9002" },
+    });
+    expect(subtaskAsana.traces.filter((trace) => trace.method === "POST")).toEqual([
+      expect.objectContaining({
+        path: "/tasks/{task_gid}/subtasks",
+        path_params: { task_gid: "123" },
+        body: {
+          data: {
+            name: "Immutable subtask",
+            assignee: "1001",
+            projects: ["200"],
+          },
+        },
+      }),
+    ]);
   });
 
   test("allows exactly one remote write across concurrent apply calls", async () => {

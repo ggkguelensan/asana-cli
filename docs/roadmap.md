@@ -14,6 +14,7 @@ commit [`81c1b7a`](https://github.com/ggkguelensan/asana-cli/commit/81c1b7afa789
 - [Platform support](support-policy.md) — поддерживаемая macOS/Linux release matrix.
 - [Curated developer context](developer-context.md) — bounded project/section/membership/custom-field/user reads.
 - [Human local context](local-context.md) — DEV-014 alias/worktree state contract и recovery.
+- [Agent task creation](task-creation.md) — direct/subtask prepare/apply и revisioned repository templates.
 - [Agent clients](agent-clients.md) — текущий контракт прямого использования из Codex CLI и Claude Code.
 - [Security model](../SECURITY.md) — гарантии, ограничения и threat model.
 

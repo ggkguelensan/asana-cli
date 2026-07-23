@@ -1,5 +1,8 @@
 import { z } from "zod";
-import { qualifiedTaskAliasSchema } from "./repository-context";
+import {
+  projectAliasSchema,
+  qualifiedTaskAliasSchema,
+} from "./repository-context";
 import { gidSchema } from "./schemas";
 
 const resultLimitSchema = (maximum: number, fallback: number) =>
@@ -199,7 +202,7 @@ export const findGitInputSchema = z.strictObject({
     contains: z.boolean().default(false),
 });
 
-const customFieldValueSchema = z.union([
+export const customFieldValueSchema = z.union([
   z.string(),
   z.number(),
   z.boolean(),
@@ -210,6 +213,97 @@ const customFieldValueSchema = z.union([
 const customFieldsPatchSchema = z.record(gidSchema, customFieldValueSchema)
   .refine((fields) => Object.keys(fields).length <= 50, "Too many custom field updates")
   .meta({ maxProperties: 50 });
+
+const taskCreateFieldsShape = {
+  name: z.string().min(1).max(500),
+  notes: z.string().max(8_000).optional(),
+  due_on: z.iso.date().optional(),
+  due_at: z.iso.datetime({ offset: true }).optional(),
+  start_on: z.iso.date().optional(),
+  custom_fields: customFieldsPatchSchema.optional(),
+};
+
+function hasConflictingDueDates(
+  fields: Readonly<{ due_on?: string; due_at?: string }>,
+): boolean {
+  return fields.due_on !== undefined && fields.due_at !== undefined;
+}
+
+function hasStartWithoutDueDate(
+  fields: Readonly<{ due_on?: string; due_at?: string; start_on?: string }>,
+): boolean {
+  return fields.start_on !== undefined &&
+    fields.due_on === undefined &&
+    fields.due_at === undefined;
+}
+
+export const taskCreateInputFieldsSchema = z.strictObject(taskCreateFieldsShape)
+  .refine((fields) => !hasConflictingDueDates(fields), {
+    message: "task fields cannot set due_on and due_at together",
+  })
+  .refine((fields) => !hasStartWithoutDueDate(fields), {
+    message: "task start_on requires due_on or due_at",
+  })
+  .meta({
+    not: {
+      required: ["due_on", "due_at"],
+    },
+    if: {
+      required: ["start_on"],
+    },
+    then: {
+      anyOf: [
+        { required: ["due_on"] },
+        { required: ["due_at"] },
+      ],
+    },
+  });
+
+export const expandedTaskCreateFieldsSchema = z.strictObject({
+  ...taskCreateFieldsShape,
+  assignee_gid: gidSchema,
+}).refine((fields) => !hasConflictingDueDates(fields), {
+  message: "task fields cannot set due_on and due_at together",
+}).refine((fields) => !hasStartWithoutDueDate(fields), {
+  message: "task start_on requires due_on or due_at",
+}).meta({
+  not: {
+    required: ["due_on", "due_at"],
+  },
+  if: {
+    required: ["start_on"],
+  },
+  then: {
+    anyOf: [
+      { required: ["due_on"] },
+      { required: ["due_at"] },
+    ],
+  },
+});
+
+export const taskCreateOverridesSchema = z.strictObject({
+  name: z.string().min(1).max(500).optional(),
+  notes: z.string().max(8_000).optional(),
+  due_on: z.iso.date().optional(),
+  due_at: z.iso.datetime({ offset: true }).optional(),
+  start_on: z.iso.date().optional(),
+  custom_fields: customFieldsPatchSchema.optional(),
+}).refine((fields) => !hasConflictingDueDates(fields), {
+  message: "task fields cannot set due_on and due_at together",
+}).meta({
+  not: {
+    required: ["due_on", "due_at"],
+  },
+});
+
+export const taskCreateTemplateMetadataSchema = z.strictObject({
+  schema: z.literal("asana-cli.task-create-templates.v1"),
+  alias: projectAliasSchema,
+  revision: z.number().int().min(1).max(2_147_483_647),
+  digest: z.string().regex(/^sha256:[0-9a-f]{64}$/),
+  context_revision: z.number().int().min(1).max(2_147_483_647),
+  context_digest: z.string().regex(/^sha256:[0-9a-f]{64}$/),
+});
 
 export const taskPatchSchema = z.strictObject({
   name: z.string().max(500).optional(),
@@ -243,6 +337,24 @@ export const prepareTaskUpdateInputSchema = z.strictObject({
 export const prepareCommentInputSchema = z.strictObject({
   task_gid: gidSchema,
   text: z.string().min(1).max(8_000),
+});
+
+export const prepareTaskCreateInputSchema = z.strictObject({
+  workspace_gid: gidSchema,
+  project_gid: gidSchema,
+  task: taskCreateInputFieldsSchema,
+});
+
+export const prepareSubtaskCreateInputSchema = z.strictObject({
+  parent_task_gid: gidSchema,
+  project_gid: gidSchema,
+  task: taskCreateInputFieldsSchema,
+});
+
+export const prepareTaskFromTemplateInputSchema = z.strictObject({
+  template: projectAliasSchema,
+  template_revision: z.number().int().min(1).max(2_147_483_647),
+  task: taskCreateOverridesSchema.default({}),
 });
 
 export const applyOperationInputSchema = z.strictObject({

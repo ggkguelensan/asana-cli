@@ -31,6 +31,7 @@ import type {
 import { createClient, type AsanaClient } from "../src/sdk";
 import {
   describeTaskCommentWrite,
+  describeTaskCreateWrite,
   describeTaskUpdateWrite,
   evaluateScopedWritePolicy,
   type ScopedWritePolicy,
@@ -51,6 +52,7 @@ const permittedPolicy: ScopedWritePolicy = {
     task_update_fields: ["name", "custom_fields"],
     custom_field_gids: ["300"],
     allow_comments: true,
+    allow_task_create: false,
   }],
 };
 
@@ -186,6 +188,29 @@ describe("host scoped write policy", () => {
       },
       {
         candidate: describeTaskCommentWrite(target),
+        expected: { allowed: true },
+      },
+      {
+        candidate: describeTaskCreateWrite(target, {
+          name: "Created task",
+          assignee_gid: "1001",
+        }),
+        expected: { allowed: false, reason: "task_create_not_allowed" },
+      },
+      {
+        candidate: describeTaskCreateWrite(target, {
+          name: "Created task",
+          assignee_gid: "1001",
+          custom_fields: { "300": "ready" },
+        }),
+        policy: {
+          ...permittedPolicy,
+          scopes: [{
+            ...permittedPolicy.scopes[0]!,
+            task_update_fields: ["name", "assignee", "custom_fields"],
+            allow_task_create: true,
+          }],
+        },
         expected: { allowed: true },
       },
       {
@@ -381,7 +406,7 @@ describe("metadata-only operation audit", () => {
     });
     const input: CreateMetadataAuditEventInput = {
       operation_id: operationId,
-      target_task_gid: "123",
+      target: { kind: "task", task_gid: "123" },
       action: "task.comment",
       plan_hash: `sha256:${"a".repeat(64)}`,
       record_hash: `sha256:${"b".repeat(64)}`,
@@ -396,8 +421,8 @@ describe("metadata-only operation audit", () => {
 
     expect(stored).toEqual(event);
     expect(event).toEqual({
-      schema: "asana-cli.audit-event.v1",
-      file_format_version: 1,
+      schema: "asana-cli.audit-event.v2",
+      file_format_version: 2,
       event_id: auditEventId,
       occurred_at: preparedAt,
       ...input,
@@ -405,6 +430,29 @@ describe("metadata-only operation audit", () => {
     expect(metadataAuditEventSchema.safeParse({
       ...event,
       comment_text: "SEC005_FORBIDDEN_AUDIT_CONTENT_CANARY",
+    }).success).toBe(false);
+    const createEvent = createMetadataAuditEvent({
+      operation_id: operationId,
+      target: {
+        kind: "task-create",
+        workspace_gid: "100",
+        project_gid: "200",
+        parent_task_gid: "123",
+      },
+      action: "task.create",
+      plan_hash: `sha256:${"c".repeat(64)}`,
+      record_hash: `sha256:${"d".repeat(64)}`,
+      result: { outcome: "prepared" },
+    }, new Date(preparedAt), "00000000-0000-4000-8000-000000000502");
+    expect(createEvent.target).toEqual({
+      kind: "task-create",
+      workspace_gid: "100",
+      project_gid: "200",
+      parent_task_gid: "123",
+    });
+    expect(metadataAuditEventSchema.safeParse({
+      ...createEvent,
+      create_fields: { name: "SEC005_FORBIDDEN_CREATE_CONTENT_CANARY" },
     }).success).toBe(false);
   });
 
@@ -431,7 +479,11 @@ describe("metadata-only operation audit", () => {
     await service.apply(operationId);
 
     expect(events.map((event) => event.result.outcome)).toEqual(["prepared", "applying", "applied"]);
-    expect(events.every((event) => event.target_task_gid === "123" && event.action === "task.comment")).toBe(true);
+    expect(events.every((event) =>
+      event.target.kind === "task" &&
+      event.target.task_gid === "123" &&
+      event.action === "task.comment"
+    )).toBe(true);
     const serialized = JSON.stringify(events);
     expect(serialized).not.toContain("SEC005_COMMENT_PAYLOAD_CANARY");
     expect(serialized).not.toContain("SEC005_AUDIT_TOKEN_CANARY");

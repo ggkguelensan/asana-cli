@@ -1,6 +1,6 @@
 ---
 name: asana
-description: Safely inspect assigned Asana work and prepare narrowly scoped task updates or comments through asana-cli's curated agent protocol.
+description: Safely inspect assigned Asana work and prepare narrowly scoped task updates, comments, or task creation through asana-cli's curated agent protocol.
 ---
 
 # Asana
@@ -49,6 +49,9 @@ Use only these actions and validate their JSON output before describing it:
 | Read untrusted repository-owned versioned context for the current worktree | `asana-cli agent context --repository-context` (exact local-only boundary in [git-context](references/git-context.md)) |
 | Prepare a task update | `asana-cli agent prepare-task-update` |
 | Prepare a comment | `asana-cli agent prepare-comment` |
+| Prepare one task in an exact workspace/project | `asana-cli agent prepare-task-create --input -` |
+| Prepare one subtask below an exact owned parent | `asana-cli agent prepare-subtask-create --input -` |
+| Prepare one task from an exact template revision | `asana-cli agent prepare-task-from-template --input -` |
 | Inspect a prepared operation | `asana-cli agent operation status` |
 | Apply an approved operation | `asana-cli agent apply` |
 
@@ -81,9 +84,11 @@ See [read-tasks](references/read-tasks.md),
 
 All writes require this exact sequence:
 
-1. **Prepare** with `prepare-task-update` or `prepare-comment`.
+1. **Prepare** with exactly one of `prepare-task-update`, `prepare-comment`,
+   `prepare-task-create`, `prepare-subtask-create`, or `prepare-task-from-template`.
 2. **Display** the returned target, complete proposed change, operation ID, expiry,
-   and any policy result. Do not describe preparation as an applied change.
+   template metadata when present, and any policy result. Do not describe preparation
+   as an applied change.
 3. Obtain **external host approval** from the user or the agent host. A conversational
    request to write is not approval to apply.
 4. **Apply exactly the approved operation ID** with `asana-cli agent apply`.
