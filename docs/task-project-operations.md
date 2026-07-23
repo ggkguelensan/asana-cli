@@ -75,7 +75,8 @@ Project membership changes and section moves are separately disabled by default:
     "allow_comments": false,
     "allow_task_create": false,
     "allow_project_membership_changes": true,
-    "allow_section_moves": true
+    "allow_section_moves": true,
+    "allow_dependency_changes": false
   }]
 }
 ```

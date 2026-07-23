@@ -14,6 +14,8 @@ export const auditActionSchema = z.enum([
   "task.project.add",
   "task.project.remove",
   "task.section.move",
+  "task.dependency.add",
+  "task.dependency.remove",
 ]);
 export const auditFailureClassSchema = z.enum([
   "policy_denied",

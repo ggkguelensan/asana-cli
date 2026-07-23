@@ -402,6 +402,11 @@ payload повторно. Agent writes изменяют или создают о
 каждая операция требует exact GIDs, отдельного policy opt-in и повторной live-проверки перед
 apply. Контракт: [project and section operations](docs/task-project-operations.md).
 
+`prepare-task-dependency-add` и `prepare-task-dependency-remove` меняют ровно одну прямую
+зависимость; обе задачи и состояние связи повторно проверяются при apply, а добавление проходит
+bounded fail-closed cycle proof. Контракт:
+[task dependency operations](docs/task-dependency-operations.md).
+
 `ASANA_CLI_AGENT_POLICY=read-write` — защита от случайного запуска, но не авторизация: агент технически способен сформировать environment сам. Настоящая граница записи — permission/approval policy Codex или Claude. Не разрешайте общую маску `asana-cli *`; auto-allow должен охватывать только конкретные read/prepare-команды, а `agent apply` должен всегда спрашивать человека.
 
 Full integration and direct-protocol guidance: [docs/agent-clients.md](docs/agent-clients.md). Threat model: [SECURITY.md](SECURITY.md).
@@ -439,6 +444,7 @@ bun run check
 - [Backlog](docs/backlog.md) — приоритеты, зависимости и acceptance criteria.
 - [Implementation plan](docs/implementation-plan.md) — текущее состояние и порядок ближайших PR для `v0.5`.
 - [Platform support policy](docs/support-policy.md) — поддерживаемые runtime/artifacts и executable gate.
+- [Task dependency operations](docs/task-dependency-operations.md) — exact dependency writes и cycle bounds.
 - [Human local context](docs/local-context.md) — aliases, worktree scope, CAS, хранение и recovery.
 - [Maintainer release procedure](docs/implementation-plan.md#maintainer-release-procedure) — version bump, evidence, tag и проверка следующей публикации.
 - [Swarm execution plan](docs/swarm-plan.md) — история выполненных waves, роли Terra/Sol/Luna и quality gates.

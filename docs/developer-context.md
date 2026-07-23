@@ -107,6 +107,14 @@ Prepare and apply independently check current membership state, task `modified_a
 and separate host-policy opt-ins. Project add never doubles as a reorder; section move is the
 explicit placement action. See [agent project and section operations](task-project-operations.md).
 
+## Dependency mutation context
+
+`prepare-task-dependency-add` and `prepare-task-dependency-remove` each store exactly one direct
+relation. The owned target and exact related task must be accessible in the same workspace.
+Prepare and apply independently recheck both tasks' `modified_at` guards, current relation state,
+the separate host-policy opt-in, and, for add, a bounded fail-closed cycle proof. See
+[agent task dependency operations](task-dependency-operations.md).
+
 ## Authority and trust boundary
 
 These actions are reads, not authorization:

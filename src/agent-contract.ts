@@ -15,6 +15,8 @@ import {
   operationStatusInputSchema,
   prepareCommentInputSchema,
   prepareSubtaskCreateInputSchema,
+  prepareTaskDependencyAddInputSchema,
+  prepareTaskDependencyRemoveInputSchema,
   prepareTaskProjectAddInputSchema,
   prepareTaskProjectRemoveInputSchema,
   prepareTaskSectionMoveInputSchema,
@@ -515,6 +517,30 @@ const prepareTaskSectionMoveAction = defineAction(
   prepareTaskSectionMoveInputSchema,
 );
 
+const prepareTaskDependencyAddAction = defineAction(
+  "prepare-task-dependency-add",
+  {
+    operation: "task.dependency.add.prepare",
+    effect: "prepare",
+    approval: "none",
+    limits: { max_input_bytes: MAX_AGENT_INPUT_BYTES },
+    minimumCliVersion: "0.5.0",
+  },
+  prepareTaskDependencyAddInputSchema,
+);
+
+const prepareTaskDependencyRemoveAction = defineAction(
+  "prepare-task-dependency-remove",
+  {
+    operation: "task.dependency.remove.prepare",
+    effect: "prepare",
+    approval: "none",
+    limits: { max_input_bytes: MAX_AGENT_INPUT_BYTES },
+    minimumCliVersion: "0.5.0",
+  },
+  prepareTaskDependencyRemoveInputSchema,
+);
+
 const applyOperationAction = defineAction(
   "apply",
   {
@@ -555,6 +581,8 @@ export const AGENT_ACTIONS = {
   [prepareTaskProjectAddAction.descriptor.action]: prepareTaskProjectAddAction,
   [prepareTaskProjectRemoveAction.descriptor.action]: prepareTaskProjectRemoveAction,
   [prepareTaskSectionMoveAction.descriptor.action]: prepareTaskSectionMoveAction,
+  [prepareTaskDependencyAddAction.descriptor.action]: prepareTaskDependencyAddAction,
+  [prepareTaskDependencyRemoveAction.descriptor.action]: prepareTaskDependencyRemoveAction,
   [applyOperationAction.descriptor.action]: applyOperationAction,
 };
 

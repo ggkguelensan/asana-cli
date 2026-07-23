@@ -6,6 +6,8 @@ import {
   taskPatchSchema,
   type prepareCommentInputSchema,
   type prepareSubtaskCreateInputSchema,
+  type prepareTaskDependencyAddInputSchema,
+  type prepareTaskDependencyRemoveInputSchema,
   type prepareTaskProjectAddInputSchema,
   type prepareTaskProjectRemoveInputSchema,
   type prepareTaskSectionMoveInputSchema,
@@ -14,6 +16,7 @@ import {
   type prepareTaskUpdateInputSchema,
 } from "./agent-action-schemas";
 import {
+  addTaskDependency,
   addTaskComment,
   addTaskToProject,
   AGENT_USER_FIELDS,
@@ -25,6 +28,7 @@ import {
   getSection,
   getTask,
   moveTaskToSection,
+  removeTaskDependency,
   removeTaskFromProject,
   STORY_FIELDS,
   updateTask,
@@ -33,6 +37,11 @@ import { FileMetadataAuditStore } from "./audit/file-repository";
 import type { MetadataAuditStore } from "./audit/repository";
 import type { CreateMetadataAuditEventInput } from "./audit/schemas";
 import { CliError } from "./errors";
+import {
+  assertDependencyAdditionAcyclic,
+  assertDependencyAdditionWithinRelationLimits,
+  readDirectDependencyGids,
+} from "./dependency-safety";
 import {
   FixedFileHostScopedWritePolicyProvider,
   type HostScopedWritePolicyProvider,
@@ -54,6 +63,7 @@ import {
 import {
   describeTaskCommentWrite,
   describeTaskCreateWrite,
+  describeTaskDependencyWrite,
   describeTaskProjectWrite,
   describeTaskUpdateWrite,
   evaluateScopedWritePolicy,
@@ -95,6 +105,16 @@ const writableSectionSchema = z.looseObject({
   }),
 });
 
+const dependencyTaskSchema = z.looseObject({
+  gid: z.string().regex(/^\d{1,64}$/),
+  name: z.string().optional(),
+  modified_at: z.iso.datetime({ offset: true }),
+  permalink_url: z.string().optional(),
+  workspace: z.looseObject({
+    gid: z.string().regex(/^\d{1,64}$/),
+  }),
+});
+
 const targetPreviewSchema = z.strictObject({
   gid: z.string().min(1),
   name: z.string().optional(),
@@ -127,6 +147,10 @@ const projectMutationPreviewSchema = z.strictObject({
     gid: z.string().regex(/^\d{1,64}$/),
     name: z.string().optional(),
   }).optional(),
+});
+
+const dependencyMutationPreviewSchema = z.strictObject({
+  dependency: targetPreviewSchema,
 });
 
 const preparedOperationViewSchema = z.discriminatedUnion("operation", [
@@ -193,6 +217,26 @@ const preparedOperationViewSchema = z.discriminatedUnion("operation", [
     expires_at: z.iso.datetime({ offset: true }),
     approval: approvalSchema,
   }),
+  z.strictObject({
+    operation_id: z.uuid(),
+    operation: z.literal("task.dependency.add"),
+    state: z.literal("prepared"),
+    target: targetPreviewSchema,
+    preview: dependencyMutationPreviewSchema,
+    plan_hash: z.string().regex(/^sha256:[0-9a-f]{64}$/),
+    expires_at: z.iso.datetime({ offset: true }),
+    approval: approvalSchema,
+  }),
+  z.strictObject({
+    operation_id: z.uuid(),
+    operation: z.literal("task.dependency.remove"),
+    state: z.literal("prepared"),
+    target: targetPreviewSchema,
+    preview: dependencyMutationPreviewSchema,
+    plan_hash: z.string().regex(/^sha256:[0-9a-f]{64}$/),
+    expires_at: z.iso.datetime({ offset: true }),
+    approval: approvalSchema,
+  }),
 ]);
 
 const appliedOperationViewSchema = z.strictObject({
@@ -204,6 +248,8 @@ const appliedOperationViewSchema = z.strictObject({
     "task.project.add",
     "task.project.remove",
     "task.section.move",
+    "task.dependency.add",
+    "task.dependency.remove",
   ]),
   state: z.literal("applied"),
   target: z.union([
@@ -226,6 +272,8 @@ type AppliedOperationView = z.output<typeof appliedOperationViewSchema>;
 type PrepareCommentInput = z.output<typeof prepareCommentInputSchema>;
 type PrepareTaskCreateInput = z.output<typeof prepareTaskCreateInputSchema>;
 type PrepareSubtaskCreateInput = z.output<typeof prepareSubtaskCreateInputSchema>;
+type PrepareTaskDependencyAddInput = z.output<typeof prepareTaskDependencyAddInputSchema>;
+type PrepareTaskDependencyRemoveInput = z.output<typeof prepareTaskDependencyRemoveInputSchema>;
 type PrepareTaskProjectAddInput = z.output<typeof prepareTaskProjectAddInputSchema>;
 type PrepareTaskProjectRemoveInput = z.output<typeof prepareTaskProjectRemoveInputSchema>;
 type PrepareTaskSectionMoveInput = z.output<typeof prepareTaskSectionMoveInputSchema>;
@@ -244,6 +292,10 @@ type ProjectMutationOperationRecord = Extract<
       | "task.project.remove"
       | "task.section.move";
   }
+>;
+type DependencyMutationOperationRecord = Extract<
+  OperationRecord,
+  { operation: "task.dependency.add" | "task.dependency.remove" }
 >;
 
 function ensureNoRegisteredSecret(value: unknown, operation: string): void {
@@ -296,6 +348,28 @@ async function currentSectionContext(
     writableSectionSchema,
     "SectionsApi.getSection",
   );
+}
+
+async function currentDependencyTaskContext(
+  client: AsanaClient,
+  taskGid: string,
+): Promise<z.output<typeof dependencyTaskSchema>> {
+  const task = parseExternalData(
+    await getTask(
+      client,
+      taskGid,
+      "gid,name,modified_at,permalink_url,workspace,workspace.gid",
+    ),
+    dependencyTaskSchema,
+    "TasksApi.getTask",
+  );
+  if (task.gid !== taskGid) {
+    throw new CliError(
+      "internal",
+      "Asana returned a different task than the exact dependency task requested",
+    );
+  }
+  return task;
 }
 
 function taskProjectMembership(
@@ -858,6 +932,84 @@ export class AgentOperationService {
     });
   }
 
+  async prepareTaskDependencyAdd(
+    input: PrepareTaskDependencyAddInput,
+  ): Promise<PreparedOperationView> {
+    return this.#prepareTaskDependencyMutation(
+      "task.dependency.add",
+      input.task_gid,
+      input.dependency_task_gid,
+    );
+  }
+
+  async prepareTaskDependencyRemove(
+    input: PrepareTaskDependencyRemoveInput,
+  ): Promise<PreparedOperationView> {
+    return this.#prepareTaskDependencyMutation(
+      "task.dependency.remove",
+      input.task_gid,
+      input.dependency_task_gid,
+    );
+  }
+
+  async #prepareTaskDependencyMutation(
+    action: "task.dependency.add" | "task.dependency.remove",
+    taskGid: string,
+    dependencyTaskGid: string,
+  ): Promise<PreparedOperationView> {
+    const [{ user, task }, dependency] = await Promise.all([
+      currentTaskContext(this.#client, taskGid),
+      currentDependencyTaskContext(this.#client, dependencyTaskGid),
+    ]);
+    assertTaskOwnedByCurrentUser(user.gid, task.assignee?.gid);
+    const workspaceGid = task.workspace?.gid;
+    if (!workspaceGid || dependency.workspace.gid !== workspaceGid) {
+      throw new CliError(
+        "policy-denied",
+        "Dependency operations require both tasks to be in the same accessible workspace",
+      );
+    }
+    await this.#assertDependencyMutationAllowed(action, task);
+    await this.#assertDependencyRelationState(
+      action,
+      taskGid,
+      dependencyTaskGid,
+      "conflict",
+    );
+    const record = await this.#repository.create({
+      operation: action,
+      target: { task_gid: taskGid },
+      payload: { dependency_task_gid: dependencyTaskGid },
+      guards: {
+        expected_modified_at: task.modified_at,
+        expected_dependency_modified_at: dependency.modified_at,
+        prepared_by_gid: user.gid,
+      },
+    });
+    await this.#appendAudit(record, { outcome: "prepared" });
+    return preparedOperationViewSchema.parse({
+      operation_id: record.id,
+      operation: record.operation,
+      state: record.state,
+      target: { gid: task.gid, name: task.name, permalink_url: task.permalink_url },
+      preview: {
+        dependency: {
+          gid: dependency.gid,
+          name: dependency.name,
+          permalink_url: dependency.permalink_url,
+        },
+      },
+      plan_hash: record.plan_hash,
+      expires_at: record.expires_at,
+      approval: {
+        required: true,
+        reason: action === "task.dependency.add"
+          ? "This operation adds one direct Asana task dependency."
+          : "This operation removes one direct Asana task dependency.",
+      },
+    });
+  }
+
   async apply(operationId: string): Promise<AppliedOperationView> {
     const record = await requirePreparedOperation(this.#repository, operationId);
     ensureNoRegisteredSecret(record.payload, "Apply");
@@ -905,8 +1057,14 @@ export class AgentOperationService {
           record.operation,
           record.operation === "task.update" ? record.payload.changes : undefined,
         );
-      } else {
+      } else if (
+        record.operation === "task.project.add" ||
+        record.operation === "task.project.remove" ||
+        record.operation === "task.section.move"
+      ) {
         await this.#assertProjectMutationCurrent(record, user, task);
+      } else {
+        await this.#assertDependencyMutationCurrent(record, task);
       }
     }
 
@@ -1067,6 +1225,88 @@ export class AgentOperationService {
     );
   }
 
+  async #assertDependencyMutationCurrent(
+    record: DependencyMutationOperationRecord,
+    task: z.output<typeof ownedTaskSchema>,
+  ): Promise<void> {
+    const dependency = await currentDependencyTaskContext(
+      this.#client,
+      record.payload.dependency_task_gid,
+    );
+    if (
+      dependency.modified_at !== record.guards.expected_dependency_modified_at ||
+      dependency.workspace.gid !== task.workspace?.gid
+    ) {
+      throw new CliError(
+        "stale",
+        "Dependency task changed after preparation; prepare a new operation",
+      );
+    }
+    await this.#assertDependencyMutationAllowed(record.operation, task);
+    await this.#assertDependencyRelationState(
+      record.operation,
+      record.target.task_gid,
+      record.payload.dependency_task_gid,
+      "stale",
+    );
+  }
+
+  async #assertDependencyRelationState(
+    action: "task.dependency.add" | "task.dependency.remove",
+    taskGid: string,
+    dependencyTaskGid: string,
+    errorCode: "conflict" | "stale",
+  ): Promise<void> {
+    const dependencies = await readDirectDependencyGids(this.#client, taskGid);
+    const relationExists = dependencies.includes(dependencyTaskGid);
+    if (action === "task.dependency.add" && relationExists) {
+      throw new CliError(
+        errorCode,
+        "The selected task is already a direct dependency",
+      );
+    }
+    if (action === "task.dependency.remove" && !relationExists) {
+      throw new CliError(
+        errorCode,
+        "The selected task is not a direct dependency",
+      );
+    }
+    if (action === "task.dependency.add") {
+      await Promise.all([
+        assertDependencyAdditionAcyclic(this.#client, taskGid, dependencyTaskGid),
+        assertDependencyAdditionWithinRelationLimits(
+          this.#client,
+          taskGid,
+          dependencyTaskGid,
+        ),
+      ]);
+    }
+  }
+
+  async #assertDependencyMutationAllowed(
+    action: "task.dependency.add" | "task.dependency.remove",
+    task: z.output<typeof ownedTaskSchema>,
+  ): Promise<void> {
+    try {
+      const candidate = describeTaskDependencyWrite(action, {
+        workspace_gid: task.workspace?.gid,
+        project_gids: [...new Set(
+          (task.memberships ?? []).flatMap((membership) =>
+            membership.project === undefined ? [] : [membership.project.gid]
+          ),
+        )],
+      });
+      const decision = evaluateScopedWritePolicy(await this.#writePolicy.load(), candidate);
+      if (decision.allowed) return;
+    } catch {
+      // Malformed policy, malformed authoritative scope, and storage failures deny writes alike.
+    }
+    throw new CliError(
+      "policy-denied",
+      "The host write policy does not permit task dependency operations",
+    );
+  }
+
   async #appendApplyingAuditBeforeRemote(record: OperationRecord): Promise<void> {
     try {
       await this.#appendAudit(record, { outcome: "applying" });
@@ -1211,6 +1451,30 @@ export class AgentOperationService {
         ),
         z.looseObject({}),
         "SectionsApi.addTaskForSection",
+      );
+      return { outcome: "applied", resource_gid: record.target.task_gid };
+    }
+    if (record.operation === "task.dependency.add") {
+      parseExternalData(
+        await addTaskDependency(
+          this.#client,
+          record.target.task_gid,
+          record.payload.dependency_task_gid,
+        ),
+        z.looseObject({}),
+        "TasksApi.addDependenciesForTask",
+      );
+      return { outcome: "applied", resource_gid: record.target.task_gid };
+    }
+    if (record.operation === "task.dependency.remove") {
+      parseExternalData(
+        await removeTaskDependency(
+          this.#client,
+          record.target.task_gid,
+          record.payload.dependency_task_gid,
+        ),
+        z.looseObject({}),
+        "TasksApi.removeDependenciesForTask",
       );
       return { outcome: "applied", resource_gid: record.target.task_gid };
     }

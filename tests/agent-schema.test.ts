@@ -186,6 +186,14 @@ const driftFixtures = {
     valid: { task_gid: "123", project_gid: "200", section_gid: "300" },
     invalid: { task_gid: "123", project_gid: "200", section_gid: "invalid" },
   },
+  "prepare-task-dependency-add": {
+    valid: { task_gid: "123", dependency_task_gid: "124" },
+    invalid: { task_gid: "123", dependency_task_gid: "invalid" },
+  },
+  "prepare-task-dependency-remove": {
+    valid: { task_gid: "123", dependency_task_gid: "124" },
+    invalid: { task_gid: "invalid", dependency_task_gid: "124" },
+  },
   apply: { valid: { operation_id: operationId }, invalid: { operation_id: "invalid" } },
 } satisfies Record<AgentActionName, DriftFixture>;
 
@@ -219,6 +227,8 @@ describe("agent capability and schema catalog", () => {
       "prepare-task-project-add",
       "prepare-task-project-remove",
       "prepare-task-section-move",
+      "prepare-task-dependency-add",
+      "prepare-task-dependency-remove",
       "apply",
     ]);
     expect(AGENT_MANIFEST.actions).toHaveLength(AGENT_ACTION_NAMES.length);
@@ -250,6 +260,8 @@ describe("agent capability and schema catalog", () => {
       "asana-cli agent prepare-task-project-add",
       "asana-cli agent prepare-task-project-remove",
       "asana-cli agent prepare-task-section-move",
+      "asana-cli agent prepare-task-dependency-add",
+      "asana-cli agent prepare-task-dependency-remove",
     ]);
     expect(Object.keys(AGENT_MANIFEST.guarded_commands)).toEqual([
       "asana-cli agent apply",
@@ -295,6 +307,8 @@ describe("agent capability and schema catalog", () => {
         "prepare-task-project-add",
         "prepare-task-project-remove",
         "prepare-task-section-move",
+        "prepare-task-dependency-add",
+        "prepare-task-dependency-remove",
       ].includes(descriptor.action)
         ? "0.5.0"
         : ["operation-status", "prepare-task-update", "prepare-comment", "apply"]

@@ -235,6 +235,12 @@ printf '%s' '{"task_gid":"1200","project_gid":"1201"}' |
 
 printf '%s' '{"task_gid":"1200","project_gid":"1201","section_gid":"1203"}' |
   asana-cli agent prepare-task-section-move --input -
+
+printf '%s' '{"task_gid":"1200","dependency_task_gid":"1204"}' |
+  asana-cli agent prepare-task-dependency-add --input -
+
+printf '%s' '{"task_gid":"1200","dependency_task_gid":"1204"}' |
+  asana-cli agent prepare-task-dependency-remove --input -
 ```
 
 Prepare validates known credentials and the exact live workspace/project/task scope, then durably
@@ -268,6 +274,8 @@ Direct create fields and the fixed-root revisioned repository-template contract 
 their exact revision/digest and fully expanded GIDs; apply never rereads repository files.
 Exact project membership and section placement are documented in
 [agent project and section operations](task-project-operations.md).
+Exact dependency changes and their bounded cycle proof are documented in
+[agent task dependency operations](task-dependency-operations.md).
 
 ## Host scoped write policy
 
@@ -297,7 +305,8 @@ system alias for that directory, but the hardened loader deliberately opens the 
     "allow_comments": true,
     "allow_task_create": true,
     "allow_project_membership_changes": true,
-    "allow_section_moves": true
+    "allow_section_moves": true,
+    "allow_dependency_changes": true
   }]
 }
 ```
@@ -312,7 +321,8 @@ stale-record, registered-secret, and external-approval guards. A policy denial r
 policy values nor matching logic.
 
 Project add/remove require `allow_project_membership_changes`; section placement requires
-`allow_section_moves`. Both default to false and require the exact changed project in
+`allow_section_moves`; dependency add/remove require `allow_dependency_changes`. All three
+controls default to false and require the owned target task or exact changed project to intersect
 `project_gids`.
 
 ## Metadata-only audit trail

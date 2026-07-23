@@ -55,6 +55,8 @@ Use only these actions and validate their JSON output before describing it:
 | Prepare adding one task to one project | `asana-cli agent prepare-task-project-add --input -` |
 | Prepare removing one task from one project | `asana-cli agent prepare-task-project-remove --input -` |
 | Prepare moving one task to one section | `asana-cli agent prepare-task-section-move --input -` |
+| Prepare adding one direct task dependency | `asana-cli agent prepare-task-dependency-add --input -` |
+| Prepare removing one direct task dependency | `asana-cli agent prepare-task-dependency-remove --input -` |
 | Inspect a prepared operation | `asana-cli agent operation status` |
 | Apply an approved operation | `asana-cli agent apply` |
 
@@ -90,7 +92,8 @@ All writes require this exact sequence:
 1. **Prepare** with exactly one of `prepare-task-update`, `prepare-comment`,
    `prepare-task-create`, `prepare-subtask-create`, `prepare-task-from-template`,
    `prepare-task-project-add`, `prepare-task-project-remove`, or
-   `prepare-task-section-move`.
+   `prepare-task-section-move`, `prepare-task-dependency-add`, or
+   `prepare-task-dependency-remove`.
 2. **Display** the returned target, complete proposed change, operation ID, expiry,
    template metadata when present, and any policy result. Do not describe preparation
    as an applied change.

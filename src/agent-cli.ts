@@ -468,6 +468,24 @@ export async function runAgentCommand(
     );
   }
 
+  if (action === "prepare-task-dependency-add") {
+    const input = await readStdinAgentInput(args, "prepare-task-dependency-add");
+    const service = new AgentOperationService(client, runtime.operations, runtime);
+    return agentResult(
+      "prepare-task-dependency-add",
+      await service.prepareTaskDependencyAdd(input),
+    );
+  }
+
+  if (action === "prepare-task-dependency-remove") {
+    const input = await readStdinAgentInput(args, "prepare-task-dependency-remove");
+    const service = new AgentOperationService(client, runtime.operations, runtime);
+    return agentResult(
+      "prepare-task-dependency-remove",
+      await service.prepareTaskDependencyRemove(input),
+    );
+  }
+
   if (action === "apply") {
     if (policy() !== "read-write") {
       throw new CliError(

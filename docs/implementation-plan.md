@@ -44,7 +44,7 @@ Deliverables:
 - versioning policy для agent envelope и action schemas;
 - перечень стабильных error codes;
 - operation record schema и state-transition table;
-- storage location/permissions для macOS, Linux и Windows;
+- storage location/permissions для поддерживаемых macOS и Linux;
 - правила TTL, stale target и ambiguous network result;
 - compatibility fixtures текущего `v0.2` stdin workflow.
 

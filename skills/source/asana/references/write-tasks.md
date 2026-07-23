@@ -3,7 +3,8 @@
 Only `prepare-task-update`, `prepare-comment`, `prepare-task-create`,
 `prepare-subtask-create`, `prepare-task-from-template`,
 `prepare-task-project-add`, `prepare-task-project-remove`, and
-`prepare-task-section-move` may propose a write. They do not change Asana.
+`prepare-task-section-move`, `prepare-task-dependency-add`, and
+`prepare-task-dependency-remove` may propose a write. They do not change Asana.
 
 ## Prepare a task update
 
@@ -59,12 +60,25 @@ project, optional section, operation ID, hash, and expiry. Stop on already-prese
 absent, wrong-project section, stale, or policy-denied results. Apply revalidates the
 live membership and separate host opt-ins.
 
+## Prepare one dependency change
+
+Use `prepare-task-dependency-add --input -` or
+`prepare-task-dependency-remove --input -` with one owned target task GID and one exact related
+task GID. Never infer either task from a name, search result, active human context, or unqualified
+alias. Both tasks must be accessible in the same workspace.
+
+Display the exact target, related task, operation ID, hash, and expiry. Stop on self, duplicate,
+absent, cross-workspace, stale, ambiguous, cycle, or policy-denied results. Add performs a bounded
+fail-closed dependency-graph traversal at prepare and apply; an incomplete proof is not permission
+to write. Never combine multiple edges in one approval.
+
 ## Display and approval
 
 After preparation, clearly display:
 
 1. exact target: existing task identity, or create workspace/project/optional parent and assignee;
-2. every proposed field change, complete create fields, or the full proposed comment;
+2. every proposed field change, complete create fields, full proposed comment, placement, or
+   dependency relation;
 3. template revision/digests when present;
 4. operation ID and expiry; and
 5. that an external host approval is required before apply.

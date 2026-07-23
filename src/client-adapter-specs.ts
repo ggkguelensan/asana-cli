@@ -143,6 +143,8 @@ export const CURATED_PREPARE_COMMANDS = [
   "asana-cli agent prepare-task-project-add",
   "asana-cli agent prepare-task-project-remove",
   "asana-cli agent prepare-task-section-move",
+  "asana-cli agent prepare-task-dependency-add",
+  "asana-cli agent prepare-task-dependency-remove",
 ] as const;
 
 export const EXTERNAL_APPROVAL_COMMAND =

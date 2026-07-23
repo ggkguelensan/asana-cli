@@ -39,6 +39,7 @@ const permittedWritePolicy: HostScopedWritePolicyProvider = {
       allow_task_create: true,
       allow_project_membership_changes: true,
       allow_section_moves: true,
+      allow_dependency_changes: true,
     }],
   }),
 };
@@ -71,8 +72,12 @@ type FakeAsanaOptions = Readonly<{
   userGid?: string;
   assigneeGid?: string | null;
   taskModifiedAt?: string;
+  taskModifiedAtByGid?: Readonly<Record<string, string>>;
   taskName?: string;
   taskPermalink?: string;
+  taskWorkspaceByGid?: Readonly<Record<string, string>>;
+  dependencyGraph?: Readonly<Record<string, readonly string[]>>;
+  dependentGraph?: Readonly<Record<string, readonly string[]>>;
   taskMemberships?: Array<{
     project: { gid: string };
     section?: { gid: string };
@@ -136,6 +141,26 @@ function fakeAsana(options: FakeAsanaOptions = {}): {
           },
         };
       }
+      if (method === "GET" && path === "/tasks/{task_gid}/dependencies") {
+        return {
+          response: {},
+          data: {
+            data: (options.dependencyGraph?.[pathParams.task_gid] ?? [])
+              .map((gid) => ({ gid })),
+            next_page: null,
+          },
+        };
+      }
+      if (method === "GET" && path === "/tasks/{task_gid}/dependents") {
+        return {
+          response: {},
+          data: {
+            data: (options.dependentGraph?.[pathParams.task_gid] ?? [])
+              .map((gid) => ({ gid })),
+            next_page: null,
+          },
+        };
+      }
       if (method === "GET" && path === "/tasks/{task_gid}") {
         const assigneeGid = options.assigneeGid === undefined ? "1001" : options.assigneeGid;
         return {
@@ -144,12 +169,16 @@ function fakeAsana(options: FakeAsanaOptions = {}): {
             data: {
               gid: pathParams.task_gid,
               name: options.taskName ?? "Owned task",
-              modified_at: options.taskModifiedAt ?? modifiedAt,
+              modified_at: options.taskModifiedAtByGid?.[pathParams.task_gid] ??
+                options.taskModifiedAt ??
+                modifiedAt,
               assignee: assigneeGid === null
                 ? null
                 : { gid: assigneeGid, name: "Developer" },
               permalink_url: options.taskPermalink ?? "https://app.asana.com/0/1/123",
-              workspace: { gid: "100" },
+              workspace: {
+                gid: options.taskWorkspaceByGid?.[pathParams.task_gid] ?? "100",
+              },
               memberships: options.taskMemberships ?? [{ project: { gid: "200" } }],
             },
           },
@@ -637,6 +666,147 @@ describe("durable agent operation prepare", () => {
       project_gid: "201",
     });
     memberships.push({ project: { gid: "201" } });
+    const staleError = await caughtCliError(() => staleService.apply(firstOperationId));
+    expect(staleError.code).toBe("stale");
+    expect((await staleRepository.inspect(firstOperationId))?.state).toBe("prepared");
+    expect(staleAsana.traces.filter((trace) => trace.method === "POST")).toEqual([]);
+  });
+
+  test("persists, previews, and applies exact dependency additions and removals", async () => {
+    const addRepository = memoryRepository(firstOperationId);
+    const addAsana = fakeAsana({
+      dependencyGraph: { "123": [], "124": [] },
+    });
+    const addService = new AgentOperationService(addAsana.client, addRepository, {
+      writePolicy: permittedWritePolicy,
+    });
+    const addPreview = await addService.prepareTaskDependencyAdd({
+      task_gid: "123",
+      dependency_task_gid: "124",
+    });
+    expect(addPreview).toMatchObject({
+      operation: "task.dependency.add",
+      target: { gid: "123", name: "Owned task" },
+      preview: { dependency: { gid: "124", name: "Owned task" } },
+      approval: { required: true },
+    });
+    expect(await addRepository.get(firstOperationId)).toMatchObject({
+      operation: "task.dependency.add",
+      target: { task_gid: "123" },
+      payload: { dependency_task_gid: "124" },
+      guards: {
+        expected_modified_at: modifiedAt,
+        expected_dependency_modified_at: modifiedAt,
+        prepared_by_gid: "1001",
+      },
+    });
+    await addService.apply(firstOperationId);
+    expect(addAsana.traces.filter(
+      (trace) =>
+        trace.method === "POST" &&
+        trace.path === "/tasks/{task_gid}/addDependencies",
+    )).toEqual([expect.objectContaining({
+      path_params: { task_gid: "123" },
+      body: { data: { dependencies: ["124"] } },
+    })]);
+    addAsana.traces.splice(0);
+    expect((await caughtCliError(() => addService.apply(firstOperationId))).code)
+      .toBe("conflict");
+    expect(addAsana.traces).toEqual([]);
+
+    const removeRepository = memoryRepository(secondOperationId);
+    const removeAsana = fakeAsana({
+      dependencyGraph: { "123": ["124"] },
+    });
+    const removeService = new AgentOperationService(
+      removeAsana.client,
+      removeRepository,
+      { writePolicy: permittedWritePolicy },
+    );
+    await removeService.prepareTaskDependencyRemove({
+      task_gid: "123",
+      dependency_task_gid: "124",
+    });
+    await removeService.apply(secondOperationId);
+    expect(removeAsana.traces.filter(
+      (trace) =>
+        trace.method === "POST" &&
+        trace.path === "/tasks/{task_gid}/removeDependencies",
+    )).toEqual([expect.objectContaining({
+      path_params: { task_gid: "123" },
+      body: { data: { dependencies: ["124"] } },
+    })]);
+  });
+
+  test("fails dependency state, cycle, workspace, and related-task guards before write", async () => {
+    const prepareFixtures = [
+      {
+        graph: { "123": ["124"] },
+        workspaceByGid: {},
+        action: "add",
+        code: "conflict",
+      },
+      {
+        graph: { "123": [] },
+        workspaceByGid: {},
+        action: "remove",
+        code: "conflict",
+      },
+      {
+        graph: { "123": [], "124": ["125"], "125": ["123"] },
+        workspaceByGid: {},
+        action: "add",
+        code: "conflict",
+      },
+      {
+        graph: { "123": [], "124": [] },
+        workspaceByGid: { "124": "999" },
+        action: "add",
+        code: "policy-denied",
+      },
+    ] as const;
+    for (const fixture of prepareFixtures) {
+      const repository = new FaultingOperationRepository(memoryRepository());
+      const asana = fakeAsana({
+        dependencyGraph: fixture.graph,
+        taskWorkspaceByGid: fixture.workspaceByGid,
+      });
+      const service = new AgentOperationService(asana.client, repository, {
+        writePolicy: permittedWritePolicy,
+      });
+      const error = await caughtCliError(() =>
+        fixture.action === "add"
+          ? service.prepareTaskDependencyAdd({
+            task_gid: "123",
+            dependency_task_gid: "124",
+          })
+          : service.prepareTaskDependencyRemove({
+            task_gid: "123",
+            dependency_task_gid: "124",
+          })
+      );
+      expect(error.code).toBe(fixture.code);
+      expect(repository.createCalls).toBe(0);
+      expect(asana.traces.filter((trace) => trace.method === "POST")).toEqual([]);
+    }
+
+    const modifiedByGid: Record<string, string> = {
+      "123": modifiedAt,
+      "124": modifiedAt,
+    };
+    const staleRepository = memoryRepository(firstOperationId);
+    const staleAsana = fakeAsana({
+      dependencyGraph: { "123": [], "124": [] },
+      taskModifiedAtByGid: modifiedByGid,
+    });
+    const staleService = new AgentOperationService(staleAsana.client, staleRepository, {
+      writePolicy: permittedWritePolicy,
+    });
+    await staleService.prepareTaskDependencyAdd({
+      task_gid: "123",
+      dependency_task_gid: "124",
+    });
+    modifiedByGid["124"] = "2026-07-15T09:00:01.000Z";
     const staleError = await caughtCliError(() => staleService.apply(firstOperationId));
     expect(staleError.code).toBe("stale");
     expect((await staleRepository.inspect(firstOperationId))?.state).toBe("prepared");

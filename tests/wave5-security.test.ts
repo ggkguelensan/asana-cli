@@ -32,6 +32,7 @@ import { createClient, type AsanaClient } from "../src/sdk";
 import {
   describeTaskCommentWrite,
   describeTaskCreateWrite,
+  describeTaskDependencyWrite,
   describeTaskProjectWrite,
   describeTaskUpdateWrite,
   evaluateScopedWritePolicy,
@@ -56,6 +57,7 @@ const permittedPolicy: ScopedWritePolicy = {
     allow_task_create: false,
     allow_project_membership_changes: false,
     allow_section_moves: false,
+    allow_dependency_changes: false,
   }],
 };
 
@@ -245,6 +247,21 @@ describe("host scoped write policy", () => {
           scopes: [{
             ...permittedPolicy.scopes[0]!,
             allow_section_moves: true,
+          }],
+        },
+        expected: { allowed: true },
+      },
+      {
+        candidate: describeTaskDependencyWrite("task.dependency.add", target),
+        expected: { allowed: false, reason: "dependency_changes_not_allowed" },
+      },
+      {
+        candidate: describeTaskDependencyWrite("task.dependency.remove", target),
+        policy: {
+          ...permittedPolicy,
+          scopes: [{
+            ...permittedPolicy.scopes[0]!,
+            allow_dependency_changes: true,
           }],
         },
         expected: { allowed: true },

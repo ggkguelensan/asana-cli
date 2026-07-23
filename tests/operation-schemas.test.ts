@@ -227,4 +227,42 @@ describe("operation record schemas", () => {
       payload: { project_gid: "200" },
     })).toThrow();
   });
+
+  test("stores one exact dependency relation with guards for both tasks", () => {
+    const dependencyGuards = {
+      ...guards,
+      expected_dependency_modified_at: "2026-07-15T08:30:00.000Z",
+    };
+    const add = createOperationRecord({
+      operation: "task.dependency.add",
+      target: { task_gid: "987654" },
+      payload: { dependency_task_gid: "987655" },
+      guards: dependencyGuards,
+      ttl_ms: 60_000,
+    }, createdAt, operationId);
+    expect(parseOperationRecord(add)).toEqual(add);
+    expect(add).toMatchObject({
+      operation: "task.dependency.add",
+      payload: { dependency_task_gid: "987655" },
+      guards: dependencyGuards,
+    });
+    expect(createOperationInputSchema.parse({
+      operation: "task.dependency.remove",
+      target: { task_gid: "987654" },
+      payload: { dependency_task_gid: "987655" },
+      guards: dependencyGuards,
+    })).toMatchObject({ operation: "task.dependency.remove" });
+    expect(() => createOperationInputSchema.parse({
+      operation: "task.dependency.add",
+      target: { task_gid: "987654" },
+      payload: { dependency_task_gid: "987654" },
+      guards: dependencyGuards,
+    })).toThrow("a task cannot depend on itself");
+    expect(() => createOperationInputSchema.parse({
+      operation: "task.dependency.remove",
+      target: { task_gid: "987654" },
+      payload: { dependency_task_gid: "987655" },
+      guards,
+    })).toThrow();
+  });
 });

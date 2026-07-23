@@ -16,6 +16,7 @@ commit [`81c1b7a`](https://github.com/ggkguelensan/asana-cli/commit/81c1b7afa789
 - [Human local context](local-context.md) — DEV-014 alias/worktree state contract и recovery.
 - [Agent task creation](task-creation.md) — direct/subtask prepare/apply и revisioned repository templates.
 - [Project and section operations](task-project-operations.md) — exact membership/placement prepare/apply.
+- [Task dependency operations](task-dependency-operations.md) — exact relation writes и bounded cycle proof.
 - [Agent clients](agent-clients.md) — текущий контракт прямого использования из Codex CLI и Claude Code.
 - [Security model](../SECURITY.md) — гарантии, ограничения и threat model.
 
@@ -160,7 +161,8 @@ Gate выхода:
 - implementation candidate: bounded task context с subtasks, dependencies, dependents и
   attachment metadata без URL projection или автоматического скачивания;
 - создание task/subtask через prepare/apply;
-- добавление/удаление задачи из project, перенос между sections и управление dependencies;
+- добавление/удаление задачи из project, перенос между sections и управление dependencies через
+  отдельные immutable operations с bounded cycle proof;
 - `agent context --task TASK_GID` для компактной рабочей выборки;
 - local-only `agent context --git-current` для нормализованной Git identity текущего worktree без PAT или сети;
 - отдельный authenticated `agent context --git-current-candidates --workspace GID [--all-assignees] [--completed|--no-completed] [--field GID]` для максимум 20 Asana-кандидатов по этой identity; metadata/evidence остаются untrusted, а explicit canonical GID нужен для follow-up;

@@ -368,6 +368,22 @@ export const prepareTaskSectionMoveInputSchema = z.strictObject({
   section_gid: gidSchema,
 });
 
+export const prepareTaskDependencyAddInputSchema = z.strictObject({
+  task_gid: gidSchema,
+  dependency_task_gid: gidSchema,
+}).refine((input) => input.task_gid !== input.dependency_task_gid, {
+  message: "a task cannot depend on itself",
+  path: ["dependency_task_gid"],
+});
+
+export const prepareTaskDependencyRemoveInputSchema = z.strictObject({
+  task_gid: gidSchema,
+  dependency_task_gid: gidSchema,
+}).refine((input) => input.task_gid !== input.dependency_task_gid, {
+  message: "a task cannot be its own dependency",
+  path: ["dependency_task_gid"],
+});
+
 export const prepareTaskFromTemplateInputSchema = z.strictObject({
   template: projectAliasSchema,
   template_revision: z.number().int().min(1).max(2_147_483_647),

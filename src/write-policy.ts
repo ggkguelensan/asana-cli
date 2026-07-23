@@ -34,6 +34,7 @@ const scopedWritePolicyScopeSchema = z.strictObject({
   allow_task_create: z.boolean().default(false),
   allow_project_membership_changes: z.boolean().default(false),
   allow_section_moves: z.boolean().default(false),
+  allow_dependency_changes: z.boolean().default(false),
 }).superRefine((scope, context) => {
   const customFieldsAllowed = scope.task_update_fields.includes("custom_fields");
   if (customFieldsAllowed !== (scope.custom_field_gids.length > 0)) {
@@ -141,6 +142,16 @@ const taskSectionMoveWriteCandidateSchema = z.strictObject({
   target: writeTargetScopeSchema,
 });
 
+const taskDependencyAddWriteCandidateSchema = z.strictObject({
+  action: z.literal("task.dependency.add"),
+  target: writeTargetScopeSchema,
+});
+
+const taskDependencyRemoveWriteCandidateSchema = z.strictObject({
+  action: z.literal("task.dependency.remove"),
+  target: writeTargetScopeSchema,
+});
+
 export const scopedWriteCandidateSchema = z.discriminatedUnion("action", [
   taskUpdateWriteCandidateSchema,
   taskCommentWriteCandidateSchema,
@@ -148,6 +159,8 @@ export const scopedWriteCandidateSchema = z.discriminatedUnion("action", [
   taskProjectAddWriteCandidateSchema,
   taskProjectRemoveWriteCandidateSchema,
   taskSectionMoveWriteCandidateSchema,
+  taskDependencyAddWriteCandidateSchema,
+  taskDependencyRemoveWriteCandidateSchema,
 ]);
 
 export type ScopedWriteCandidate = z.output<typeof scopedWriteCandidateSchema>;
@@ -163,6 +176,7 @@ export const scopedWritePolicyDenialSchema = z.enum([
   "task_create_not_allowed",
   "project_membership_changes_not_allowed",
   "section_moves_not_allowed",
+  "dependency_changes_not_allowed",
 ]);
 
 export const scopedWritePolicyDecisionSchema = z.discriminatedUnion("allowed", [
@@ -237,6 +251,20 @@ export function describeTaskProjectWrite(
   });
 }
 
+export function describeTaskDependencyWrite(
+  actionValue: unknown,
+  targetValue: unknown,
+): ScopedWriteCandidate {
+  const action = z.enum([
+    "task.dependency.add",
+    "task.dependency.remove",
+  ]).parse(actionValue);
+  return scopedWriteCandidateSchema.parse({
+    action,
+    target: writeTargetScopeSchema.parse(targetValue),
+  });
+}
+
 /**
  * Evaluates only a parsed host policy and metadata-only write candidate. Any malformed
  * policy or candidate is denied; there is no permissive fallback.
@@ -283,6 +311,14 @@ export function evaluateScopedWritePolicy(
     candidate.action === "task.project.remove"
   ) {
     return { allowed: true };
+  }
+  if (
+    candidate.action === "task.dependency.add" ||
+    candidate.action === "task.dependency.remove"
+  ) {
+    return scope.allow_dependency_changes
+      ? { allowed: true }
+      : deny("dependency_changes_not_allowed");
   }
 
   if (!candidate.write_fields.every((field) => scope.task_update_fields.includes(field))) {

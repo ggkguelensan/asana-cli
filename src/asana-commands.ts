@@ -338,6 +338,28 @@ export async function moveTaskToSection(
   ]);
 }
 
+export async function addTaskDependency(
+  client: AsanaClient,
+  taskGid: string,
+  dependencyTaskGid: string,
+): Promise<unknown> {
+  return invokeApiMethod(client, "TasksApi", "addDependenciesForTask", [
+    { data: { dependencies: [dependencyTaskGid] } },
+    taskGid,
+  ]);
+}
+
+export async function removeTaskDependency(
+  client: AsanaClient,
+  taskGid: string,
+  dependencyTaskGid: string,
+): Promise<unknown> {
+  return invokeApiMethod(client, "TasksApi", "removeDependenciesForTask", [
+    { data: { dependencies: [dependencyTaskGid] } },
+    taskGid,
+  ]);
+}
+
 export async function searchTasks(
   client: AsanaClient,
   query: string,
