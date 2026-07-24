@@ -5,6 +5,7 @@ import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 import { z } from "zod";
 import {
   CLIENT_EVAL_OUTPUT_JSON_SCHEMA,
+  CLAUDE_CLIENT_EVAL_OUTPUT_JSON_SCHEMA,
   canonicalSkillSha256,
   clientEvalContractSha256,
   clientEvalEvidenceSchema,
@@ -22,6 +23,21 @@ const projectRoot = resolve(import.meta.dir, "..");
 const MAX_CLIENT_OUTPUT_BYTES = 2 * 1024 * 1024;
 
 type ProcessResult = Readonly<{ stdout: string; exit_code: number }>;
+
+function clientFailureCategory(output: string): string {
+  const normalized = output.toLowerCase();
+  for (const [category, pattern] of [
+    ["rate-limit", /rate.?limit|usage limit|too many requests/],
+    ["budget", /max.?budget|budget|credit|billing/],
+    ["authentication", /auth|login|credential|api key/],
+    ["json-schema", /json.?schema|output schema/],
+    ["permission", /permission|allowed.?tools|tools/],
+    ["cli-usage", /unknown option|invalid (?:option|argument|value)|usage:/],
+  ] as const) {
+    if (pattern.test(normalized)) return category;
+  }
+  return "unclassified";
+}
 
 function safeClientEnvironment(): Record<string, string> {
   const allowed = [
@@ -70,7 +86,11 @@ async function runProcess(
     throw new Error(`${basename(executable)} exceeded the bounded eval output size`);
   }
   if (exitCode !== 0) {
-    throw new Error(`${basename(executable)} eval failed with exit ${exitCode}`);
+    const diagnosticDecoder = new TextDecoder("utf-8", { fatal: false });
+    const diagnostic = `${diagnosticDecoder.decode(stdoutBytes)}\n${diagnosticDecoder.decode(stderrBytes)}`;
+    throw new Error(
+      `${basename(executable)} eval failed with exit ${exitCode} (${clientFailureCategory(diagnostic)})`,
+    );
   }
   return {
     stdout: new TextDecoder("utf-8", { fatal: true }).decode(stdoutBytes),
@@ -146,8 +166,11 @@ function parseClaudeResponse(output: string): Readonly<{
     .map((event) => resultSchema.safeParse(event))
     .find((candidate) => candidate.success);
   if (!init?.success || !result?.success) throw new Error("Claude eval omitted init or result evidence");
-  if (JSON.stringify(init.data.tools) !== JSON.stringify(["Skill"])) {
-    throw new Error("Claude eval exposed a tool other than Skill");
+  if (
+    JSON.stringify([...init.data.tools].sort()) !==
+    JSON.stringify(["Skill", "StructuredOutput"].sort())
+  ) {
+    throw new Error("Claude eval exposed a tool other than Skill and StructuredOutput");
   }
   return {
     response: JSON.parse(result.data.result) as unknown,
@@ -240,7 +263,7 @@ async function evaluateClient(
     "stream-json",
     "--verbose",
     "--json-schema",
-    JSON.stringify(CLIENT_EVAL_OUTPUT_JSON_SCHEMA),
+    JSON.stringify(CLAUDE_CLIENT_EVAL_OUTPUT_JSON_SCHEMA),
     "--max-budget-usd",
     "0.20",
     `/asana\n\n${prompt}`,
@@ -308,7 +331,7 @@ export async function runClientEval(input: Readonly<{
         user_configuration: false,
         tool_policy: input.client === "codex"
           ? "codex-read-only-no-env"
-          : "claude-skill-only",
+          : "claude-skill-and-structured-output-only",
         external_commands_executed: false,
         asana_credentials_in_environment: false,
       },

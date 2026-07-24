@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import {
   CLIENT_EVAL_SCENARIOS,
+  CLAUDE_CLIENT_EVAL_OUTPUT_JSON_SCHEMA,
+  CLIENT_EVAL_OUTPUT_JSON_SCHEMA,
   clientEvalResponseSchema,
   validateClientEvalResponse,
 } from "../scripts/client-eval-contract";
@@ -67,5 +69,16 @@ describe("clean client behavioral eval contract", () => {
     expect(clientEvalResponseSchema.safeParse(reordered).success).toBe(false);
     expect(clientEvalResponseSchema.safeParse({ ...validResponse(), commentary: "unsafe" }).success)
       .toBe(false);
+  });
+
+  test("removes only Claude-unsupported grammar constraints before remote compilation", () => {
+    const canonical = JSON.stringify(CLIENT_EVAL_OUTPUT_JSON_SCHEMA);
+    const claude = JSON.stringify(CLAUDE_CLIENT_EVAL_OUTPUT_JSON_SCHEMA);
+    expect(canonical).toContain("maxLength");
+    expect(canonical).toContain("maxItems");
+    expect(claude).not.toContain("maxLength");
+    expect(claude).not.toContain("maxItems");
+    expect(claude).toContain("additionalProperties");
+    expect(claude).toContain("automatic_write_retry");
   });
 });

@@ -96,7 +96,10 @@ export const clientEvalEvidenceSchema = z.strictObject({
     scope: z.literal("project"),
     session_persistence: z.literal(false),
     user_configuration: z.literal(false),
-    tool_policy: z.enum(["codex-read-only-no-env", "claude-skill-only"]),
+    tool_policy: z.enum([
+      "codex-read-only-no-env",
+      "claude-skill-and-structured-output-only",
+    ]),
     external_commands_executed: z.literal(false),
     asana_credentials_in_environment: z.literal(false),
   }),
@@ -112,6 +115,34 @@ export type ClientEvalEvidence = z.output<typeof clientEvalEvidenceSchema>;
 export const CLIENT_EVAL_OUTPUT_JSON_SCHEMA = z.toJSONSchema(clientEvalResponseSchema, {
   io: "output",
 });
+
+const CLAUDE_UNSUPPORTED_SCHEMA_KEYS = new Set([
+  "$schema",
+  "minItems",
+  "maxItems",
+  "minLength",
+  "maxLength",
+  "minimum",
+  "maximum",
+]);
+
+function transformClaudeSchema(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(transformClaudeSchema);
+  if (value === null || typeof value !== "object") return value;
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([key]) => !CLAUDE_UNSUPPORTED_SCHEMA_KEYS.has(key))
+      .map(([key, nested]) => [key, transformClaudeSchema(nested)]),
+  );
+}
+
+/**
+ * Claude compiles only a documented JSON Schema subset. Runtime Zod validation
+ * below retains every removed length/count constraint.
+ */
+export const CLAUDE_CLIENT_EVAL_OUTPUT_JSON_SCHEMA = transformClaudeSchema(
+  CLIENT_EVAL_OUTPUT_JSON_SCHEMA,
+);
 
 function sha256(value: string | Uint8Array): string {
   return createHash("sha256").update(value).digest("hex");
