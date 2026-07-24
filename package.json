@@ -10,6 +10,7 @@
   "scripts": {
     "dev": "bun run --no-env-file src/index.ts",
     "test": "bun test",
+    "test:black-box": "bun run build && bun test tests/black-box",
     "lint:types": "bun run scripts/check-types.ts",
     "typecheck": "bunx tsc --noEmit && bun run lint:types",
     "build": "bun run --no-env-file scripts/build.ts",
@@ -42,6 +43,7 @@
     "check:release-workflow": "bun run --no-env-file scripts/check-release-workflow.ts",
     "check:v1-examples": "bun run --no-env-file scripts/check-v1-examples.ts",
     "check:v1-audit": "bun run --no-env-file scripts/check-v1-completion-audit.ts",
+    "check:black-box-boundary": "bun run --no-env-file scripts/check-black-box-boundary.ts",
     "eval:codex": "bun run --no-env-file scripts/run-client-evals.ts --client codex --executable codex --binary dist/asana-cli --output evidence/client-evals/codex.json",
     "eval:claude-code": "bun run --no-env-file scripts/run-client-evals.ts --client claude-code --executable claude --binary dist/asana-cli --model haiku --output evidence/client-evals/claude-code.json",
     "eval:opencode-discovery": "bun run --no-env-file scripts/native-client-discovery.ts --executable opencode --binary dist/asana-cli --output evidence/client-adapters/opencode.json",
@@ -50,7 +52,7 @@
     "test:integration-lifecycle": "bun run --no-env-file scripts/integration-lifecycle-e2e.ts dist/asana-cli",
     "release:contract": "bun run --no-env-file scripts/release-contract.ts",
     "release:preflight": "bun run --no-env-file scripts/release-preflight.ts",
-    "check": "bun run typecheck && bun run check:generated-integrations && bun run check:client-compatibility && bun run check:gemini-extension && bun run check:project-plan && bun run check:v1-audit && bun run check:support-matrix && bun run check:release-workflow && bun run check:client-evidence && bun run check:native-client-evidence && bun run check:integration-lifecycle-evidence && bun run build && bun run check:package-content && bun run check:v1-examples && bun test && ./dist/asana-cli --version"
+    "check": "bun run typecheck && bun run check:black-box-boundary && bun run check:generated-integrations && bun run check:client-compatibility && bun run check:gemini-extension && bun run check:project-plan && bun run check:v1-audit && bun run check:support-matrix && bun run check:release-workflow && bun run check:client-evidence && bun run check:native-client-evidence && bun run check:integration-lifecycle-evidence && bun run build && bun run check:package-content && bun run check:v1-examples && bun test && ./dist/asana-cli --version"
   },
   "dependencies": {
     "asana": "3.1.12",

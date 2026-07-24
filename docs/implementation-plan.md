@@ -24,10 +24,11 @@
 - плановая реализация `v0.5` → `v1.0` завершена и подтверждена
   [v1 completion audit](v1-completion-audit.md); patch `1.0.1` меняет только release recovery
   metadata и container ownership gate.
-- development line `1.1.0` добавляет DEV-017: optional Worktrunk-compatible lifecycle binding и
-  bounded `agent context --worktree-task`; она не считается опубликованной до отдельного release.
+- development line `1.1.0` добавляет DEV-017 Worktrunk-compatible lifecycle binding,
+  bounded `agent context --worktree-task` и DEV-018 compiled-binary black-box gate; она не
+  считается опубликованной до отдельного release.
 
-Следующий шаг — квалифицировать DEV-017 на exact commit и отдельно решить публикацию `v1.1.0`.
+Следующий шаг — квалифицировать DEV-017/DEV-018 на exact commit и отдельно решить публикацию `v1.1.0`.
 Другие product ideas остаются в `Later` backlog. Следующий release повторяет
 version/bundle/evidence gate и maintainer procedure на новом exact commit. Исторические `v0.4.0`,
 failed tag `v1.0.0` и опубликованный `v1.0.1` не получают задним числом новые возможности.

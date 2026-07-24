@@ -453,12 +453,17 @@ Full integration and direct-protocol guidance: [docs/agent-clients.md](docs/agen
 bun run dev --help
 bun run typecheck
 bun test
+bun run test:black-box
 bun run build
 bun run check
 ```
 
 `bun run typecheck` запускает строгий TypeScript и отдельный guard, запрещающий явные `any`
 в `src`, `tests` и `scripts`.
+
+`bun run test:black-box` сначала собирает release-style `dist/asana-cli`, затем проверяет только
+его публичные process/stdin/stdout/stderr/filesystem контракты. Suite не импортирует `src`,
+generated artifacts или тестовые runtime implementations и не обращается к live Asana.
 
 ## Планирование
 
@@ -475,6 +480,7 @@ bun run check
 - [Bounded batch reads](docs/batch-reads.md) — общий budget и machine-readable partial failures.
 - [Human local context](docs/local-context.md) — aliases, worktree scope, CAS, хранение и recovery.
 - [Worktrunk integration](docs/worktrunk.md) — blocking bind/deactivate hooks и изоляция task context.
+- [Black-box testing](docs/black-box-testing.md) — compiled-binary coverage matrix и hermetic boundary.
 - [Maintainer release procedure](docs/implementation-plan.md#maintainer-release-procedure) — version bump, evidence, tag и проверка следующей публикации.
 - [Swarm execution plan](docs/swarm-plan.md) — история выполненных waves, роли Terra/Sol/Luna и quality gates.
 

@@ -146,13 +146,14 @@ const ROADMAP_CRITERIA = Object.freeze([
   {
     id: "V1-CURATED-WORKFLOWS",
     criterion: "critical developer workflows покрыты curated actions",
-    conclusion: "Bounded developer reads and immutable prepare/apply writes are present in the agent catalog and exercised without raw API fallback.",
+    conclusion: "Bounded developer reads and immutable prepare/apply writes are present in the agent catalog; the compiled binary publishes a matching schema for every action without raw API fallback.",
     evidence: [
       { path: "src/agent-contract.ts", claim: "Curated action catalog with effect, approval, schema, and bounds." },
       { path: "skills/source/asana/SKILL.md", claim: "Canonical skill restricts clients to the curated agent surface." },
       { path: "tests/agent-schema.test.ts", claim: "Runtime catalog and published schema remain aligned." },
       { path: "tests/agent-read-integration.test.ts", claim: "Bounded compiled read workflows." },
       { path: "tests/agent-operations.test.ts", claim: "Immutable prepare/apply workflow behavior." },
+      { path: "tests/black-box/contract.test.ts", claim: "Every action advertised by the compiled binary publishes a self-consistent wire schema." },
     ],
   },
   {
@@ -167,6 +168,9 @@ const ROADMAP_CRITERIA = Object.freeze([
       { path: "tests/hostile-content.test.ts", claim: "Prompt-injection content remains untrusted data." },
       { path: "tests/wave5-security.test.ts", claim: "Scoped policy and trusted-file fail-closed tests." },
       { path: "tests/compiled-security.test.ts", claim: "Release executable security-boundary tests." },
+      { path: "scripts/check-black-box-boundary.ts", claim: "Black-box suites cannot import or execute implementation source." },
+      { path: "tests/black-box/worktree.test.ts", claim: "Compiled linked-worktree isolation and owner-only state tests." },
+      { path: "tests/black-box/integrations.test.ts", claim: "Compiled client adapter and managed-file lifecycle tests." },
       { path: "evidence/v1/dependency-audit.json", claim: "Dated production dependency advisory result bound to the lockfile." },
     ],
   },
