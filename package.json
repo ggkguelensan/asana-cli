@@ -29,7 +29,7 @@
     "eval:claude-code": "bun run --no-env-file scripts/run-client-evals.ts --client claude-code --executable claude --binary dist/asana-cli --output evidence/client-evals/claude-code.json",
     "test:integration-lifecycle": "bun run --no-env-file scripts/integration-lifecycle-e2e.ts dist/asana-cli",
     "release:preflight": "bun run --no-env-file scripts/release-preflight.ts",
-    "check": "bun run typecheck && bun run check:generated-integrations && bun run check:project-plan && bun run check:support-matrix && bun run build && bun run check:package-content && bun test && ./dist/asana-cli --version"
+    "check": "bun run typecheck && bun run check:generated-integrations && bun run check:project-plan && bun run check:support-matrix && bun run check:client-evidence && bun run build && bun run check:package-content && bun test && ./dist/asana-cli --version"
   },
   "dependencies": {
     "asana": "3.1.12",

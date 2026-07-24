@@ -34,6 +34,10 @@ const integrationListingSchema = z.strictObject({
   schema: z.literal("asana-cli.integration-bundle.v1"),
   bundle_version: z.string().min(1),
   agent_protocol_version: z.number().int().positive(),
+  runtime: z.strictObject({
+    platform: z.enum(["darwin", "linux"]),
+    architecture: z.enum(["arm64", "x64"]),
+  }),
   clients: z.unknown(),
 });
 
@@ -87,7 +91,7 @@ async function runArtifact(args: readonly string[], cwd: string): Promise<string
   const artifact = Bun.spawn({
     cmd: [binaryPath, ...args],
     cwd,
-    env: { ...process.env, HOME: cwd, USERPROFILE: cwd },
+    env: { ...process.env, HOME: cwd },
     stdout: "pipe",
     stderr: "pipe",
   });

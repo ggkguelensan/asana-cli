@@ -72,14 +72,14 @@ Issue ID следует сохранить в заголовке.
 | INT-008 | P0 | done | Реализовать atomic install/update | INT-007 | Staging/rename не оставляет partial install; unmanaged/modified files не перезаписываются молча |
 | INT-009 | P0 | done | Реализовать safe uninstall/diff | INT-007, INT-008 | Удаляются только совпадающие managed files; unrelated client configuration сохраняется |
 | INT-010 | P0 | done | Generic `.agents/skills` adapter | INT-008 | User/project install roundtrip и skill validation проходят на temp HOME |
-| INT-011 | P0 | ready | Codex skills-only plugin adapter | INT-010 | Manifest генерируется из общего skill; нет MCP; clean Codex session обнаруживает skill |
-| INT-012 | P0 | ready | Claude Code plugin adapter | INT-010 | Plugin не содержит credential и self-update logic; clean Claude session обнаруживает skill |
+| INT-011 | P0 | done | Codex skills-only plugin adapter | INT-010 | Manifest генерируется из общего skill; нет MCP; clean Codex session обнаруживает skill |
+| INT-012 | P0 | done | Claude Code plugin adapter | INT-010 | Plugin не содержит credential и self-update logic; clean Claude session обнаруживает skill |
 | INT-013 | P1 | done | `integrations policy CLIENT` | INT-003 | Печатает узкие suggested rules и никогда не применяет broad auto-allow автоматически |
-| INT-014 | P1 | blocked | Реальные behavioral/security evals Codex и Claude | INT-011, INT-012, AP-009 | Read, prepare/approval/apply, malicious content, missing PAT и ambiguous outcome проходят в clean sessions |
-| INT-015 | P1 | blocked | Gemini CLI extension без MCP | INT-014 | Native install/discovery и policy tests проходят; общий skill не форкнут |
-| INT-016 | P1 | blocked | GitHub Copilot CLI skill/plugin | INT-014 | Нет broad `allowed-tools: shell`; native discovery/evals проходят |
-| INT-017 | P1 | blocked | OpenCode adapter | INT-014 | Shared skill и permission example проходят discovery/evals |
-| INT-018 | P1 | blocked | Cursor adapter | INT-014 | Skill обнаруживается; документация честно оставляет shell/apply approval-required |
+| INT-014 | P1 | done | Реальные behavioral/security evals Codex и Claude | INT-011, INT-012, AP-009 | Read, prepare/approval/apply, malicious content, missing PAT и ambiguous outcome проходят в clean sessions |
+| INT-015 | P1 | ready | Gemini CLI extension без MCP | INT-014 | Native install/discovery и policy tests проходят; общий skill не форкнут |
+| INT-016 | P1 | ready | GitHub Copilot CLI skill/plugin | INT-014 | Нет broad `allowed-tools: shell`; native discovery/evals проходят |
+| INT-017 | P1 | ready | OpenCode adapter | INT-014 | Shared skill и permission example проходят discovery/evals |
+| INT-018 | P1 | ready | Cursor adapter | INT-014 | Skill обнаруживается; документация честно оставляет shell/apply approval-required |
 | INT-019 | P2 | blocked | Генерируемая compatibility matrix | INT-015, INT-016, INT-017, INT-018 | Статусы `supported`/`experimental`/`generic` получаются из test evidence |
 | INT-020 | P3 | research | Pi/Kimi и другие clients | INT-019 | Клиент не получает `supported` без полного acceptance suite |
 
@@ -87,22 +87,22 @@ Issue ID следует сохранить в заголовке.
 
 | ID | P | Статус | Задача | Зависит от | Acceptance criteria |
 |---|---|---|---|---|---|
-| DEV-001 | P1 | ready | Curated reads для projects/sections/memberships | AP-011 | Minimal projections, pagination/result limits и Zod DTO coverage |
-| DEV-002 | P1 | ready | Custom-field metadata и user resolution | AP-011 | Значения запрашиваются явно; sensitive content не попадает в default projection |
-| DEV-003 | P1 | blocked | `agent context --task` | DEV-001, DEV-002 | Один ограниченный response связывает task, project, section, fields, subtasks и dependencies |
+| DEV-001 | P1 | done | Curated reads для projects/sections/memberships | AP-011 | Minimal projections, pagination/result limits и Zod DTO coverage |
+| DEV-002 | P1 | done | Custom-field metadata и user resolution | AP-011 | Значения запрашиваются явно; sensitive content не попадает в default projection |
+| DEV-003 | P1 | done | `agent context --task` | DEV-001, DEV-002 | Один ограниченный response связывает task, project, section, fields, subtasks и dependencies |
 | DEV-004 | P1 | done | Нормализовать Git context | — | Local-only `agent context --git-current` получает ограниченную нормализованную identity без PAT, сети или shell injection |
 | DEV-005 | P1 | done | `agent context --git-current-candidates` | DEV-004, AP-011 | Аутентифицированный workspace-scoped поиск возвращает максимум 20 candidates и структурные основания совпадения; empty/single/multiple/truncated result не становится target до явного выбора canonical task GID |
 | DEV-006 | P1 | done | Repository-to-Asana mapping | SEC-004, DEV-004 | Host-administered fixed-path strict v1 mapping returns only one exact normalized host + owner/name workspace/project/optional Git-field match through local `agent context --repository-asana`; no PAT/network, no repository-controlled trust, no host-policy/write effect, and generic safe absence/storage errors |
-| DEV-007 | P1 | ready | Create task/subtask prepare/apply | AP-009, SEC-004 | Preview содержит workspace/project/assignee/fields; apply идемпотентен локально и approval-required |
-| DEV-008 | P1 | blocked | Project/section membership writes | AP-009, DEV-001, SEC-004 | Каждое изменение — отдельная scoped operation с concurrency guards |
-| DEV-009 | P2 | blocked | Dependency writes | AP-009, DEV-003 | Циклы/invalid targets обрабатываются предсказуемо; операция ограничена policy |
-| DEV-010 | P2 | ready | Attachment metadata | AP-011 | Возвращается только metadata; URL не открываются и файлы не скачиваются автоматически |
-| DEV-011 | P2 | ready | Batch reads | AP-011 | Общие request/result/byte budgets; partial failures machine-readable |
+| DEV-007 | P1 | done | Create task/subtask prepare/apply | AP-009, SEC-004 | Preview содержит workspace/project/assignee/fields; apply идемпотентен локально и approval-required |
+| DEV-008 | P1 | done | Project/section membership writes | AP-009, DEV-001, SEC-004 | Каждое изменение — отдельная scoped operation с concurrency guards |
+| DEV-009 | P2 | done | Dependency writes | AP-009, DEV-003 | Циклы/invalid targets обрабатываются предсказуемо; операция ограничена policy |
+| DEV-010 | P2 | done | Attachment metadata | AP-011 | Возвращается только metadata; URL не открываются и файлы не скачиваются автоматически |
+| DEV-011 | P2 | done | Batch reads | AP-011 | Общие request/result/byte budgets; partial failures machine-readable |
 | DEV-012 | P1 | done | Versioned repository context и exact task aliases | AP-013, DEV-004, DEV-006 | Local/no-PAT/no-network `agent context --repository-context` reads only the fixed-root untrusted strict duplicate-safe v1 manifest; it reports deterministic digest/revision and fully qualified ASCII immutable-GID aliases, with no includes/env/scripts/network, fuzzy fallback, hidden precedence, resolver, or write authority |
-| DEV-013 | P1 | blocked | Central task reference resolver | DEV-001, DEV-002, DEV-005, DEV-012 | `gid`/URL/workspace Custom ID/alias dispatch возвращает only exact GID или bounded `not_found`/`ambiguous`/`stale`; existing GID action schemas остаются неизменны |
-| DEV-014 | P1 | ready | Human alias lifecycle и worktree-local quick context | DEV-004, DEV-012 | Repository aliases shared across linked worktrees; active/recent state isolated per worktree, CAS replace, bounded retention/erase, owner-only atomic local state and no alias mutation in agent mode |
-| DEV-015 | P1 | blocked | Revisioned task-create templates | DEV-001, DEV-002, DEV-007, DEV-012, SEC-004 | Structured static defaults only; complete immutable expansion preview records template revision/digest and target GIDs; edit after prepare cannot alter apply |
-| DEV-016 | P1 | blocked | Alias/template client security evals | DEV-003, DEV-013, DEV-014, DEV-015, INT-014 | Clean Codex/Claude sessions resolve exact alias, stop on ambiguity, reject malicious context, preserve approval and cannot mutate/list local alias history |
+| DEV-013 | P1 | done | Central task reference resolver | DEV-001, DEV-002, DEV-005, DEV-012 | `gid`/URL/workspace Custom ID/alias dispatch возвращает only exact GID или bounded `not_found`/`ambiguous`/`stale`; existing GID action schemas остаются неизменны |
+| DEV-014 | P1 | done | Human alias lifecycle и worktree-local quick context | DEV-004, DEV-012 | Repository aliases shared across linked worktrees; active/recent state isolated per worktree, CAS replace, bounded retention/erase, owner-only atomic local state and no alias mutation in agent mode |
+| DEV-015 | P1 | done | Revisioned task-create templates | DEV-001, DEV-002, DEV-007, DEV-012, SEC-004 | Structured static defaults only; complete immutable expansion preview records template revision/digest and target GIDs; edit after prepare cannot alter apply |
+| DEV-016 | P1 | done | Alias/template client security evals | DEV-003, DEV-013, DEV-014, DEV-015, INT-014 | Clean Codex/Claude sessions resolve exact alias, stop on ambiguity, reject malicious context, preserve approval and cannot mutate/list local alias history |
 
 ## Release engineering
 
@@ -114,8 +114,8 @@ Issue ID следует сохранить в заголовке.
 | REL-004 | P1 | ready | SBOM для release artifacts | REL-001 | SBOM публикуется вместе с release и соответствует lockfile/binary build |
 | REL-005 | P2 | blocked | Homebrew distribution | REL-003 | Formula проверяет checksum и устанавливает один executable |
 | REL-006 | P2 | cancelled | Scoop/Windows channel | — | Native Windows исключён из support/release matrix; исторический `v0.4.0` не переписывается |
-| REL-007 | P1 | blocked | Release compatibility gate | AP-013, INT-014, REL-001 | Release блокируется при protocol, skill drift, security eval или package-content regression |
-| REL-008 | P0 | ready | Исполняемая macOS/Linux support matrix | — | Runtime, build script, CI, release workflow, docs и verifier согласованы; native Windows отсутствует в новых release gates |
+| REL-007 | P1 | ready | Release compatibility gate | AP-013, INT-014, REL-001 | Release блокируется при protocol, skill drift, security eval или package-content regression |
+| REL-008 | P0 | done | Исполняемая macOS/Linux support matrix | — | Runtime, build script, CI, release workflow, docs и verifier согласованы; native Windows отсутствует в новых release gates |
 | REL-009 | P1 | blocked | Reproducible build verification | REL-003, REL-004 | Повторные builds одного source/lockfile сравниваются; нормализованное evidence публикуется, а различия объясняются |
 | REL-010 | P1 | blocked | Machine-readable release evidence manifest | INT-019, REL-002, REL-003, REL-004, REL-007, REL-009 | Manifest связывает commit, protocol, supported targets, artifact digests, SBOM/provenance и client eval evidence |
 

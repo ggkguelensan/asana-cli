@@ -414,3 +414,9 @@ external approval for `asana-cli agent apply --operation-id UUID`; and never aut
 ## Important boundary
 
 If Codex/Claude has unrestricted Bash as the same user, it can potentially bypass this CLI and access same-user credentials or exfiltrate other local secrets. Use sandbox/network controls or a separate OS user/container when that risk is unacceptable.
+
+## Behavioral evidence
+
+Supported clients must pass the same clean project-session discovery, next-action, and security
+contract. Evidence is content-safe, digest-bound to the current source/skill/contract, and checked
+by the normal repository gate. See [client behavioral and security evidence](client-evals.md).
