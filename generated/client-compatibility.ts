@@ -7,7 +7,7 @@ export const GENERATED_CLIENT_COMPATIBILITY = {
       "qualification": {
         "kind": "behavioral-eval",
         "evidence": "evidence/client-evals/claude-code.json",
-        "evidence_sha256": "606cb64c3a973a44fa5c882cb10eec8256126b853d1f41161900d87927cb25c7"
+        "evidence_sha256": "bb89cc969b8ab4264aa93766e80fe2be79edd2f22ae9458a2c5bd38ba50af873"
       }
     },
     "codex": {
@@ -15,7 +15,7 @@ export const GENERATED_CLIENT_COMPATIBILITY = {
       "qualification": {
         "kind": "behavioral-eval",
         "evidence": "evidence/client-evals/codex.json",
-        "evidence_sha256": "d200d2f69288ea243c7d021fe7764bc853c095af6d1741eaecfa81c4c5f3ffc3"
+        "evidence_sha256": "71f9b9818dd45c62d85f2ecbeea18892e8cb99aa13b133791a81c7ccd2b33db4"
       }
     },
     "cursor": {
@@ -30,8 +30,8 @@ export const GENERATED_CLIENT_COMPATIBILITY = {
       "support": "experimental",
       "qualification": {
         "kind": "adapter-only",
-        "evidence": null,
-        "evidence_sha256": null
+        "evidence": "evidence/client-adapters/gemini-cli.json",
+        "evidence_sha256": "97af2b6f98e9ebd1d21d34404bb9d44c9620b05a5cbd1b8ea465ff416d55b2e0"
       }
     },
     "generic-agent-skills": {
@@ -46,11 +46,27 @@ export const GENERATED_CLIENT_COMPATIBILITY = {
       "support": "experimental",
       "qualification": {
         "kind": "adapter-only",
+        "evidence": "evidence/client-adapters/github-copilot.json",
+        "evidence_sha256": "1c48809cc15615313f2c036e06e572d03c4b3b825e2fefbba4d3aa63f08f4507"
+      }
+    },
+    "kimi-code": {
+      "support": "experimental",
+      "qualification": {
+        "kind": "adapter-only",
         "evidence": null,
         "evidence_sha256": null
       }
     },
     "opencode": {
+      "support": "experimental",
+      "qualification": {
+        "kind": "adapter-only",
+        "evidence": "evidence/client-adapters/opencode.json",
+        "evidence_sha256": "ff124057e9d8aca4efc5c0fc27d35d57cbbf781fb533b362e423816613003f9c"
+      }
+    },
+    "pi": {
       "support": "experimental",
       "qualification": {
         "kind": "adapter-only",

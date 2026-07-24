@@ -9,7 +9,9 @@ A client is `supported` only when a passed behavioral/security evidence record e
 | `claude-code` | `supported` | `.claude/skills/asana` | `.claude/skills/asana` | evidence/client-evals/claude-code.json |
 | `codex` | `supported` | `.agents/skills/asana` | `.agents/skills/asana` | evidence/client-evals/codex.json |
 | `cursor` | `experimental` | `.cursor/skills/asana` | `.cursor/skills/asana` | adapter/lifecycle tests only |
-| `gemini-cli` | `experimental` | `.gemini/skills/asana` | `.gemini/skills/asana` | adapter/lifecycle tests only |
+| `gemini-cli` | `experimental` | `.gemini/skills/asana` | `.gemini/skills/asana` | evidence/client-adapters/gemini-cli.json |
 | `generic-agent-skills` | `generic` | `.agents/skills/asana` | `.agents/skills/asana` | portable contract |
-| `github-copilot` | `experimental` | `.copilot/skills/asana` | `.github/skills/asana` | adapter/lifecycle tests only |
-| `opencode` | `experimental` | `.config/opencode/skills/asana` | `.opencode/skills/asana` | adapter/lifecycle tests only |
+| `github-copilot` | `experimental` | `.copilot/skills/asana` | `.github/skills/asana` | evidence/client-adapters/github-copilot.json |
+| `kimi-code` | `experimental` | `.kimi-code/skills/asana` | `.kimi-code/skills/asana` | adapter/lifecycle tests only |
+| `opencode` | `experimental` | `.config/opencode/skills/asana` | `.opencode/skills/asana` | evidence/client-adapters/opencode.json |
+| `pi` | `experimental` | `.pi/agent/skills/asana` | `.pi/skills/asana` | adapter/lifecycle tests only |
