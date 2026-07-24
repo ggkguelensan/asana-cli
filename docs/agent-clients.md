@@ -5,8 +5,8 @@
 ## Managed skill installation
 
 `integrations` installs the same static, embedded portable `asana` skill for Generic Agent
-Skills, Codex, Claude Code, Gemini CLI, GitHub Copilot CLI, OpenCode, or Cursor. It writes only
-the declared skill files and an
+Skills, Codex, Claude Code, Gemini CLI, GitHub Copilot CLI, OpenCode, Cursor, and the
+experimental Pi and Kimi Code adapters. It writes only the declared skill files and an
 `.asana-cli-integration.json` ownership manifest below the fixed discovery root:
 
 - Generic Agent Skills: `.agents/skills/asana`
@@ -16,6 +16,8 @@ the declared skill files and an
 - GitHub Copilot CLI: user `.copilot/skills/asana`, project `.github/skills/asana`
 - OpenCode: user `.config/opencode/skills/asana`, project `.opencode/skills/asana`
 - Cursor: `.cursor/skills/asana`
+- Pi: user `.pi/agent/skills/asana`, project `.pi/skills/asana`
+- Kimi Code CLI: `.kimi-code/skills/asana`
 
 The evidence-derived [client compatibility matrix](client-compatibility.md) is authoritative for
 the current level. A native adapter is not the same as behavioral qualification.
@@ -118,7 +120,9 @@ Native paths and permission behavior are pinned to the vendors' current document
 [GitHub Copilot CLI skills](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-skills),
 [OpenCode skills](https://opencode.ai/docs/skills),
 [OpenCode permissions](https://opencode.ai/docs/permissions/), and
-[Cursor skills](https://cursor.com/docs/skills).
+[Cursor skills](https://cursor.com/docs/skills). The experimental roots follow
+[Pi skills](https://pi.dev/docs/latest/skills) and
+[Kimi Code skills](https://www.kimi.com/code/docs/en/kimi-code-cli/customization/skills.html).
 
 ## One-time credential setup
 

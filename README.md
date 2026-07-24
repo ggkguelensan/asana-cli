@@ -195,8 +195,9 @@ asana-cli request PUT /tasks/1200123456789 \
 ## Portable skill integrations
 
 `asana-cli` embeds one static portable `asana` skill bundle. It can install that bundle into
-Generic Agent Skills, Codex, Claude Code, Gemini CLI, GitHub Copilot CLI, OpenCode, or Cursor
-without MCP, client settings, marketplace registration, or repository instructions.
+Generic Agent Skills, Codex, Claude Code, Gemini CLI, GitHub Copilot CLI, OpenCode, Cursor,
+and the experimental Pi and Kimi Code adapters without MCP, client settings, marketplace
+registration, or repository instructions.
 
 Every target requires an explicit client and `user` or `project` scope. Inspect first; a dry run
 prints the complete managed-file plan, including target paths and hashes:

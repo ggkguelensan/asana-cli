@@ -179,6 +179,8 @@ describe("pre-PAT integration commands", () => {
       "github-copilot": "experimental",
       opencode: "experimental",
       cursor: "experimental",
+      pi: "experimental",
+      "kimi-code": "experimental",
     });
     expect(Object.fromEntries(
       Object.entries(INTEGRATION_CLIENTS).map(([id, client]) => [
@@ -193,6 +195,8 @@ describe("pre-PAT integration commands", () => {
       "github-copilot": "adapter-only",
       opencode: "adapter-only",
       cursor: "adapter-only",
+      pi: "adapter-only",
+      "kimi-code": "adapter-only",
     });
 
     const detected = await runIntegration([
@@ -333,6 +337,14 @@ describe("pre-PAT integration commands", () => {
         user: ".cursor/skills/asana",
         project: ".cursor/skills/asana",
       },
+      pi: {
+        user: ".pi/agent/skills/asana",
+        project: ".pi/skills/asana",
+      },
+      "kimi-code": {
+        user: ".kimi-code/skills/asana",
+        project: ".kimi-code/skills/asana",
+      },
     } as const;
 
     for (const client of INTEGRATION_CLIENT_IDS) {
@@ -436,7 +448,7 @@ describe("pre-PAT integration commands", () => {
       {
         name: "unknown client",
         args: ["integrations", "status", "--client", "unknown-client", "--scope", "project"],
-        message: "--client must be one of: generic-agent-skills, codex, claude-code, gemini-cli, github-copilot, opencode, cursor",
+        message: "--client must be one of: generic-agent-skills, codex, claude-code, gemini-cli, github-copilot, opencode, cursor, pi, kimi-code",
       },
       {
         name: "invalid scope",

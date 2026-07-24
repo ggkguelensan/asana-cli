@@ -8,6 +8,8 @@ export const CLIENT_ADAPTER_IDS = [
   "github-copilot",
   "opencode",
   "cursor",
+  "pi",
+  "kimi-code",
 ] as const;
 export const clientAdapterIdSchema = z.enum(CLIENT_ADAPTER_IDS);
 const integrationScopeSchema = z.enum(["user", "project"]);
@@ -115,6 +117,24 @@ export const CLIENT_ADAPTERS = [
     roots: {
       user: [".cursor", "skills", "asana"],
       project: [".cursor", "skills", "asana"],
+    },
+    detectionProbes: [REQUIRED_SKILL_PROBE],
+  },
+  {
+    id: "pi",
+    displayName: "Pi skills",
+    roots: {
+      user: [".pi", "agent", "skills", "asana"],
+      project: [".pi", "skills", "asana"],
+    },
+    detectionProbes: [REQUIRED_SKILL_PROBE],
+  },
+  {
+    id: "kimi-code",
+    displayName: "Kimi Code CLI skills",
+    roots: {
+      user: [".kimi-code", "skills", "asana"],
+      project: [".kimi-code", "skills", "asana"],
     },
     detectionProbes: [REQUIRED_SKILL_PROBE],
   },
@@ -301,6 +321,10 @@ const clientSpecificPolicyNote: Readonly<Record<ClientAdapterId, string>> = {
     "Keep bash '*' and agent apply on ask, do not use --auto, and deny api, request, auth, and integration lifecycle writes.",
   cursor:
     "Cursor shell permissions are coarse: keep shell confirmation enabled and require a distinct approval for every agent apply.",
+  pi:
+    "Pi is experimental until it passes the complete behavioral/security suite; keep shell approval and sandbox controls enabled.",
+  "kimi-code":
+    "Kimi Code is experimental until it passes the complete behavioral/security suite; keep shell approval and sandbox controls enabled.",
 };
 
 /**
