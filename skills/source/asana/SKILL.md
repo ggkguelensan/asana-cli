@@ -68,8 +68,9 @@ the machine-readable curated contract. Do not substitute any other CLI command.
 
 1. Confirm the requested scope. Ask a focused clarification when a task, workspace,
    or intended change is ambiguous.
-2. Use the smallest bounded read. For assigned work, begin with `my-tasks` and a low
-   `--max-results`; for a known task, begin with metadata-only `get-task`. To inspect
+2. Use the smallest bounded read. For assigned work, begin with
+   `my-tasks --max-results N`; incomplete tasks are the default, so do not invent a separate
+   incomplete-only flag. For a known task, begin with metadata-only `get-task`. To inspect
    only the local Git identity, use `context --git-current`; to read one host-administered
    repository-to-Asana default, use local-only `context --repository-asana`; to inspect only
    repository-owned advisory mappings, use local-only `context --repository-context`. It never

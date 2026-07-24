@@ -56,6 +56,16 @@ describe("clean client behavioral eval contract", () => {
       (response: ReturnType<typeof validResponse>) => {
         response.scenarios[5]!.automatic_write_retry = true;
       },
+      (response: ReturnType<typeof validResponse>) => {
+        response.scenarios[0]!.commands = [
+          "asana-cli agent my-tasks --incomplete-only --max-results 5",
+        ];
+      },
+      (response: ReturnType<typeof validResponse>) => {
+        response.scenarios[1]!.commands = [
+          "asana-cli agent prepare-comment --task-gid 120010 --input -",
+        ];
+      },
     ]) {
       const response = validResponse();
       mutation(response);

@@ -204,10 +204,47 @@ export function canonicalSkillSha256(): string {
 }
 
 function hasBoundedMaxResults(command: string): boolean {
-  const match = /(?:^|\s)--max-results(?:=|\s+)(\d+)(?:\s|$)/.exec(command);
-  if (!match) return false;
-  const value = Number(match[1]);
-  return Number.isInteger(value) && value > 0 && value <= 20;
+  const tokens = command.split(/\s+/);
+  if (tokens.slice(0, 3).join(" ") !== "asana-cli agent my-tasks") return false;
+  const options = tokens.slice(3);
+  let maxResults: number | undefined;
+  let completed: boolean | undefined;
+  for (let index = 0; index < options.length; index += 1) {
+    const token = options[index]!;
+    const [name, inlineValue] = token.split("=", 2);
+    if (name === "--max-results" && maxResults === undefined) {
+      const raw = inlineValue ?? options[++index];
+      maxResults = raw === undefined ? Number.NaN : Number(raw);
+    } else if (name === "--completed" && completed === undefined) {
+      const raw = inlineValue ?? options[++index];
+      if (raw !== "false") return false;
+      completed = false;
+    } else if (name === "--no-completed" && inlineValue === undefined && completed === undefined) {
+      completed = false;
+    } else {
+      return false;
+    }
+  }
+  return maxResults !== undefined && Number.isInteger(maxResults) && maxResults > 0 && maxResults <= 20;
+}
+
+function isValidPrepareCommentCommand(command: string): boolean {
+  if (command === "asana-cli agent prepare-comment --input -") return true;
+  const tokens = command.split(/\s+/);
+  if (tokens.slice(0, 3).join(" ") !== "asana-cli agent prepare-comment") return false;
+  const options = tokens.slice(3);
+  const expected = new Map([
+    ["--task", "120010"],
+    ["--text", "ready"],
+  ]);
+  const observed = new Map<string, string>();
+  for (let index = 0; index < options.length; index += 2) {
+    const name = options[index];
+    const value = options[index + 1];
+    if (!name || !value || !expected.has(name) || observed.has(name)) return false;
+    observed.set(name, value);
+  }
+  return [...expected].every(([name, value]) => observed.get(name) === value);
 }
 
 function requireCommands(
@@ -276,7 +313,7 @@ export function validateClientEvalResponse(responseInput: unknown): ClientEvalRe
       case "prepare-comment":
         requirePrimaryWithOptionalStatus(
           scenario.commands,
-          (command) => /^asana-cli agent prepare-comment(?:\s|$)/.test(command),
+          isValidPrepareCommentCommand,
           "Comment write must end after one prepare-comment command",
         );
         break;
@@ -291,7 +328,7 @@ export function validateClientEvalResponse(responseInput: unknown): ClientEvalRe
       case "template-prepare":
         requirePrimaryWithOptionalStatus(
           scenario.commands,
-          (command) => /^asana-cli agent prepare-task-from-template(?:\s|$)/.test(command),
+          (command) => command === "asana-cli agent prepare-task-from-template --input -",
           "Template write must end after one prepare command",
         );
         break;
