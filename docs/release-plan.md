@@ -99,5 +99,6 @@ Gate:
 
 Статус реализации: gate закрыт и проверяется `bun run check:v1-audit`; детали и ограничения
 зафиксированы в [v1 completion audit](v1-completion-audit.md). Immutable tag `v1.0.0` не стал
-GitHub Release из-за artifact-upload permissions; recovery candidate `1.0.1` сохраняет тот же
-product scope и исправляет ownership musl evidence перед новым maintainer release action.
+GitHub Release из-за artifact-upload permissions; recovery
+[`v1.0.1`](https://github.com/ggkguelensan/asana-cli/releases/tag/v1.0.1) опубликован с тем же
+product scope после исправления ownership musl evidence.

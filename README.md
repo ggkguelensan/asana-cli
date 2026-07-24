@@ -17,12 +17,11 @@
 по приложению.
 
 > **Статус release (2026-07-24).** Текущий опубликованный GitHub Release —
-> [`v0.4.0`](https://github.com/ggkguelensan/asana-cli/releases/tag/v0.4.0), tag указывает на
-> commit [`81c1b7a`](https://github.com/ggkguelensan/asana-cli/commit/81c1b7afa789527cc52faca8ca300f9f66da63f4).
-> Release workflow успешно собрал семь platform binaries и `SHA256SUMS`. Immutable tag `v1.0.0`
-> существует, но его workflow не опубликовал GitHub Release из-за permissions созданного в
-> контейнере evidence-файла. В текущих исходниках package, embedded integration bundle и CLI
-> подняты до recovery release candidate `1.0.1`; публикация требует нового tag и успешного workflow.
+> [`v1.0.1`](https://github.com/ggkguelensan/asana-cli/releases/tag/v1.0.1), tag указывает на
+> commit [`da67cf3`](https://github.com/ggkguelensan/asana-cli/commit/da67cf3f06062b2d0a3678fe3936e1563d4937bb).
+> [Release workflow](https://github.com/ggkguelensan/asana-cli/actions/runs/30077613489) успешно
+> опубликовал шесть POSIX binaries и 40 checksum/provenance/SBOM/lifecycle/reproducibility assets.
+> Immutable tag `v1.0.0` остаётся записью failed artifact upload и не имеет GitHub Release.
 >
 > **Platform policy после `v0.4.0`:** новые releases поддерживают только native macOS и Linux.
 > Windows x64 artifact в `v0.4.0` остаётся историческим и не означает дальнейшую поддержку.
@@ -59,8 +58,9 @@ bun run check
 ```
 
 Результат: `dist/asana-cli` — самостоятельный нативный executable.
-Для зафиксированного состояния `v0.4.0` и действий maintainer перед tag `v1.0.1` см.
-[release record и release procedure](docs/implementation-plan.md#release-record-v040).
+Для проверки `v1.0.1` и действий maintainer перед следующим tag см.
+[release verification guide](docs/release-verification.md) и
+[release procedure](docs/implementation-plan.md#maintainer-release-procedure).
 
 ## PAT и `asana-cli auth pat`
 

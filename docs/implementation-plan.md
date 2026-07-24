@@ -12,23 +12,22 @@
 Снимок на 2026-07-24:
 
 - текущий опубликованный GitHub Release и release tag —
-  [`v0.4.0`](https://github.com/ggkguelensan/asana-cli/releases/tag/v0.4.0);
+  [`v1.0.1`](https://github.com/ggkguelensan/asana-cli/releases/tag/v1.0.1);
 - tag указывает на immutable commit
-  [`81c1b7a`](https://github.com/ggkguelensan/asana-cli/commit/81c1b7afa789527cc52faca8ca300f9f66da63f4);
+  [`da67cf3`](https://github.com/ggkguelensan/asana-cli/commit/da67cf3f06062b2d0a3678fe3936e1563d4937bb);
 - immutable tag `v1.0.0` существует на `main`, но release workflow не опубликовал GitHub Release
   после `EACCES` при загрузке root-owned musl lifecycle evidence;
-- package, CLI и embedded integration bundle в текущей ветке объявляют recovery release candidate
-  `1.0.1`;
+- package, CLI и embedded integration bundle объявляют опубликованную версию `1.0.1`;
 - новые releases поддерживают только native macOS/Linux; Windows artifact остаётся исторической
   частью immutable `v0.4.0`;
 - плановая реализация `v0.5` → `v1.0` завершена и подтверждена
   [v1 completion audit](v1-completion-audit.md); patch `1.0.1` меняет только release recovery
   metadata и container ownership gate.
 
-Следующий шаг — не расширять scope автоматически, а проверить release candidate:
-повторить version/bundle/evidence gate на exact commit, затем отдельно выполнить tag/publish
-по maintainer procedure. Исторический `v0.4.0` не получает задним числом возможности и evidence
-из текущих исходников.
+Следующий шаг — не расширять scope автоматически: новые product ideas остаются в `Later` backlog
+до отдельного решения. Следующий release повторяет version/bundle/evidence gate и maintainer
+procedure на новом exact commit. Исторические `v0.4.0` и failed tag `v1.0.0` не получают задним
+числом возможности или evidence из `v1.0.1`.
 
 ## Рабочие правила
 

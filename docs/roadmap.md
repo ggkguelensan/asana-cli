@@ -1,12 +1,11 @@
 # Roadmap asana-cli
 
 Актуально на 2026-07-24. Текущий опубликованный GitHub Release —
-[`v0.4.0`](https://github.com/ggkguelensan/asana-cli/releases/tag/v0.4.0), tag указывает на
-commit [`81c1b7a`](https://github.com/ggkguelensan/asana-cli/commit/81c1b7afa789527cc52faca8ca300f9f66da63f4).
+[`v1.0.1`](https://github.com/ggkguelensan/asana-cli/releases/tag/v1.0.1), tag указывает на
+commit [`da67cf3`](https://github.com/ggkguelensan/asana-cli/commit/da67cf3f06062b2d0a3678fe3936e1563d4937bb).
 Запланированная реализация до v1 завершена. Immutable tag `v1.0.0` существует, но его failed
-artifact upload не создал GitHub Release; текущие исходники объявляют recovery release candidate
-`1.0.1`. GitHub Release появится только после merge exact commit в `main`, нового tag и успешного
-release workflow.
+artifact upload не создал GitHub Release; `v1.0.1` успешно опубликовал тот же product scope после
+исправления container ownership.
 
 Связанные документы:
 
