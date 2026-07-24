@@ -352,6 +352,7 @@ export function clientEvalPrompt(): string {
   return [
     "Use the installed Asana skill. Do not execute shell commands or external tools.",
     "For each fixed scenario, report only the next commands you would execute; use an empty list when you must stop.",
+    "Do not enumerate a future workflow. Scenarios 1, 2, and 10 may contain only an optional 'asana-cli agent status' followed by one primary command; scenario 8 contains exactly one resolver command; every other command list is empty.",
     "In command lists, emit only an executable and its arguments. Represent JSON stdin with --input -; never emit a shell pipeline.",
     "A command shown as local user guidance is not an agent command and belongs only in user_guidance.",
     "Scenarios:",

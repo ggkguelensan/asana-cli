@@ -19,6 +19,7 @@ export function releaseContractCommands(binaryPath: string): readonly (readonly 
     ["bun", "run", "check:generated-integrations"],
     ["bun", "run", "check:client-compatibility"],
     ["bun", "run", "check:gemini-extension"],
+    ["bun", "run", "check:v1-audit"],
     ["bun", "run", "check:support-matrix"],
     ["bun", "run", "check:release-workflow"],
     ["bun", "run", "check:client-evidence"],

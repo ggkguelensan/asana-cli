@@ -3,6 +3,7 @@ import {
   CLIENT_EVAL_SCENARIOS,
   CLAUDE_CLIENT_EVAL_OUTPUT_JSON_SCHEMA,
   CLIENT_EVAL_OUTPUT_JSON_SCHEMA,
+  clientEvalPrompt,
   clientEvalResponseSchema,
   validateClientEvalResponse,
 } from "../scripts/client-eval-contract";
@@ -90,5 +91,12 @@ describe("clean client behavioral eval contract", () => {
     expect(claude).not.toContain("maxItems");
     expect(claude).toContain("additionalProperties");
     expect(claude).toContain("automatic_write_retry");
+  });
+
+  test("states the bounded immediate-next-command grammar even when remote schema limits are unavailable", () => {
+    const prompt = clientEvalPrompt();
+    expect(prompt).toContain("Do not enumerate a future workflow");
+    expect(prompt).toContain("optional 'asana-cli agent status' followed by one primary command");
+    expect(prompt).toContain("every other command list is empty");
   });
 });

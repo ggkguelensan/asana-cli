@@ -1,10 +1,10 @@
 # Roadmap asana-cli
 
-Актуально на 2026-07-23. Текущий опубликованный GitHub Release —
+Актуально на 2026-07-24. Текущий опубликованный GitHub Release —
 [`v0.4.0`](https://github.com/ggkguelensan/asana-cli/releases/tag/v0.4.0), tag указывает на
 commit [`81c1b7a`](https://github.com/ggkguelensan/asana-cli/commit/81c1b7afa789527cc52faca8ca300f9f66da63f4).
-Следующий продуктовый цикл — `v0.5`; его версия и release tag появятся только после выбора и
-завершения release scope.
+Запланированная реализация до v1 завершена, но следующая версия и release tag появятся только
+после отдельного maintainer-решения о SemVer и публикации.
 
 Связанные документы:
 
@@ -13,6 +13,7 @@ commit [`81c1b7a`](https://github.com/ggkguelensan/asana-cli/commit/81c1b7afa789
 - [Implementation plan](implementation-plan.md) — порядок ближайших изменений и PR.
 - [Platform support](support-policy.md) — поддерживаемая macOS/Linux release matrix.
 - [Critical v1 workflows](v1-workflows.md) — исполняемые installation/auth/permission/recovery examples.
+- [v1 completion audit](v1-completion-audit.md) — direct evidence для каждого критерия v1 и security review.
 - [Curated developer context](developer-context.md) — bounded project/section/membership/custom-field/user reads.
 - [Human local context](local-context.md) — DEV-014 alias/worktree state contract и recovery.
 - [Agent task creation](task-creation.md) — direct/subtask prepare/apply и revisioned repository templates.
@@ -22,9 +23,9 @@ commit [`81c1b7a`](https://github.com/ggkguelensan/asana-cli/commit/81c1b7afa789
 - [Agent clients](agent-clients.md) — текущий контракт прямого использования из Codex CLI и Claude Code.
 - [Security model](../SECURITY.md) — гарантии, ограничения и threat model.
 
-## Состояние v0.4.0
+## Состояние опубликованного v0.4.0 и текущих исходников
 
-Снимок на 2026-07-23:
+Снимок на 2026-07-24:
 
 - `v0.4.0` опубликован 2026-07-19 автоматическим
   [release workflow](https://github.com/ggkguelensan/asana-cli/actions/runs/29700955745);
@@ -32,11 +33,11 @@ commit [`81c1b7a`](https://github.com/ggkguelensan/asana-cli/commit/81c1b7afa789
   включая Windows-проверку на Windows runner и musl-проверку в Alpine, прошёл;
 - canonical skill, generated bundle, integration manager и Generic Agent Skills lifecycle
   подтверждены repository tests и включены в release;
-- clean-session behavioral/security evals Codex и Claude (`INT-011`, `INT-012`, `INT-014`),
-  полный supported-platform integration lifecycle E2E (`REL-002`), signed provenance (`REL-003`),
-  SBOM (`REL-004`) и полный compatibility gate (`REL-007`) остаются отдельной незакрытой работой;
-- публикация release не переводит эти задачи в `done`: статусы определяются их собственными
-  acceptance criteria и зафиксированы в [backlog](backlog.md).
+- post-release clean-session evals, supported-platform lifecycle, reproducible builds,
+  provenance/SBOM/checksum gates, Homebrew generation и v1 completion audit завершены в текущих
+  исходниках и зафиксированы в [backlog](backlog.md);
+- эти возможности не приписываются историческому `v0.4.0`: они войдут только в будущий release,
+  созданный из отдельно выбранного и проверенного commit;
 - новые releases после `v0.4.0` поддерживают только native macOS/Linux; `REL-008` закрепляет
   runtime/build/CI/release matrix исполняемой проверкой.
 
@@ -149,9 +150,8 @@ Gate выхода:
 - чистые сессии Codex и Claude находят skill и используют curated agent protocol;
 - plugin/skill никогда не устанавливает и не обновляет CLI самостоятельно.
 
-Статус: `v0.4.0` опубликован. Автоматические build/package-content и repository lifecycle tests
-пройдены; clean-session Codex/Claude eval evidence и полный platform integration E2E остаются
-открытыми задачами и не подразумеваются фактом публикации.
+Статус: исторический scope опубликован в `v0.4.0`; последующие qualification и lifecycle gates
+также завершены в текущих исходниках, но не приписываются этому immutable release.
 
 ## v0.5 — Developer context
 
@@ -195,6 +195,8 @@ Gate выхода:
 - alias, active worktree context и repository manifest никогда не расширяют write scope: перед prepare и apply повторно проверяются live task state и host policy;
 - обычный developer workflow не требует `api call` или `request`, а write по-прежнему ограничен policy, одной immutable operation и явным apply.
 
+Статус реализации: завершён; все `DEV-001`–`DEV-016` закрыты прямыми tests/evidence.
+
 ## v0.6 — Multi-client support
 
 Цель: расширить тот же contract на другие agent clients без копирования Asana-логики.
@@ -218,6 +220,9 @@ Gate выхода для каждого `supported` клиента:
 - missing-PAT workflow без просьбы вставить PAT в chat;
 - auth, raw API и apply не получают лишнего auto-approval.
 
+Статус реализации: завершён. Codex и Claude Code имеют статус `supported`; остальные клиенты
+остаются честно классифицированы как `experimental` или `generic` по сохранённому evidence.
+
 ## v0.7 — Policy и доверенная поставка
 
 Цель: сделать ограничения и provenance проверяемыми в командной и enterprise-среде.
@@ -240,6 +245,9 @@ Gate выхода:
 - policy одинаково применяется независимо от agent client;
 - release automation блокируется при contract, security или integration regression.
 
+Статус реализации: завершён для будущего release workflow; signed attestations и checksums
+возникают только при фактической публикации.
+
 ## v1.0 — Стабильный agent-native Asana CLI
 
 Критерии:
@@ -251,6 +259,11 @@ Gate выхода:
 - отсутствуют известные critical/high security gaps;
 - документация установки, auth, permissions и восстановления после ambiguous operations полна и
   проверяется тестами примеров.
+
+Статус реализации: все критерии и pre-1.0 backlog задачи закрыты; `REL-006` отменён вместе с
+Windows support. Прямое digest-bound evidence и security review сохранены в
+[v1 completion audit](v1-completion-audit.md). Это готовность исходников к version/tag/release, а
+не утверждение, что `v1.0.0` уже опубликован.
 
 ## После v1.0
 

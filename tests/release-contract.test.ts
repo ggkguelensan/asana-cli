@@ -13,6 +13,7 @@ describe("release compatibility contract", () => {
     const commands = releaseContractCommands(binary).map((command) => command.join(" "));
     expect(commands).toContain("bun run check:generated-integrations");
     expect(commands).toContain("bun run check:client-compatibility");
+    expect(commands).toContain("bun run check:v1-audit");
     expect(commands).toContain("bun run check:release-workflow");
     expect(commands).toContain("bun run check:client-evidence");
     expect(commands).toContain("bun run check:native-client-evidence");

@@ -37,6 +37,8 @@ Gate:
 - Codex и Claude имеют сохранённое clean-session behavioral/security evidence;
 - `bun run check` и native macOS/Linux lifecycle E2E зелёные.
 
+Статус реализации: завершён.
+
 ## v0.6 — подтверждённая multi-client доставка
 
 Backlog scope: `DEV-016`, `INT-015`, `INT-016`, `INT-017`, `INT-018`, `INT-019`, `INT-020`.
@@ -54,6 +56,9 @@ Gate каждого supported клиента: native install/uninstall, clean di
 write-confirmation, malicious-content, missing-PAT и permission evals. Клиент без полного evidence
 остаётся `experimental` или `generic`.
 
+Статус реализации: завершён; Codex/Claude Code — `supported`, остальные уровни выведены из
+сохранённого evidence.
+
 ## v0.7 — проверяемая поставка
 
 Backlog scope: `REL-003`, `REL-004`, `REL-005`, `REL-007`, `SEC-007`.
@@ -69,6 +74,8 @@ Backlog scope: `REL-003`, `REL-004`, `REL-005`, `REL-007`, `SEC-007`.
 
 Gate: каждый artifact связан с immutable source commit/workflow, имеет SBOM и проходит одинаковые
 contract/security gates; release procedure не требует ручной загрузки или непроверяемого binary.
+
+Статус реализации: завершён как обязательный future-release gate.
 
 ## v1.0.0 — стабилизация и доказательство полноты
 
@@ -89,3 +96,7 @@ Gate:
 - supported artifacts воспроизводимы, имеют provenance и SBOM;
 - отсутствуют незакрытые critical/high security findings;
 - completion audit содержит прямое evidence для каждого критерия roadmap `v1.0`.
+
+Статус реализации: gate закрыт и проверяется `bun run check:v1-audit`; детали и ограничения
+зафиксированы в [v1 completion audit](v1-completion-audit.md). Version bump, tag и публикация
+остаются отдельным maintainer release action.

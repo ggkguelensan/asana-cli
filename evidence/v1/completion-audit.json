@@ -1,0 +1,264 @@
+{
+  "schema": "asana-cli.v1-completion-audit.v1",
+  "reviewed_on": "2026-07-24",
+  "release_state": "implementation-complete-unreleased",
+  "roadmap_source": "docs/roadmap.md",
+  "criteria": [
+    {
+      "id": "V1-PROTOCOL-COMPATIBILITY",
+      "roadmap_criterion": "опубликована политика protocol compatibility, migrations и deprecation",
+      "status": "passed",
+      "conclusion": "Versioned envelopes, inclusive protocol ranges, legacy migration metadata, and unsupported-client guidance are documented and covered by compatibility tests.",
+      "evidence": [
+        {
+          "path": "docs/agent-clients.md",
+          "sha256": "2f6a29011f038c809253bf758058297e9601ab18d5b221a07538ecfa7ef6d0a0",
+          "claim": "Published compatibility, migration, and deprecation policy."
+        },
+        {
+          "path": "src/agent-contract.ts",
+          "sha256": "00fa3bafd36d1a6c07686ac60f65e6ae1d71df4a3aa7d0b169189920e6bdf639",
+          "claim": "Runtime protocol range and deprecated-command machine contract."
+        },
+        {
+          "path": "tests/agent-protocol.test.ts",
+          "sha256": "feb5f5ce2849c16077cfe6ca7cc37d45a636000a3960e8962cd377d3a52b4457",
+          "claim": "Version and protocol-range compatibility tests."
+        },
+        {
+          "path": "tests/agent-v02-compat.test.ts",
+          "sha256": "e5b8ab745669456f640ff391b98538ba7ec9baf0a4da4b2973237f009ac99fb8",
+          "claim": "Legacy client and migration compatibility tests."
+        }
+      ]
+    },
+    {
+      "id": "V1-SUPPORTED-CLIENT-EVALS",
+      "roadmap_criterion": "поддерживаемые клиенты проходят единый набор behavioral/security evals",
+      "status": "passed",
+      "conclusion": "Every client labelled supported is qualified by a current strict behavioral/security evidence record; other native adapters remain experimental or generic.",
+      "evidence": [
+        {
+          "path": "generated/client-compatibility.ts",
+          "sha256": "a699bedf5cfb656a6064aa076731a4dff0d7513f36f186b299ade9d876a6976c",
+          "claim": "Evidence-derived support classification."
+        },
+        {
+          "path": "scripts/check-client-evidence.ts",
+          "sha256": "51cf6240b0967b19db2a35f23107ae9574ab5da0faa83f9fc7fdbfc8a2938f23",
+          "claim": "Strict freshness and scenario verifier for supported clients."
+        },
+        {
+          "path": "docs/client-evals.md",
+          "sha256": "9f17847f68c242f253935bbeedc3a2855421dcdaa6dbbd0e4c4619436237fd07",
+          "claim": "Shared eleven-scenario behavioral/security contract."
+        },
+        {
+          "path": "evidence/client-evals/claude-code.json",
+          "sha256": "ba5e91055fd1d3c915d258db3fae25593495f2cc9d7fac0f65c263358408b2ba",
+          "claim": "Passed strict behavioral/security evidence for a supported client."
+        },
+        {
+          "path": "evidence/client-evals/codex.json",
+          "sha256": "d35919b0b5a944cbf932a127973077cc06e4a9c43528ed1e6ab63de044014fee",
+          "claim": "Passed strict behavioral/security evidence for a supported client."
+        }
+      ]
+    },
+    {
+      "id": "V1-REPRODUCIBLE-PROVENANCE",
+      "roadmap_criterion": "releases воспроизводимы и содержат provenance",
+      "status": "passed",
+      "conclusion": "The next release is gated on byte-identical rebuilds, per-binary SLSA and SPDX attestations, signed canonical checksums, and a linked release evidence manifest.",
+      "evidence": [
+        {
+          "path": ".github/workflows/release.yml",
+          "sha256": "5521691103b2c6a7e618e3a4e55f1a7e3a09a0273b750bd435dac023c0bb07e5",
+          "claim": "Per-target reproducibility, attestations, verification, and publish gate."
+        },
+        {
+          "path": "scripts/reproducible-build.ts",
+          "sha256": "635a92e2ad88037efcd2dcdf3c062d6740f6d464799c2b1074d2885853dcb26f",
+          "claim": "Byte-identical independent rebuild verifier."
+        },
+        {
+          "path": "scripts/release-sbom.ts",
+          "sha256": "6b45163ecff8b4331959552bc193b5ceea2b52bc3115f971656b69fe143c1a1e",
+          "claim": "Deterministic binary-linked SPDX 2.3 generator."
+        },
+        {
+          "path": "scripts/release-evidence-manifest.ts",
+          "sha256": "ee52b68cf6ebcb45993dcae68fd0cf95da6eed195b2113b24550af275392aec2",
+          "claim": "Release-wide source, artifact, attestation, and client evidence index."
+        },
+        {
+          "path": "scripts/sigstore-bundle.ts",
+          "sha256": "0492c935c23f7c49a99a90a2a858470990e75bc64eb470ef5e10b19ed65ff58a",
+          "claim": "Exact Sigstore subject and predicate verification."
+        },
+        {
+          "path": "docs/release-verification.md",
+          "sha256": "dd58788901604e738f95704430a4d96cfc5ac8ca8e2655a14291fb0171326da7",
+          "claim": "Online and offline verification procedure."
+        }
+      ]
+    },
+    {
+      "id": "V1-CURATED-WORKFLOWS",
+      "roadmap_criterion": "critical developer workflows покрыты curated actions",
+      "status": "passed",
+      "conclusion": "Bounded developer reads and immutable prepare/apply writes are present in the agent catalog and exercised without raw API fallback.",
+      "evidence": [
+        {
+          "path": "src/agent-contract.ts",
+          "sha256": "00fa3bafd36d1a6c07686ac60f65e6ae1d71df4a3aa7d0b169189920e6bdf639",
+          "claim": "Curated action catalog with effect, approval, schema, and bounds."
+        },
+        {
+          "path": "skills/source/asana/SKILL.md",
+          "sha256": "0241fb62e86f0355b2b59fa99d68d4dd6a9c190ad379f98303f2953309bd15b4",
+          "claim": "Canonical skill restricts clients to the curated agent surface."
+        },
+        {
+          "path": "tests/agent-schema.test.ts",
+          "sha256": "c5d9ecacb54b0c1a905b48a8f7eb969e6e5253f102a1c6f39cb1d8860234df1b",
+          "claim": "Runtime catalog and published schema remain aligned."
+        },
+        {
+          "path": "tests/agent-read-integration.test.ts",
+          "sha256": "5fa3c3200608bc3b2ca2d7cfcde6f096c93fee3a449ab9b30c64d89daf956d96",
+          "claim": "Bounded compiled read workflows."
+        },
+        {
+          "path": "tests/agent-operations.test.ts",
+          "sha256": "e8ddcc0e25ee74eb9ebdc6b294578418fd98c41f0c7ed2d97293e619167807d9",
+          "claim": "Immutable prepare/apply workflow behavior."
+        }
+      ]
+    },
+    {
+      "id": "V1-NO-CRITICAL-HIGH-GAPS",
+      "roadmap_criterion": "отсутствуют известные critical/high security gaps",
+      "status": "passed",
+      "conclusion": "The reviewed credential, untrusted-content, operation, POSIX storage, integration, supply-chain, and production dependency boundaries have no open critical or high findings.",
+      "evidence": [
+        {
+          "path": "SECURITY.md",
+          "sha256": "0223d2531c6f07ae6ff9b13a7efc768eeabb4c0ae720aa053702c9ad00a37d6b",
+          "claim": "Threat model, guarantees, non-guarantees, and reporting policy."
+        },
+        {
+          "path": "docs/isolation-deployment.md",
+          "sha256": "1bb5356d0cc28d6c566603fdc97b5fbaf2e7cea2ceee34408519720f018329b9",
+          "claim": "Same-user/container/egress boundary and deployment guidance."
+        },
+        {
+          "path": "docs/v1-completion-audit.md",
+          "sha256": "de273576cb573f61b6f96ca0154fc337201e301fae800c685657bca0ab485241",
+          "claim": "Dated audit method, result, and residual limitations."
+        },
+        {
+          "path": "tests/security.test.ts",
+          "sha256": "a704bcfad725b7b6bf6b8773d24b232414c608dd305163a0672fac5443e8d2d7",
+          "claim": "Output protection and registered-secret redaction tests."
+        },
+        {
+          "path": "tests/hostile-content.test.ts",
+          "sha256": "683c6640ee3edc5224ceaa4160fc6ef91d9c9b36f513ad9205ada320e1dd67fa",
+          "claim": "Prompt-injection content remains untrusted data."
+        },
+        {
+          "path": "tests/wave5-security.test.ts",
+          "sha256": "3a8fb42f85a90e2fee72ff1af546ce1c69c291abcae249c77e285f7cb6957a48",
+          "claim": "Scoped policy and trusted-file fail-closed tests."
+        },
+        {
+          "path": "tests/compiled-security.test.ts",
+          "sha256": "0bdce878a7c1ad1cbd0b7df20ecff2d6fbab1769cc9df8abc7af29db58fb3053",
+          "claim": "Release executable security-boundary tests."
+        },
+        {
+          "path": "evidence/v1/dependency-audit.json",
+          "sha256": "03ad8ea9cd0ddc723548dbbc4a93fd5548273f4d60c6e67bb0a06c59f40aee38",
+          "claim": "Dated production dependency advisory result bound to the lockfile."
+        }
+      ]
+    },
+    {
+      "id": "V1-EXECUTABLE-DOCUMENTATION",
+      "roadmap_criterion": "документация установки, auth, permissions и восстановления после ambiguous operations полна и проверяется тестами примеров",
+      "status": "passed",
+      "conclusion": "Twelve isolated compiled-binary commands execute the documented installation, credential-source, permission-review, and ambiguous-write recovery workflows.",
+      "evidence": [
+        {
+          "path": "docs/v1-workflows.md",
+          "sha256": "1d02221dcfc87332780943f2d37c49922d8e46f0b6e0a7ad66413b57c96d16fa",
+          "claim": "Critical user-facing installation/auth/permission/recovery examples."
+        },
+        {
+          "path": "docs/operation-recovery.md",
+          "sha256": "5b484645b30f22846fa5e5b9a53a73f32f5ad1209a82e6d378d7fe0e34d4bee1",
+          "claim": "Unknown outcome and stale-lock recovery contract."
+        },
+        {
+          "path": "scripts/check-v1-examples.ts",
+          "sha256": "da090b98eac51760bad30154983a9d44617aa0a585329af210297d4745c66ae5",
+          "claim": "Isolated compiled-binary executable documentation gate."
+        },
+        {
+          "path": "tests/v1-examples.test.ts",
+          "sha256": "aa241910abd92a7d6692e7a683c14c2eb9bc69a5c809516c73a0732b8df455f5",
+          "claim": "Positive execution and documentation drift tests."
+        },
+        {
+          "path": "src/help.ts",
+          "sha256": "adef009fe5a4208c893b8a21c15ba2e4ee3ff3020e84c74886817ab8f7ddcf5f",
+          "claim": "CLI grammar and auth guidance used by the examples."
+        }
+      ]
+    }
+  ],
+  "security_review": {
+    "outcome": "passed",
+    "review_areas": [
+      "credential-handling-and-redaction",
+      "untrusted-content-and-output-bounds",
+      "write-policy-and-operation-state-machine",
+      "posix-filesystem-and-integration-lifecycle",
+      "release-supply-chain",
+      "production-dependencies"
+    ],
+    "dependency_audit": {
+      "path": "evidence/v1/dependency-audit.json",
+      "sha256": "03ad8ea9cd0ddc723548dbbc4a93fd5548273f4d60c6e67bb0a06c59f40aee38",
+      "claim": "Bun production-dependency audit found no known vulnerabilities on the reviewed date."
+    },
+    "open_findings": [],
+    "documented_limitations": [
+      {
+        "id": "same-user-is-not-isolation",
+        "reference": "docs/isolation-deployment.md"
+      },
+      {
+        "id": "ambiguous-write-needs-human-recovery",
+        "reference": "docs/operation-recovery.md"
+      },
+      {
+        "id": "experimental-clients-are-not-supported",
+        "reference": "docs/client-compatibility.md"
+      },
+      {
+        "id": "release-attestations-exist-only-after-publish",
+        "reference": "docs/release-verification.md"
+      }
+    ]
+  },
+  "pre_v1_backlog": {
+    "total": 68,
+    "done": 67,
+    "cancelled": [
+      "REL-006"
+    ],
+    "active": []
+  }
+}

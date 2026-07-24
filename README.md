@@ -16,12 +16,13 @@
 поверхность `node-asana` изолирована как `unknown` внутри SDK-адаптера и не распространяет `any`
 по приложению.
 
-> **Статус release (2026-07-23).** Текущий опубликованный GitHub Release —
+> **Статус release (2026-07-24).** Текущий опубликованный GitHub Release —
 > [`v0.4.0`](https://github.com/ggkguelensan/asana-cli/releases/tag/v0.4.0), tag указывает на
 > commit [`81c1b7a`](https://github.com/ggkguelensan/asana-cli/commit/81c1b7afa789527cc52faca8ca300f9f66da63f4).
 > Release workflow успешно собрал семь platform binaries и `SHA256SUMS`. Версия исходников,
-> embedded integration bundle и CLI остаётся `0.4.0`; изменения после tag относятся к следующему
-> циклу и не являются новым release до отдельного version bump и tag.
+> embedded integration bundle и CLI остаётся `0.4.0`. Плановая реализация до v1 завершена и
+> проверяется [completion audit](docs/v1-completion-audit.md), но изменения после tag не являются
+> новым release до отдельного выбора версии, version bump и tag.
 >
 > **Platform policy после `v0.4.0`:** новые releases поддерживают только native macOS и Linux.
 > Windows x64 artifact в `v0.4.0` остаётся историческим и не означает дальнейшую поддержку.
@@ -461,6 +462,7 @@ bun run check
 - [Implementation plan](docs/implementation-plan.md) — текущее состояние и порядок ближайших PR для `v0.5`.
 - [Platform support policy](docs/support-policy.md) — поддерживаемые runtime/artifacts и executable gate.
 - [Critical v1 workflows](docs/v1-workflows.md) — исполняемые installation/auth/permission/recovery examples.
+- [v1 completion audit](docs/v1-completion-audit.md) — direct evidence по всем roadmap criteria и security review.
 - [Task dependency operations](docs/task-dependency-operations.md) — exact dependency writes и cycle bounds.
 - [Bounded batch reads](docs/batch-reads.md) — общий budget и machine-readable partial failures.
 - [Human local context](docs/local-context.md) — aliases, worktree scope, CAS, хранение и recovery.

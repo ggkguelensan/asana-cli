@@ -94,7 +94,7 @@ async function invoke(
   args: readonly string[],
   context: Readonly<{ home: string; project: string }>,
 ): Promise<unknown> {
-  const child = Bun.spawn([binary, ...args], {
+  const child = Bun.spawnSync([binary, ...args], {
     cwd: context.project,
     env: {
       ...process.env,
@@ -107,14 +107,12 @@ async function invoke(
     stdout: "pipe",
     stderr: "pipe",
   });
-  const [stdout, stderr, exitCode] = await Promise.all([
-    new Response(child.stdout).text(),
-    new Response(child.stderr).text(),
-    child.exited,
-  ]);
-  if (exitCode !== 0) {
+  const decoder = new TextDecoder("utf-8", { fatal: true });
+  const stdout = decoder.decode(child.stdout);
+  const stderr = decoder.decode(child.stderr);
+  if (child.exitCode !== 0) {
     throw new Error(
-      `Integration lifecycle command failed (${args.join(" ")}): ${stderr.trim() || `exit ${exitCode}`}`,
+      `Integration lifecycle command failed (${args.join(" ")}): ${stderr.trim() || `exit ${child.exitCode}`}`,
     );
   }
   return parseJson(stdout);

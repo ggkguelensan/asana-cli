@@ -7,9 +7,9 @@
 Последовательные release scopes до `v1.0.0` зафиксированы в [release plan](release-plan.md), а
 поддерживаемые runtime и artifacts — в [platform support policy](support-policy.md).
 
-## Состояние release и цель ближайшего цикла
+## Состояние release и текущая цель
 
-Снимок на 2026-07-23:
+Снимок на 2026-07-24:
 
 - текущий опубликованный GitHub Release и release tag —
   [`v0.4.0`](https://github.com/ggkguelensan/asana-cli/releases/tag/v0.4.0);
@@ -18,12 +18,14 @@
 - package, CLI и embedded integration bundle объявляют версию `0.4.0`;
 - новые releases поддерживают только native macOS/Linux; Windows artifact остаётся исторической
   частью immutable `v0.4.0`;
-- следующий продуктовый цикл — `v0.5`, но будущая версия не записывается в metadata до
-  согласованного release scope.
+- плановая реализация `v0.5` → `v1.0` завершена и подтверждена
+  [v1 completion audit](v1-completion-audit.md), но будущая версия не записывается в metadata до
+  отдельного maintainer-решения о SemVer и release scope.
 
-Ближайшая цель — выполнить готовые задачи `v0.5` по зависимостям, одновременно закрывая
-оставшееся qualification evidence для Codex/Claude integrations и release engineering. Факт
-публикации `v0.4.0` не закрывает clean-session evals, platform lifecycle E2E, provenance или SBOM.
+Следующий шаг — не расширять scope автоматически, а подготовить чистый release commit: выбрать
+SemVer, выполнить version/bundle regeneration, повторить полный gate на exact commit, затем
+отдельно tag/publish по maintainer procedure. Исторический `v0.4.0` не получает задним числом
+возможности и evidence из текущих исходников.
 
 ## Рабочие правила
 
@@ -242,31 +244,13 @@ digest-bound records в [client evidence](client-evals.md). Обычный `bun 
 Текущее состояние: adapters, fixed discovery roots, generated skill bundle, lifecycle engine,
 policy guidance и clean-session Codex/Claude evidence проверяются исполняемыми gates.
 
-## Текущий цикл v0.5
+## Плановая реализация до v1 (завершена)
 
-Порядок по зависимостям:
-
-1. `REL-008`: закрепить macOS/Linux-only runtime, build, CI и release matrix executable verifier;
-   исторический `v0.4.0` не изменять.
-2. Завершено: `DEV-004`, `DEV-005`, `DEV-006` и `DEV-012` предоставляют bounded Git identity,
-   authenticated candidate search, trusted host mapping и отдельный untrusted repository context.
-3. `DEV-014`: реализация-кандидат отделяет repository-shared alias definitions от worktree-local
-   active/recent state и хранит только bounded metadata с CAS, locking, retention и explicit
-   erasure; до merge и required checks статус backlog остаётся `ready`. Контракт зафиксирован в
-   [human local context](local-context.md).
-4. `DEV-001` и `DEV-002`: implementation candidate добавляет bounded project, section,
-   membership, custom-field и user reads; до merge и required checks статус backlog остаётся
-   `ready`. Контракт описан в [curated developer context](developer-context.md).
-   `DEV-003`/`DEV-013` implementation candidate добавляет bounded task context и central exact
-   resolver без implicit selection; до merge и required checks backlog status не меняется.
-5. `DEV-007`, затем `DEV-015`: добавить create task/subtask prepare/apply и immutable revisioned
-   templates, полностью раскрываемые до approval.
-6. `DEV-008`–`DEV-011`: membership, dependencies, attachment metadata и batch reads.
-7. Закрыть `INT-011`, `INT-012`, `INT-014` и `REL-002`: сохранить clean-session client evidence
-   и выполнить native integration lifecycle E2E до расширения на новые clients.
-8. `DEV-016`, затем `INT-015`–`INT-018`: alias/template security evals перед Gemini, Copilot,
-   OpenCode и Cursor expansion.
-9. `REL-003`, `REL-004`, `REL-007`: provenance, SBOM и compatibility gates для следующего release.
+Все pre-1.0 backlog задачи закрыты, кроме явно отменённого Windows channel `REL-006`. Developer
+context, safe writes, multi-client qualification, six-target POSIX lifecycle, release supply
+chain, reproducibility, executable user workflows и requirement-by-requirement audit входят в
+обязательный `bun run check`. Дальнейшие product ideas остаются в секции `Later` backlog и не
+включаются в release без нового scope.
 
 ## Release checklist
 
