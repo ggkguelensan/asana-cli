@@ -1,12 +1,17 @@
 import { createHash } from "node:crypto";
 import { lstat, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { isAbsolute, join, resolve } from "node:path";
+import { dirname, isAbsolute, join, resolve } from "node:path";
 import { z } from "zod";
 import {
   EMBEDDED_INTEGRATION_BUNDLE,
   type EmbeddedIntegrationClientId,
 } from "../generated/integrations/bundle";
+import {
+  supportedBuildTargetSchema,
+  type SupportedBuildTarget,
+} from "./check-support-matrix";
+import { clientEvalSubjectSha256 } from "./client-eval-contract";
 
 const clientSchema = z.enum(["generic-agent-skills", "codex", "claude-code"]);
 const scopeSchema = z.enum(["user", "project"]);
@@ -40,8 +45,10 @@ const lifecycleCases = clientSchema.options.flatMap((client) =>
 
 export const integrationLifecycleEvidenceSchema = z.strictObject({
   schema: z.literal("asana-cli.integration-lifecycle-evidence.v1"),
+  target: supportedBuildTargetSchema.optional(),
   platform: z.enum(["darwin", "linux"]),
   architecture: z.enum(["arm64", "x64"]),
+  subject_sha256: z.string().regex(/^[a-f0-9]{64}$/),
   binary_sha256: z.string().regex(/^[a-f0-9]{64}$/),
   bundle_sha256: z.string().regex(/^[a-f0-9]{64}$/),
   cases: z.array(z.strictObject({
@@ -60,6 +67,18 @@ export const integrationLifecycleEvidenceSchema = z.strictObject({
   }),
 });
 export type IntegrationLifecycleEvidence = z.output<typeof integrationLifecycleEvidenceSchema>;
+
+const targetRuntime: Readonly<Record<
+  SupportedBuildTarget,
+  Readonly<{ platform: "darwin" | "linux"; architecture: "arm64" | "x64" }>
+>> = {
+  "bun-darwin-arm64": { platform: "darwin", architecture: "arm64" },
+  "bun-darwin-x64": { platform: "darwin", architecture: "x64" },
+  "bun-linux-arm64": { platform: "linux", architecture: "arm64" },
+  "bun-linux-x64-baseline": { platform: "linux", architecture: "x64" },
+  "bun-linux-arm64-musl": { platform: "linux", architecture: "arm64" },
+  "bun-linux-x64-baseline-musl": { platform: "linux", architecture: "x64" },
+};
 
 function parseJson(stdout: string): unknown {
   try {
@@ -198,8 +217,12 @@ async function runCase(
 
 export async function runIntegrationLifecycleE2e(
   binaryArgument: string,
+  targetArgument?: string,
 ): Promise<IntegrationLifecycleEvidence> {
   const binary = isAbsolute(binaryArgument) ? binaryArgument : resolve(binaryArgument);
+  const target = targetArgument === undefined
+    ? undefined
+    : supportedBuildTargetSchema.parse(targetArgument);
   const binaryBytes = await readFile(binary);
   const root = await mkdtemp(join(tmpdir(), "asana-cli-native-lifecycle-"));
   try {
@@ -212,13 +235,24 @@ export async function runIntegrationLifecycleE2e(
     const runtime = listOutputSchema.parse(
       await invoke(binary, ["integrations", "list"], { home: probeHome, project: probeProject }),
     ).runtime;
+    if (target !== undefined) {
+      const expectedRuntime = targetRuntime[target];
+      if (
+        runtime.platform !== expectedRuntime.platform ||
+        runtime.architecture !== expectedRuntime.architecture
+      ) {
+        throw new Error(`Artifact runtime does not match ${target}`);
+      }
+    }
     for (const testCase of lifecycleCases) {
       await runCase(binary, root, testCase.client, testCase.scope);
     }
     return integrationLifecycleEvidenceSchema.parse({
       schema: "asana-cli.integration-lifecycle-evidence.v1",
+      ...(target === undefined ? {} : { target }),
       platform: runtime.platform,
       architecture: runtime.architecture,
+      subject_sha256: await clientEvalSubjectSha256(),
       binary_sha256: createHash("sha256").update(binaryBytes).digest("hex"),
       bundle_sha256: createHash("sha256")
         .update(JSON.stringify(EMBEDDED_INTEGRATION_BUNDLE), "utf8")
@@ -231,10 +265,28 @@ export async function runIntegrationLifecycleE2e(
 }
 
 if (import.meta.main) {
-  const [binary, ...unexpected] = process.argv.slice(2);
-  if (!binary || unexpected.length > 0) {
-    throw new Error("Usage: bun run scripts/integration-lifecycle-e2e.ts BINARY");
+  const args = process.argv.slice(2);
+  const outputIndex = args.indexOf("--output");
+  const output = outputIndex === -1 ? undefined : args[outputIndex + 1];
+  const positionals = outputIndex === -1
+    ? args
+    : args.filter((_, index) => index !== outputIndex && index !== outputIndex + 1);
+  const [binary, target, ...unexpected] = positionals;
+  if (
+    !binary ||
+    unexpected.length > 0 ||
+    (outputIndex !== -1 && (!output || outputIndex + 2 !== args.length))
+  ) {
+    throw new Error(
+      "Usage: bun run scripts/integration-lifecycle-e2e.ts BINARY [TARGET] [--output FILE]",
+    );
   }
-  const evidence = await runIntegrationLifecycleE2e(binary);
-  process.stdout.write(`${JSON.stringify(evidence, null, 2)}\n`);
+  const evidence = await runIntegrationLifecycleE2e(binary, target);
+  if (output === undefined) {
+    process.stdout.write(`${JSON.stringify(evidence, null, 2)}\n`);
+  } else {
+    await mkdir(dirname(resolve(output)), { recursive: true, mode: 0o700 });
+    await writeFile(resolve(output), `${JSON.stringify(evidence, null, 2)}\n`, { mode: 0o600 });
+    process.stdout.write(`Integration lifecycle passed for ${target ?? "native runtime"}; evidence ${output}\n`);
+  }
 }
