@@ -21,7 +21,9 @@ LOCAL DEVELOPER CONTEXT (HUMAN-ONLY, NO PAT)
   asana-cli context alias set QUALIFIED --task GID
   asana-cli context alias replace QUALIFIED --task GID --expected-task GID --revision N
   asana-cli context alias remove QUALIFIED --expected-task GID --revision N
+  asana-cli context bind QUALIFIED --task GID
   asana-cli context activate QUALIFIED
+  asana-cli context deactivate QUALIFIED
   asana-cli context quick
   asana-cli context history
   asana-cli context clear --revision N
@@ -57,6 +59,7 @@ AGENT CLIENTS (DIRECT CLI, NO MCP)
   asana-cli agent apply --operation-id UUID
   asana-cli agent operation status UUID      Read local operation metadata
   asana-cli agent context --git-current     Read normalized local Git context
+  asana-cli agent context --worktree-task   Read only this worktree's task binding
   asana-cli agent context --repository-asana Read trusted local repository-to-Asana mapping
   asana-cli agent context --repository-context Read untrusted fixed-root repository context (no PAT)
 

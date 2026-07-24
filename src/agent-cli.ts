@@ -20,8 +20,13 @@ import {
   readRepositoryContextAgentInput,
   readStdinAgentInput,
   readTaskContextAgentInput,
+  readWorktreeTaskAgentInput,
 } from "./agent-input";
-import { readCurrentGitContext } from "./git-context";
+import {
+  readCurrentGitContext,
+  readCurrentGitStorageIdentity,
+  type GitStorageIdentity,
+} from "./git-context";
 import { findGitCurrentCandidates } from "./git-current-candidates";
 import { rejectDeprecatedLegacyAgentApply } from "./agent-deprecations";
 import { AgentOperationService } from "./agent-operations";
@@ -79,6 +84,11 @@ import {
 import { getTaskContext } from "./task-context";
 import { resolveTaskReference } from "./task-reference";
 import type { TaskCreateTemplateProvider } from "./task-create-templates";
+import {
+  FileContextStateStore,
+  type ContextStateStore,
+  worktreeTaskContextData,
+} from "./context-state";
 
 type JsonObject = Record<string, unknown>;
 
@@ -513,6 +523,21 @@ export async function runLocalAgentCommand(
   runtime: LocalAgentCommandRuntime,
 ): Promise<unknown> {
   if (args.positionals[1] === "context") {
+    if (Object.hasOwn(args.flags, "worktree-task")) {
+      readWorktreeTaskAgentInput(args);
+      let store: ContextStateStore;
+      try {
+        store = runtime.contextState ?? new FileContextStateStore();
+      } catch (error: unknown) {
+        if (error instanceof CliError) throw error;
+        throw new CliError("storage-invalid", "Local context state is unavailable or unsafe");
+      }
+      const identity = await (runtime.gitStorageIdentity ?? readCurrentGitStorageIdentity)();
+      return agentResult(
+        "worktree-task",
+        worktreeTaskContextData(await store.quick(identity)),
+      );
+    }
     if (Object.hasOwn(args.flags, "repository-context")) {
       readRepositoryContextAgentInput(args);
       const provider = runtime.repositoryContext ?? new FixedFileRepositoryContextManifestProvider();
@@ -562,6 +587,8 @@ export async function runLocalAgentCommand(
 
 export interface LocalAgentCommandRuntime {
   operations: OperationRepository;
+  contextState?: ContextStateStore;
+  gitStorageIdentity?: () => Promise<GitStorageIdentity>;
   repositoryAsanaMapping?: RepositoryAsanaMappingProvider;
   repositoryContext?: RepositoryContextManifestProvider;
 }

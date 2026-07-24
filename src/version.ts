@@ -1,4 +1,4 @@
-export const CLI_VERSION = "1.0.1" as const;
+export const CLI_VERSION = "1.1.0" as const;
 export const AGENT_PROTOCOL_VERSION = 2 as const;
 export const AGENT_PROTOCOL_COMPATIBILITY = {
   minimum: AGENT_PROTOCOL_VERSION,

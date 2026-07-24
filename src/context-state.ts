@@ -129,8 +129,54 @@ export type QuickContext = Readonly<{
   recent: readonly ResolvedContextAlias[];
 }>;
 
+export const worktreeTaskContextDataSchema = z.strictObject({
+  schema: z.literal("asana-cli.worktree-task.v1"),
+  worktree_revision: expectedRevisionSchema,
+  task: z.discriminatedUnion("status", [
+    z.strictObject({
+      status: z.literal("unbound"),
+    }),
+    z.strictObject({
+      status: z.literal("bound"),
+      qualified_alias: qualifiedTaskAliasSchema,
+      task_gid: gidSchema,
+    }),
+    z.strictObject({
+      status: z.literal("stale"),
+      qualified_alias: qualifiedTaskAliasSchema,
+    }),
+  ]),
+});
+
+export type WorktreeTaskContextData = z.output<typeof worktreeTaskContextDataSchema>;
+
+export function worktreeTaskContextData(context: QuickContext): WorktreeTaskContextData {
+  const task = context.active === null
+    ? { status: "unbound" as const }
+    : context.active.status === "resolved"
+      ? {
+        status: "bound" as const,
+        qualified_alias: context.active.qualified_alias,
+        task_gid: context.active.task_gid,
+      }
+      : {
+        status: "stale" as const,
+        qualified_alias: context.active.qualified_alias,
+      };
+  return worktreeTaskContextDataSchema.parse({
+    schema: "asana-cli.worktree-task.v1",
+    worktree_revision: context.worktree_revision,
+    task,
+  });
+}
+
 export interface ContextStateStore {
   listAliases(identity: GitStorageIdentity): Promise<AliasSnapshot>;
+  ensureAlias(
+    identity: GitStorageIdentity,
+    qualifiedAlias: string,
+    taskGid: string,
+  ): Promise<Readonly<AliasSnapshot & { created: boolean }>>;
   setAlias(
     identity: GitStorageIdentity,
     qualifiedAlias: string,
@@ -158,6 +204,11 @@ export interface ContextStateStore {
   history(identity: GitStorageIdentity): Promise<QuickContext>;
   clear(identity: GitStorageIdentity, expectedRevision: number): Promise<Readonly<{
     cleared: boolean;
+    previous_revision: number;
+    worktree_revision: number;
+  }>>;
+  deactivate(identity: GitStorageIdentity, qualifiedAlias: string): Promise<Readonly<{
+    deactivated: boolean;
     previous_revision: number;
     worktree_revision: number;
   }>>;
@@ -326,6 +377,48 @@ export class FileContextStateStore implements ContextStateStore {
     });
   }
 
+  async ensureAlias(
+    identityValue: GitStorageIdentity,
+    qualifiedAliasValue: string,
+    taskGidValue: string,
+  ): Promise<Readonly<AliasSnapshot & { created: boolean }>> {
+    const identity = gitStorageIdentitySchema.parse(identityValue);
+    const qualifiedAlias = qualifiedTaskAliasSchema.parse(qualifiedAliasValue);
+    const taskGid = gidSchema.parse(taskGidValue);
+    const path = this.#aliasStorePath(identity);
+    return this.#withLock(path, async () => {
+      const current = await this.#readAliasStore(identity);
+      const snapshot = aliasSnapshot(current);
+      const existing = snapshot.aliases.find((entry) =>
+        entry.qualified_alias === qualifiedAlias
+      );
+      if (existing) {
+        if (existing.task_gid !== taskGid) {
+          throw new CliError(
+            "conflict",
+            "Alias is bound to a different task; use explicit CAS replace",
+          );
+        }
+        return { ...snapshot, created: false };
+      }
+      const aliases = [
+        ...snapshot.aliases,
+        { qualified_alias: qualifiedAlias, task_gid: taskGid },
+      ].sort((left, right) => compareText(left.qualified_alias, right.qualified_alias));
+      if (aliases.length > MAX_ALIASES) {
+        throw new CliError("conflict", `A repository may store at most ${MAX_ALIASES} aliases`);
+      }
+      const next = sharedAliasStoreSchema.parse({
+        schema: "asana-cli.shared-aliases.v1",
+        revision: nextRevision(snapshot.revision),
+        repository_key: identity.repository_key,
+        aliases,
+      });
+      await this.#writeJson(path, next);
+      return { ...aliasSnapshot(next), created: true };
+    });
+  }
+
   async replaceAlias(
     identityValue: GitStorageIdentity,
     inputValue: Readonly<{
@@ -422,6 +515,12 @@ export class FileContextStateStore implements ContextStateStore {
     const path = this.#worktreeStatePath(identity);
     await this.#withLock(path, async () => {
       const current = await this.#readWorktreeState(identity);
+      if (
+        current?.active_alias === qualifiedAlias &&
+        current.recent_aliases[0] === qualifiedAlias
+      ) {
+        return;
+      }
       const recentAliases = [
         qualifiedAlias,
         ...(current?.recent_aliases ?? []).filter((alias) => alias !== qualifiedAlias),
@@ -483,6 +582,50 @@ export class FileContextStateStore implements ContextStateStore {
       await this.#writeJson(path, next);
       return {
         cleared: true,
+        previous_revision: current.revision,
+        worktree_revision: next.revision,
+      };
+    });
+  }
+
+  async deactivate(
+    identityValue: GitStorageIdentity,
+    qualifiedAliasValue: string,
+  ): Promise<Readonly<{
+    deactivated: boolean;
+    previous_revision: number;
+    worktree_revision: number;
+  }>> {
+    const identity = gitStorageIdentitySchema.parse(identityValue);
+    const qualifiedAlias = qualifiedTaskAliasSchema.parse(qualifiedAliasValue);
+    const path = this.#worktreeStatePath(identity);
+    return this.#withLock(path, async () => {
+      const current = await this.#readWorktreeState(identity);
+      const snapshot = worktreeSnapshot(current);
+      if (!current || current.active_alias === null) {
+        return {
+          deactivated: false,
+          previous_revision: snapshot.revision,
+          worktree_revision: snapshot.revision,
+        };
+      }
+      if (current.active_alias !== qualifiedAlias) {
+        throw new CliError(
+          "conflict",
+          "A different alias is active in this worktree; refusing lifecycle cleanup",
+        );
+      }
+      const next = worktreeContextStateSchema.parse({
+        schema: "asana-cli.worktree-context.v1",
+        revision: nextRevision(current.revision),
+        repository_key: identity.repository_key,
+        worktree_key: identity.worktree_key,
+        active_alias: null,
+        recent_aliases: [],
+      });
+      await this.#writeJson(path, next);
+      return {
+        deactivated: true,
         previous_revision: current.revision,
         worktree_revision: next.revision,
       };

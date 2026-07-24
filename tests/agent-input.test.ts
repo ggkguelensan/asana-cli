@@ -10,6 +10,7 @@ import {
   readRepositoryContextAgentInput,
   readStdinAgentInput,
   readTaskContextAgentInput,
+  readWorktreeTaskAgentInput,
 } from "../src/agent-input";
 import { parseArgs } from "../src/args";
 import { CliError } from "../src/errors";
@@ -420,6 +421,27 @@ describe("agent direct read input", () => {
     ];
     for (const argv of malformedInvocations) {
       expect(await errorCode(async () => readRepositoryAsanaAgentInput(parseArgs(argv)))).toBe("usage");
+    }
+  });
+
+  test("accepts only the bare worktree task selector", async () => {
+    expect(readWorktreeTaskAgentInput(parseArgs([
+      "agent",
+      "context",
+      "--worktree-task",
+    ]))).toEqual({ worktree_task: true });
+
+    for (const argv of [
+      ["agent", "context"],
+      ["agent", "context", "--worktree-task=value"],
+      ["agent", "context", "--worktree-task", "value"],
+      ["agent", "context", "--worktree-task", "--worktree-task"],
+      ["agent", "context", "--no-worktree-task"],
+      ["agent", "context", "--worktree-task", "--input", "-"],
+      ["agent", "context", "--worktree-task", "--git-current"],
+      ["agent", "context", "--worktree-task", "--repository-context"],
+    ]) {
+      expect(await errorCode(async () => readWorktreeTaskAgentInput(parseArgs(argv)))).toBe("usage");
     }
   });
 

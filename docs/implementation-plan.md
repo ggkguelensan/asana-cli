@@ -17,17 +17,20 @@
   [`da67cf3`](https://github.com/ggkguelensan/asana-cli/commit/da67cf3f06062b2d0a3678fe3936e1563d4937bb);
 - immutable tag `v1.0.0` существует на `main`, но release workflow не опубликовал GitHub Release
   после `EACCES` при загрузке root-owned musl lifecycle evidence;
-- package, CLI и embedded integration bundle объявляют опубликованную версию `1.0.1`;
+- опубликованный tag/package имеет версию `1.0.1`, а package, CLI и embedded integration bundle
+  текущей development line объявляют `1.1.0`;
 - новые releases поддерживают только native macOS/Linux; Windows artifact остаётся исторической
   частью immutable `v0.4.0`;
 - плановая реализация `v0.5` → `v1.0` завершена и подтверждена
   [v1 completion audit](v1-completion-audit.md); patch `1.0.1` меняет только release recovery
   metadata и container ownership gate.
+- development line `1.1.0` добавляет DEV-017: optional Worktrunk-compatible lifecycle binding и
+  bounded `agent context --worktree-task`; она не считается опубликованной до отдельного release.
 
-Следующий шаг — не расширять scope автоматически: новые product ideas остаются в `Later` backlog
-до отдельного решения. Следующий release повторяет version/bundle/evidence gate и maintainer
-procedure на новом exact commit. Исторические `v0.4.0` и failed tag `v1.0.0` не получают задним
-числом возможности или evidence из `v1.0.1`.
+Следующий шаг — квалифицировать DEV-017 на exact commit и отдельно решить публикацию `v1.1.0`.
+Другие product ideas остаются в `Later` backlog. Следующий release повторяет
+version/bundle/evidence gate и maintainer procedure на новом exact commit. Исторические `v0.4.0`,
+failed tag `v1.0.0` и опубликованный `v1.0.1` не получают задним числом новые возможности.
 
 ## Рабочие правила
 

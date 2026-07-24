@@ -102,6 +102,51 @@ describe("owner-controlled context state", () => {
     expect(history.worktree_revision).toBe(1);
   });
 
+  test("idempotently binds and safely deactivates one exact worktree task", async () => {
+    const store = new FileContextStateStore({ baseDirectory: await temporaryDirectory() });
+    const firstAlias = "task:platform/dev-017--worktree-task";
+    const secondAlias = "task:platform/dev-018--other-worktree-task";
+
+    expect(await store.ensureAlias(firstIdentity, firstAlias, "1200000000001")).toMatchObject({
+      created: true,
+      revision: 1,
+    });
+    expect(await store.ensureAlias(firstIdentity, firstAlias, "1200000000001")).toMatchObject({
+      created: false,
+      revision: 1,
+    });
+    expect(await capturedError(() =>
+      store.ensureAlias(firstIdentity, firstAlias, "1200000000002")
+    )).toMatchObject({ code: "conflict" });
+
+    const firstActivation = await store.activate(firstIdentity, firstAlias);
+    const repeatedActivation = await store.activate(firstIdentity, firstAlias);
+    expect(repeatedActivation.worktree_revision).toBe(firstActivation.worktree_revision);
+
+    await store.ensureAlias(firstIdentity, secondAlias, "1200000000002");
+    await store.activate(secondIdentity, secondAlias);
+    expect(await capturedError(() =>
+      store.deactivate(firstIdentity, secondAlias)
+    )).toMatchObject({ code: "conflict" });
+    expect((await store.quick(firstIdentity)).active).toMatchObject({
+      qualified_alias: firstAlias,
+      task_gid: "1200000000001",
+    });
+
+    expect(await store.deactivate(firstIdentity, firstAlias)).toMatchObject({
+      deactivated: true,
+      previous_revision: firstActivation.worktree_revision,
+    });
+    expect(await store.deactivate(firstIdentity, firstAlias)).toMatchObject({
+      deactivated: false,
+    });
+    expect((await store.quick(firstIdentity)).active).toBeNull();
+    expect((await store.quick(secondIdentity)).active).toMatchObject({
+      qualified_alias: secondAlias,
+      task_gid: "1200000000002",
+    });
+  });
+
   test("requires explicit revision and target CAS for replace and remove", async () => {
     const store = new FileContextStateStore({ baseDirectory: await temporaryDirectory() });
     const alias = "task:platform/dev-014--cas-alias";

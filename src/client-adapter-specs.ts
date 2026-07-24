@@ -174,6 +174,7 @@ export const CURATED_READ_COMMANDS = [
   "asana-cli agent capabilities",
   "asana-cli agent schema",
   "asana-cli agent context --git-current",
+  "asana-cli agent context --worktree-task",
   "asana-cli agent context --repository-asana",
   "asana-cli agent context --repository-context",
   "asana-cli agent context --git-current-candidates",

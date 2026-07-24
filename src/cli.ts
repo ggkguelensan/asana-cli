@@ -79,7 +79,8 @@ const cliEnvironmentSchema = z.object({
 function isExactLocalAgentCommand(args: ParsedArgs): boolean {
   if (args.positionals[1] === "context") {
     const flagNames = Object.keys(args.flags);
-    return Object.hasOwn(args.flags, "repository-asana") ||
+    return Object.hasOwn(args.flags, "worktree-task") ||
+      Object.hasOwn(args.flags, "repository-asana") ||
       Object.hasOwn(args.flags, "repository-context") ||
       (
         args.positionals.length === 2 &&
