@@ -1,7 +1,8 @@
 # asana-cli v1.0.0
 
-Статус: release candidate. Версия не считается опубликованной, пока exact commit не влит в
-`main`, не помечен tag `v1.0.0` и release workflow не завершился успешно.
+Статус: immutable tag существует, но GitHub Release не был опубликован. Release workflow
+остановился на загрузке root-owned musl lifecycle evidence; tag не перемещается и не удаляется.
+Исправление поставляется отдельным recovery release `v1.0.1`.
 
 ## Основные изменения
 

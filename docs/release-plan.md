@@ -98,5 +98,6 @@ Gate:
 - completion audit содержит прямое evidence для каждого критерия roadmap `v1.0`.
 
 Статус реализации: gate закрыт и проверяется `bun run check:v1-audit`; детали и ограничения
-зафиксированы в [v1 completion audit](v1-completion-audit.md). Release candidate имеет версию
-`1.0.0`; tag и публикация остаются отдельным maintainer release action после merge в `main`.
+зафиксированы в [v1 completion audit](v1-completion-audit.md). Immutable tag `v1.0.0` не стал
+GitHub Release из-за artifact-upload permissions; recovery candidate `1.0.1` сохраняет тот же
+product scope и исправляет ownership musl evidence перед новым maintainer release action.

@@ -10,7 +10,7 @@ const fileSchema = z.strictObject({
 const clientIdSchema = z.enum(["claude-code","codex","cursor","gemini-cli","generic-agent-skills","github-copilot","kimi-code","opencode","pi"]);
 const clientBundleSchema = z.strictObject({
   schema: z.literal("asana-cli.integration-bundle.v1"),
-  bundle_version: z.literal("1.0.0"),
+  bundle_version: z.literal("1.0.1"),
   agent_protocol_version: z.literal(2),
   client: clientIdSchema,
   install_roots: z.strictObject({ user: z.string(), project: z.string() }),
@@ -19,19 +19,19 @@ const clientBundleSchema = z.strictObject({
 });
 export const embeddedIntegrationBundleSchema = z.strictObject({
   schema: z.literal("asana-cli.integration-bundle.v1"),
-  bundle_version: z.literal("1.0.0"),
+  bundle_version: z.literal("1.0.1"),
   agent_protocol_version: z.literal(2),
   clients: z.array(clientBundleSchema).length(9),
 });
 
 export const EMBEDDED_INTEGRATION_BUNDLE = embeddedIntegrationBundleSchema.parse({
   "schema": "asana-cli.integration-bundle.v1",
-  "bundle_version": "1.0.0",
+  "bundle_version": "1.0.1",
   "agent_protocol_version": 2,
   "clients": [
     {
       "schema": "asana-cli.integration-bundle.v1",
-      "bundle_version": "1.0.0",
+      "bundle_version": "1.0.1",
       "agent_protocol_version": 2,
       "client": "claude-code",
       "install_roots": {
@@ -79,7 +79,7 @@ export const EMBEDDED_INTEGRATION_BUNDLE = embeddedIntegrationBundleSchema.parse
     },
     {
       "schema": "asana-cli.integration-bundle.v1",
-      "bundle_version": "1.0.0",
+      "bundle_version": "1.0.1",
       "agent_protocol_version": 2,
       "client": "codex",
       "install_roots": {
@@ -127,7 +127,7 @@ export const EMBEDDED_INTEGRATION_BUNDLE = embeddedIntegrationBundleSchema.parse
     },
     {
       "schema": "asana-cli.integration-bundle.v1",
-      "bundle_version": "1.0.0",
+      "bundle_version": "1.0.1",
       "agent_protocol_version": 2,
       "client": "cursor",
       "install_roots": {
@@ -175,7 +175,7 @@ export const EMBEDDED_INTEGRATION_BUNDLE = embeddedIntegrationBundleSchema.parse
     },
     {
       "schema": "asana-cli.integration-bundle.v1",
-      "bundle_version": "1.0.0",
+      "bundle_version": "1.0.1",
       "agent_protocol_version": 2,
       "client": "gemini-cli",
       "install_roots": {
@@ -223,7 +223,7 @@ export const EMBEDDED_INTEGRATION_BUNDLE = embeddedIntegrationBundleSchema.parse
     },
     {
       "schema": "asana-cli.integration-bundle.v1",
-      "bundle_version": "1.0.0",
+      "bundle_version": "1.0.1",
       "agent_protocol_version": 2,
       "client": "generic-agent-skills",
       "install_roots": {
@@ -271,7 +271,7 @@ export const EMBEDDED_INTEGRATION_BUNDLE = embeddedIntegrationBundleSchema.parse
     },
     {
       "schema": "asana-cli.integration-bundle.v1",
-      "bundle_version": "1.0.0",
+      "bundle_version": "1.0.1",
       "agent_protocol_version": 2,
       "client": "github-copilot",
       "install_roots": {
@@ -319,7 +319,7 @@ export const EMBEDDED_INTEGRATION_BUNDLE = embeddedIntegrationBundleSchema.parse
     },
     {
       "schema": "asana-cli.integration-bundle.v1",
-      "bundle_version": "1.0.0",
+      "bundle_version": "1.0.1",
       "agent_protocol_version": 2,
       "client": "kimi-code",
       "install_roots": {
@@ -367,7 +367,7 @@ export const EMBEDDED_INTEGRATION_BUNDLE = embeddedIntegrationBundleSchema.parse
     },
     {
       "schema": "asana-cli.integration-bundle.v1",
-      "bundle_version": "1.0.0",
+      "bundle_version": "1.0.1",
       "agent_protocol_version": 2,
       "client": "opencode",
       "install_roots": {
@@ -415,7 +415,7 @@ export const EMBEDDED_INTEGRATION_BUNDLE = embeddedIntegrationBundleSchema.parse
     },
     {
       "schema": "asana-cli.integration-bundle.v1",
-      "bundle_version": "1.0.0",
+      "bundle_version": "1.0.1",
       "agent_protocol_version": 2,
       "client": "pi",
       "install_roots": {

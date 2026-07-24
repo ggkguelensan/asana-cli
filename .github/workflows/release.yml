@@ -94,16 +94,16 @@ jobs:
           "${{ steps.source.outputs.epoch }}"
           "dist/${{ matrix.output }}.spdx.json"
       - if: matrix.verify-in-musl-container
-        run: docker run --rm --volume "$GITHUB_WORKSPACE:/workspace" --workdir /workspace oven/bun:1.3.14-alpine bun run --no-env-file scripts/check-package-content.ts "dist/${{ matrix.output }}"
+        run: docker run --rm --user "$(id -u):$(id -g)" --volume "$GITHUB_WORKSPACE:/workspace" --workdir /workspace oven/bun:1.3.14-alpine bun run --no-env-file scripts/check-package-content.ts "dist/${{ matrix.output }}"
       - if: matrix.verify-package-content && !matrix.verify-in-musl-container
         run: bun run check:package-content -- dist/${{ matrix.output }}
       - if: matrix.verify-in-musl-container
-        run: docker run --rm --volume "$GITHUB_WORKSPACE:/workspace" --workdir /workspace oven/bun:1.3.14-alpine bun run --no-env-file scripts/integration-lifecycle-e2e.ts "dist/${{ matrix.output }}" "${{ matrix.target }}" --output "dist/${{ matrix.output }}.lifecycle.json"
+        run: docker run --rm --user "$(id -u):$(id -g)" --volume "$GITHUB_WORKSPACE:/workspace" --workdir /workspace oven/bun:1.3.14-alpine bun run --no-env-file scripts/integration-lifecycle-e2e.ts "dist/${{ matrix.output }}" "${{ matrix.target }}" --output "dist/${{ matrix.output }}.lifecycle.json"
       - if: "!matrix.verify-in-musl-container"
         run: bun run --no-env-file scripts/integration-lifecycle-e2e.ts "dist/${{ matrix.output }}" "${{ matrix.target }}" --output "dist/${{ matrix.output }}.lifecycle.json"
       - name: Enforce release compatibility contract in musl
         if: matrix.verify-in-musl-container
-        run: docker run --rm --volume "$GITHUB_WORKSPACE:/workspace" --workdir /workspace oven/bun:1.3.14-alpine bun run release:contract -- "dist/${{ matrix.output }}"
+        run: docker run --rm --user "$(id -u):$(id -g)" --volume "$GITHUB_WORKSPACE:/workspace" --workdir /workspace oven/bun:1.3.14-alpine bun run release:contract -- "dist/${{ matrix.output }}"
       - name: Enforce release compatibility contract
         if: "!matrix.verify-in-musl-container"
         run: bun run release:contract -- "dist/${{ matrix.output }}"

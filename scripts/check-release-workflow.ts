@@ -74,6 +74,9 @@ export function verifyReleaseWorkflow(
   if (workflow.includes("sha256sum *")) {
     throw new Error("Release workflow must not checksum an unvalidated wildcard payload set");
   }
+  if (count(workflow, '--user "$(id -u):$(id -g)"') !== 3) {
+    throw new Error("Musl container gates must run as the GitHub runner UID/GID");
+  }
   if (!/^\s+needs:\s+build\s*$/m.test(workflow)) {
     throw new Error("Release publish job must depend on the complete build matrix");
   }

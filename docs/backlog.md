@@ -3,7 +3,7 @@
 Backlog реализует [roadmap](roadmap.md). Порядок ближайшего выполнения описан в
 [implementation plan](implementation-plan.md).
 
-Снимок актуализирован 2026-07-24 для release candidate `1.0.0`. После опубликованного `v0.4.0`
+Снимок актуализирован 2026-07-24 для recovery release candidate `1.0.1`. После опубликованного `v0.4.0`
 native support новых releases ограничен macOS/Linux. Статус `done` означает, что
 acceptance criteria подтверждены кодом и проверками в repository; наличие частичной реализации
 само по себе не закрывает задачу.

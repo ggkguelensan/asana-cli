@@ -15,12 +15,15 @@
   [`v0.4.0`](https://github.com/ggkguelensan/asana-cli/releases/tag/v0.4.0);
 - tag указывает на immutable commit
   [`81c1b7a`](https://github.com/ggkguelensan/asana-cli/commit/81c1b7afa789527cc52faca8ca300f9f66da63f4);
-- package, CLI и embedded integration bundle в текущей ветке объявляют release candidate `1.0.0`;
+- immutable tag `v1.0.0` существует на `main`, но release workflow не опубликовал GitHub Release
+  после `EACCES` при загрузке root-owned musl lifecycle evidence;
+- package, CLI и embedded integration bundle в текущей ветке объявляют recovery release candidate
+  `1.0.1`;
 - новые releases поддерживают только native macOS/Linux; Windows artifact остаётся исторической
   частью immutable `v0.4.0`;
 - плановая реализация `v0.5` → `v1.0` завершена и подтверждена
-  [v1 completion audit](v1-completion-audit.md); выбран SemVer `1.0.0`, но tag и release ещё не
-  созданы.
+  [v1 completion audit](v1-completion-audit.md); patch `1.0.1` меняет только release recovery
+  metadata и container ownership gate.
 
 Следующий шаг — не расширять scope автоматически, а проверить release candidate:
 повторить version/bundle/evidence gate на exact commit, затем отдельно выполнить tag/publish
@@ -196,7 +199,7 @@ Manifest минимум:
 ```json
 {
   "installer": "asana-cli",
-  "cli_version": "1.0.0",
+  "cli_version": "1.0.1",
   "agent_protocol_version": 2,
   "client": "generic-agent-skills",
   "scope": "project",

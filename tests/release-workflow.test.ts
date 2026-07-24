@@ -39,6 +39,10 @@ describe("release supply-chain workflow", () => {
       input.workflow.replace("subject-path: dist/SHA256SUMS", "subject-path: dist/*"),
       input.packageValue,
     )).toThrow("subject-path: dist/SHA256SUMS");
+    expect(() => verifyReleaseWorkflow(
+      input.workflow.replace('--user "$(id -u):$(id -g)"', ""),
+      input.packageValue,
+    )).toThrow("runner UID/GID");
     expect(() => verifyReleaseWorkflow(input.workflow, {
       ...(input.packageValue as Record<string, unknown>),
       scripts: {},
