@@ -16,7 +16,7 @@ Release after a failed artifact upload and was not moved.
 | Roadmap criterion | Result | Direct evidence |
 |---|---|---|
 | Protocol compatibility, migrations, and deprecation policy | Passed | Published agent-client contract plus protocol and v0.2 compatibility tests |
-| One behavioral/security suite for every supported client | Passed | Evidence-derived compatibility matrix and current Codex/Claude eleven-scenario records |
+| One behavioral/security suite for every supported client | Passed | Evidence-derived compatibility matrix and current Codex/Claude twelve-scenario records |
 | Reproducible releases with provenance | Passed as a release gate | Byte-identical rebuild verifier, SLSA/SPDX attestations, signed checksums, and release evidence manifest in the enforced workflow |
 | Critical developer workflows use curated actions | Passed | Runtime action catalog, canonical skill, schema/read/write integration tests |
 | No known critical/high security gaps | Passed | Boundary review, security suites, compiled-binary tests, and dated production dependency audit |

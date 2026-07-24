@@ -3,9 +3,9 @@
   "target": "bun-linux-arm64",
   "platform": "linux",
   "architecture": "arm64",
-  "subject_sha256": "7e74975ed055d0251faa26278e5b616942076100dd2f02eb84491787a59e349f",
-  "binary_sha256": "ae5af341fc5f2aeb9139c97ece1239c5432787b1646ee37c2207b1de6eedefee",
-  "bundle_sha256": "bcffc6347695cccb736af7bac25fac0b16cf58725fe036f88c706b4650ab3986",
+  "subject_sha256": "42dfcdb3ef734b1aee3aa418cf7f7ca3ac67293f651462cc7b76ff2b9014530f",
+  "binary_sha256": "5f2aef39bd6fd417e70ad268a9a383e8fd5382944c6e962902f7964b9591827c",
+  "bundle_sha256": "88af33e0888fb6b8a885fa2d6f08ef1427e2f169888427a80219183def0a2e8c",
   "cases": [
     {
       "client": "generic-agent-skills",

@@ -12,7 +12,7 @@
   },
   "package_manifest": {
     "path": "package.json",
-    "sha256": "ccafc5fc9fcf968de2417a87d845959897edcf81fad81c8b7a38d0c0c10602a7"
+    "sha256": "8a9f890ab9189cf595ced84172926e5a70786153eedecf0cd8b103165d96f774"
   },
   "result": "no-known-vulnerabilities",
   "vulnerability_counts": {

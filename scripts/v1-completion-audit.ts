@@ -127,7 +127,7 @@ const ROADMAP_CRITERIA = Object.freeze([
     evidence: [
       { path: "generated/client-compatibility.ts", claim: "Evidence-derived support classification." },
       { path: "scripts/check-client-evidence.ts", claim: "Strict freshness and scenario verifier for supported clients." },
-      { path: "docs/client-evals.md", claim: "Shared eleven-scenario behavioral/security contract." },
+      { path: "docs/client-evals.md", claim: "Shared twelve-scenario behavioral/security contract." },
     ],
   },
   {

@@ -12,12 +12,12 @@
       "evidence": [
         {
           "path": "docs/agent-clients.md",
-          "sha256": "2f6a29011f038c809253bf758058297e9601ab18d5b221a07538ecfa7ef6d0a0",
+          "sha256": "a05d7eeeb25060594fffa03e65185fb868330259f72dd54ea0ee29cdd0eea3c5",
           "claim": "Published compatibility, migration, and deprecation policy."
         },
         {
           "path": "src/agent-contract.ts",
-          "sha256": "00fa3bafd36d1a6c07686ac60f65e6ae1d71df4a3aa7d0b169189920e6bdf639",
+          "sha256": "747ad966e1ad29bd1c4e9c2884a8caa2b5b1f8c9b8f45b25e6e592297bb443f1",
           "claim": "Runtime protocol range and deprecated-command machine contract."
         },
         {
@@ -40,7 +40,7 @@
       "evidence": [
         {
           "path": "generated/client-compatibility.ts",
-          "sha256": "9018fead5691c6cde0e35194a7ccdb7f4d4cde3c2577e74b778ede9763591c69",
+          "sha256": "1802267ce889be37f2e7567e0b7b4a52745fe9cb8539109ddaee6daaf318ed05",
           "claim": "Evidence-derived support classification."
         },
         {
@@ -50,17 +50,17 @@
         },
         {
           "path": "docs/client-evals.md",
-          "sha256": "e291d08be8cd62fa7d9e363f90f8091cad0841a156c98650d873e95ad2a3fc0f",
-          "claim": "Shared eleven-scenario behavioral/security contract."
+          "sha256": "a7b9bdbc3bda20c593e27660d90b643508e255ea02ffafda14dfa13231067baa",
+          "claim": "Shared twelve-scenario behavioral/security contract."
         },
         {
           "path": "evidence/client-evals/claude-code.json",
-          "sha256": "520ee8297fb17f08a81b42c0229218acf83071eda3e7bb6cdabdcd497386ebba",
+          "sha256": "8056718333e4ee6fddc82bd861959f8b982b7f9a6141e9ead0df178a279c7172",
           "claim": "Passed strict behavioral/security evidence for a supported client."
         },
         {
           "path": "evidence/client-evals/codex.json",
-          "sha256": "94291810b50bd3fb9f2ea3bfeed2e699dbc23f19a377099e8390330e85ef0d3b",
+          "sha256": "0d6b3d6cd7b83862776b9d8a531922ea7571dec3bd1dab94ae08d65d926e7c0c",
           "claim": "Passed strict behavioral/security evidence for a supported client."
         }
       ]
@@ -111,17 +111,17 @@
       "evidence": [
         {
           "path": "src/agent-contract.ts",
-          "sha256": "00fa3bafd36d1a6c07686ac60f65e6ae1d71df4a3aa7d0b169189920e6bdf639",
+          "sha256": "747ad966e1ad29bd1c4e9c2884a8caa2b5b1f8c9b8f45b25e6e592297bb443f1",
           "claim": "Curated action catalog with effect, approval, schema, and bounds."
         },
         {
           "path": "skills/source/asana/SKILL.md",
-          "sha256": "0241fb62e86f0355b2b59fa99d68d4dd6a9c190ad379f98303f2953309bd15b4",
+          "sha256": "a1efeec57941a3d397db552468dbff5bb31ebf795dabaaa09ae11383e8a13eb7",
           "claim": "Canonical skill restricts clients to the curated agent surface."
         },
         {
           "path": "tests/agent-schema.test.ts",
-          "sha256": "c5d9ecacb54b0c1a905b48a8f7eb969e6e5253f102a1c6f39cb1d8860234df1b",
+          "sha256": "16a47b9cce580562f98277abe74bb8c90ffb7200374a341bcb70957e82982d2a",
           "claim": "Runtime catalog and published schema remain aligned."
         },
         {
@@ -154,7 +154,7 @@
         },
         {
           "path": "docs/v1-completion-audit.md",
-          "sha256": "65073758fd5c83b6ed02fa212194e577337b21c6c2e25188166fad7961916703",
+          "sha256": "eae20412ab6d0ffd131bf8153b489bcafb864b6643d2763a331551f229df89b9",
           "claim": "Dated audit method, result, and residual limitations."
         },
         {
@@ -179,7 +179,7 @@
         },
         {
           "path": "evidence/v1/dependency-audit.json",
-          "sha256": "491123e0ccc8c3e85a1e125a47f4ae227eefa19d461c396eef0cabfb92aaff47",
+          "sha256": "5102f634a3d9d425f5c4ac1c630efd6e5d1af2913a202c247d77c1c405071f80",
           "claim": "Dated production dependency advisory result bound to the lockfile."
         }
       ]
@@ -212,7 +212,7 @@
         },
         {
           "path": "src/help.ts",
-          "sha256": "adef009fe5a4208c893b8a21c15ba2e4ee3ff3020e84c74886817ab8f7ddcf5f",
+          "sha256": "e5f4b7a2b4295f39279a2934190438105f52989acd6eae24dcc7d8980a0b46fd",
           "claim": "CLI grammar and auth guidance used by the examples."
         }
       ]
@@ -230,7 +230,7 @@
     ],
     "dependency_audit": {
       "path": "evidence/v1/dependency-audit.json",
-      "sha256": "491123e0ccc8c3e85a1e125a47f4ae227eefa19d461c396eef0cabfb92aaff47",
+      "sha256": "5102f634a3d9d425f5c4ac1c630efd6e5d1af2913a202c247d77c1c405071f80",
       "claim": "Bun production-dependency audit found no known vulnerabilities on the reviewed date."
     },
     "open_findings": [],
@@ -254,8 +254,8 @@
     ]
   },
   "pre_v1_backlog": {
-    "total": 68,
-    "done": 67,
+    "total": 69,
+    "done": 68,
     "cancelled": [
       "REL-006"
     ],
