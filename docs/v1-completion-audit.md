@@ -4,11 +4,12 @@ Reviewed on 2026-07-24. Result: the planned v1 implementation is complete, all s
 criteria have direct digest-bound evidence, and this review found no open critical or high security
 findings.
 
-This is a code-completion result, not a claim that `v1.0.0` was published: its immutable tag did
-not produce a GitHub Release after a failed artifact upload. The current source version is the
-`1.0.1` recovery release candidate. Release attestations, checksums, SBOMs,
-reproducibility records, and `release-evidence.json` are created and verified only when an
-authorized maintainer tags an exact `main` commit and runs the release workflow.
+The completed scope was published as
+[`v1.0.1`](https://github.com/ggkguelensan/asana-cli/releases/tag/v1.0.1). Its release workflow
+created and verified attestations, checksums, SBOMs, byte-identical reproducibility records and
+`release-evidence.json` for exact `main` commit
+`da67cf3f06062b2d0a3678fe3936e1563d4937bb`. Immutable tag `v1.0.0` did not produce a GitHub
+Release after a failed artifact upload and was not moved.
 
 ## Roadmap results
 

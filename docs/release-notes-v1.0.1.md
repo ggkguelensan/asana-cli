@@ -1,7 +1,8 @@
 # asana-cli v1.0.1
 
-Статус: recovery release candidate. Версия не считается опубликованной, пока exact commit не влит
-в `main`, не помечен tag `v1.0.1` и release workflow не завершился успешно.
+Статус: опубликован
+[`v1.0.1`](https://github.com/ggkguelensan/asana-cli/releases/tag/v1.0.1) из exact `main` commit
+`da67cf3f06062b2d0a3678fe3936e1563d4937bb`; release workflow завершился успешно.
 
 ## Исправление поставки
 
