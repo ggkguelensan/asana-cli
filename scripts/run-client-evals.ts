@@ -221,7 +221,7 @@ async function evaluateClient(
       "--json",
       "-c",
       "shell_environment_policy.inherit=none",
-      prompt,
+      `$asana\n\n${prompt}`,
     ], { cwd: project, env: environment });
     const parsed = parseCodexResponse(result.stdout);
     return { version, transcript: result.stdout, ...parsed };
@@ -243,7 +243,7 @@ async function evaluateClient(
     JSON.stringify(CLIENT_EVAL_OUTPUT_JSON_SCHEMA),
     "--max-budget-usd",
     "0.20",
-    prompt,
+    `/asana\n\n${prompt}`,
   ], { cwd: project, env: environment });
   const parsed = parseClaudeResponse(result.stdout);
   return { version, transcript: result.stdout, ...parsed };
