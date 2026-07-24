@@ -187,6 +187,46 @@ export async function runContextCommand(
     };
   }
 
+  if (action === "bind") {
+    requireExactPositionals(
+      args,
+      3,
+      "asana-cli context bind QUALIFIED_ALIAS --task GID",
+    );
+    requireAllowedFlags(args, ["task", "compact"]);
+    const parsedAlias = validatedQualifiedAlias(args.positionals[2] ?? "");
+    const parsedTaskGid = taskGid(requiredStringFlag(args, "task"), "--task");
+    const activeRuntime = runtime ?? defaultRuntime();
+    const identity = await activeRuntime.identity();
+    const ensured = await activeRuntime.store.ensureAlias(
+      identity,
+      parsedAlias,
+      parsedTaskGid,
+    );
+    const active = await activeRuntime.store.activate(identity, parsedAlias);
+    return {
+      schema: "asana-cli.worktree-bind.v1",
+      alias_created: ensured.created,
+      ...active,
+    };
+  }
+
+  if (action === "deactivate") {
+    requireExactPositionals(
+      args,
+      3,
+      "asana-cli context deactivate QUALIFIED_ALIAS",
+    );
+    requireAllowedFlags(args, ["compact"]);
+    const parsedAlias = validatedQualifiedAlias(args.positionals[2] ?? "");
+    const activeRuntime = runtime ?? defaultRuntime();
+    const identity = await activeRuntime.identity();
+    return {
+      schema: "asana-cli.worktree-deactivate.v1",
+      ...await activeRuntime.store.deactivate(identity, parsedAlias),
+    };
+  }
+
   if (action === "quick") {
     requireExactPositionals(args, 2, "asana-cli context quick");
     requireAllowedFlags(args, ["compact"]);
@@ -223,6 +263,6 @@ export async function runContextCommand(
 
   throw new CliError(
     "usage",
-    "Unknown context action; use alias, activate, quick, history, or clear",
+    "Unknown context action; use alias, bind, activate, deactivate, quick, history, or clear",
   );
 }

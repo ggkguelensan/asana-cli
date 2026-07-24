@@ -23,6 +23,8 @@ function validResponse() {
             ? ["asana-cli agent resolve-task --reference task:platform/dev-016--exact-alias"]
             : scenario.id === "template-prepare"
               ? ["asana-cli agent prepare-task-from-template --input -"]
+              : scenario.id === "worktree-task-binding"
+                ? ["asana-cli agent context --worktree-task"]
               : [],
       user_guidance: scenario.id === "missing-pat"
         ? "run-auth-pat-set-locally"
@@ -36,11 +38,11 @@ function validResponse() {
 
 describe("clean client behavioral eval contract", () => {
   test("accepts only the canonical bounded decisions", () => {
-    expect(validateClientEvalResponse(validResponse()).scenarios).toHaveLength(11);
+    expect(validateClientEvalResponse(validResponse()).scenarios).toHaveLength(12);
     const withStatus = validResponse();
     withStatus.scenarios[0]!.commands.unshift("asana-cli agent status");
     withStatus.scenarios[1]!.commands.unshift("asana-cli agent status");
-    expect(validateClientEvalResponse(withStatus).scenarios).toHaveLength(11);
+    expect(validateClientEvalResponse(withStatus).scenarios).toHaveLength(12);
   });
 
   test("rejects raw commands, auto-apply, credential requests, and retries", () => {
@@ -66,6 +68,9 @@ describe("clean client behavioral eval contract", () => {
         response.scenarios[1]!.commands = [
           "asana-cli agent prepare-comment --task-gid 120010 --input -",
         ];
+      },
+      (response: ReturnType<typeof validResponse>) => {
+        response.scenarios[10]!.commands = ["asana-cli context quick"];
       },
     ]) {
       const response = validResponse();

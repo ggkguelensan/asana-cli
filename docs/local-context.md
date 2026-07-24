@@ -1,9 +1,11 @@
 # Human alias and worktree context
 
-`asana-cli context ...` is the human-only, local DEV-014 surface. It keeps exact task aliases and
+`asana-cli context ...` is the human-only, local DEV-014/DEV-017 surface. It keeps exact task aliases and
 the current worktree selection without reading a PAT, constructing an Asana client, or making a
 network request. It is separate from `asana-cli agent context ...`; agent mode rejects every
-command in this surface, including alias listing and history.
+human command in this surface, including bind, deactivate, alias listing and history. The distinct
+`asana-cli agent context --worktree-task` action reads only one bounded projection of the current
+worktree binding.
 
 ## Command contract
 
@@ -26,6 +28,10 @@ asana-cli context alias replace task:platform/dev-014--local-context \
 asana-cli context activate task:platform/dev-014--local-context
 asana-cli context quick
 asana-cli context history
+
+# Idempotent lifecycle binding for a worktree manager
+asana-cli context bind task:platform/dev-017--worktree-agents --task 1200000000003
+asana-cli context deactivate task:platform/dev-017--worktree-agents
 
 # Remove a definition with compare-and-set
 asana-cli context alias remove task:platform/dev-014--local-context \
@@ -53,6 +59,28 @@ These commands manage locators, not cached Asana task cards. They do not verify 
 or fetch task content. The separate DEV-013 exact resolver reads repository-manifest aliases, not
 this human local store; local aliases never enter agent mode, select, or authorize an agent write.
 
+`bind` is the lifecycle-safe composition used by worktree managers. Under the repository alias
+lock it creates a missing alias or accepts an existing exact alias/GID pair; a different GID is a
+`conflict` and still requires explicit CAS `replace`. It then idempotently activates the alias for
+only the current worktree. If activation is interrupted after a new alias was stored, retrying the
+same bind safely completes the operation.
+
+`deactivate QUALIFIED_ALIAS` clears active/recent metadata only when that exact alias is active.
+It is idempotent when the worktree is already unbound and returns `conflict` rather than clearing
+a different active assignment. This makes it suitable for a blocking worktree `pre-remove` hook.
+
+The agent projection is:
+
+```sh
+asana-cli agent context --worktree-task
+```
+
+Its strict `asana-cli.worktree-task.v1` data has `worktree_revision` and a task state:
+`bound` with exact alias/GID, `unbound`, or `stale` with the removed alias and no GID. It never
+returns history, raw storage identity, paths, branches, remotes, task content, or credentials.
+The result is advisory and never modifies another action, selects a write target implicitly, or
+expands host policy.
+
 ## Worktree and repository scope
 
 The CLI asks Git for only its absolute common directory and current worktree Git directory, then
@@ -68,6 +96,10 @@ Moving or recreating a repository changes its filesystem identity and therefore 
 context namespace. No remote URL is used as a fallback. Repository-controlled
 `.asana-cli/repository-context.json` aliases remain a distinct untrusted manifest source; DEV-014
 does not merge it with the human alias store or define precedence.
+
+Recreating a linked worktree with the same Git worktree metadata path can reuse its opaque key.
+Use the documented `deactivate`/Worktrunk `pre-remove` hook before deletion so a later same-name
+worktree cannot inherit an old active selection.
 
 ## Storage and limits
 

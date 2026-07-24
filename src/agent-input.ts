@@ -270,6 +270,23 @@ export function readGitCurrentAgentInput(
   return parseAgentActionInput({ git_current: true }, "git-current");
 }
 
+export function readWorktreeTaskAgentInput(
+  args: ParsedArgs,
+): AgentActionInput<"worktree-task"> {
+  if (args.positionals.length !== 2 || args.positionals[1] !== "context") {
+    throw new CliError("usage", "Usage: asana-cli agent context --worktree-task");
+  }
+  const flagNames = Object.keys(args.flags);
+  if (
+    flagNames.length !== 1 ||
+    flagNames[0] !== "worktree-task" ||
+    args.flags["worktree-task"] !== true
+  ) {
+    throw new CliError("usage", "Usage: asana-cli agent context --worktree-task");
+  }
+  return parseAgentActionInput({ worktree_task: true }, "worktree-task");
+}
+
 export function readRepositoryAsanaAgentInput(
   args: ParsedArgs,
 ): AgentActionInput<"repository-asana"> {

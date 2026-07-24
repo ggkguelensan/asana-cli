@@ -22,6 +22,8 @@
 > [Release workflow](https://github.com/ggkguelensan/asana-cli/actions/runs/30077613489) успешно
 > опубликовал шесть POSIX binaries и 40 checksum/provenance/SBOM/lifecycle/reproducibility assets.
 > Immutable tag `v1.0.0` остаётся записью failed artifact upload и не имеет GitHub Release.
+> Текущие исходники объявляют development version `1.1.0` с worktree-task binding; она ещё не
+> опубликована.
 >
 > **Platform policy после `v0.4.0`:** новые releases поддерживают только native macOS и Linux.
 > Windows x64 artifact в `v0.4.0` остаётся историческим и не означает дальнейшую поддержку.
@@ -134,6 +136,7 @@ Human-only команды сохраняют exact task aliases и активн�
 asana-cli context alias set task:platform/dev-014--local-context --task 1200000000001
 asana-cli context alias list
 asana-cli context activate task:platform/dev-014--local-context
+asana-cli context bind task:platform/dev-017--worktree-agents --task 1200000000002
 asana-cli context quick
 asana-cli context history
 ```
@@ -142,9 +145,12 @@ Alias definitions общие для linked worktrees одного repository, а
 изолирована для каждого worktree. `replace`, `remove` и `clear` используют явные revision/CAS
 guards; история ограничена 20 aliases и удаляется явно. State хранится вне checkout в
 owner-only atomic snapshots и содержит только opaque Git identities, exact aliases и task GIDs —
-без raw path/remote/branch, task/comment content или credentials. В agent mode вся эта поверхность,
-включая list/history, запрещена. Полная грамматика, storage boundary и recovery описаны в
-[human local context contract](docs/local-context.md).
+без raw path/remote/branch, task/comment content или credentials. В agent mode вся human
+поверхность, включая bind/list/history, запрещена; отдельный local-only
+`agent context --worktree-task` возвращает только task binding текущего worktree как
+`bound|unbound|stale`. Полная грамматика, storage boundary и recovery описаны в
+[human local context contract](docs/local-context.md), а Worktrunk hooks — в
+[worktree integration guide](docs/worktrunk.md).
 
 ## Поиск задач по Git-номерам
 
@@ -447,12 +453,17 @@ Full integration and direct-protocol guidance: [docs/agent-clients.md](docs/agen
 bun run dev --help
 bun run typecheck
 bun test
+bun run test:black-box
 bun run build
 bun run check
 ```
 
 `bun run typecheck` запускает строгий TypeScript и отдельный guard, запрещающий явные `any`
 в `src`, `tests` и `scripts`.
+
+`bun run test:black-box` сначала собирает release-style `dist/asana-cli`, затем проверяет только
+его публичные process/stdin/stdout/stderr/filesystem контракты. Suite не импортирует `src`,
+generated artifacts или тестовые runtime implementations и не обращается к live Asana.
 
 ## Планирование
 
@@ -468,6 +479,8 @@ bun run check
 - [Task dependency operations](docs/task-dependency-operations.md) — exact dependency writes и cycle bounds.
 - [Bounded batch reads](docs/batch-reads.md) — общий budget и machine-readable partial failures.
 - [Human local context](docs/local-context.md) — aliases, worktree scope, CAS, хранение и recovery.
+- [Worktrunk integration](docs/worktrunk.md) — blocking bind/deactivate hooks и изоляция task context.
+- [Black-box testing](docs/black-box-testing.md) — compiled-binary coverage matrix и hermetic boundary.
 - [Maintainer release procedure](docs/implementation-plan.md#maintainer-release-procedure) — version bump, evidence, tag и проверка следующей публикации.
 - [Swarm execution plan](docs/swarm-plan.md) — история выполненных waves, роли Terra/Sol/Luna и quality gates.
 

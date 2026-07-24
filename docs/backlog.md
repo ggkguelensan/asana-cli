@@ -103,6 +103,8 @@ Issue ID следует сохранить в заголовке.
 | DEV-014 | P1 | done | Human alias lifecycle и worktree-local quick context | DEV-004, DEV-012 | Repository aliases shared across linked worktrees; active/recent state isolated per worktree, CAS replace, bounded retention/erase, owner-only atomic local state and no alias mutation in agent mode |
 | DEV-015 | P1 | done | Revisioned task-create templates | DEV-001, DEV-002, DEV-007, DEV-012, SEC-004 | Structured static defaults only; complete immutable expansion preview records template revision/digest and target GIDs; edit after prepare cannot alter apply |
 | DEV-016 | P1 | done | Alias/template client security evals | DEV-003, DEV-013, DEV-014, DEV-015, INT-014 | Clean Codex/Claude sessions resolve exact alias, stop on ambiguity, reject malicious context, preserve approval and cannot mutate/list local alias history |
+| DEV-017 | P1 | done | Worktree-local agent task binding | DEV-004, DEV-014, DEV-016 | Idempotent human bind/exact deactivate compose with Worktrunk lifecycle hooks; `agent context --worktree-task` exposes only this linked worktree's `bound`/`unbound`/`stale` advisory task and never widens write policy |
+| DEV-018 | P1 | done | Compiled-binary black-box contract | DEV-017, INT-019, REL-008 | Standalone suite imports no implementation source, dynamically checks every published agent action schema, all embedded clients in user/project scopes, policy/error/dry-run boundaries, fixed-root Git context and real linked-worktree isolation through `dist/asana-cli` only |
 
 ## Release engineering
 

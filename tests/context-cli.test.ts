@@ -69,6 +69,13 @@ describe("human local context CLI", () => {
       schema: "asana-cli.quick-context.v1",
       active: { task_gid: "1200000000002", status: "resolved" },
     });
+    expect(await runContextCommand(parseArgs([
+      "context", "bind", alias, "--task", "1200000000002",
+    ]), runtime)).toMatchObject({
+      schema: "asana-cli.worktree-bind.v1",
+      alias_created: false,
+      active: { task_gid: "1200000000002", status: "resolved" },
+    });
     const history = await runContextCommand(parseArgs([
       "context", "history",
     ]), runtime) as Readonly<{ worktree_revision: number }>;
@@ -81,6 +88,21 @@ describe("human local context CLI", () => {
     ]), runtime)).toMatchObject({
       schema: "asana-cli.context-clear.v1",
       cleared: true,
+    });
+    expect(await runContextCommand(parseArgs([
+      "context", "bind",
+      "task:platform/dev-017--worktree-task",
+      "--task", "1200000000003",
+    ]), runtime)).toMatchObject({
+      schema: "asana-cli.worktree-bind.v1",
+      alias_created: true,
+      active: { task_gid: "1200000000003" },
+    });
+    expect(await runContextCommand(parseArgs([
+      "context", "deactivate", "task:platform/dev-017--worktree-task",
+    ]), runtime)).toMatchObject({
+      schema: "asana-cli.worktree-deactivate.v1",
+      deactivated: true,
     });
   });
 
@@ -100,6 +122,8 @@ describe("human local context CLI", () => {
       ["context", "alias", "set", "task:platform/dev-014--bad", "--task"],
       ["context", "alias", "replace", "task:platform/dev-014--bad", "--task", "1"],
       ["context", "quick", "--unknown"],
+      ["context", "bind", "task:platform/dev-017--worktree-task"],
+      ["context", "deactivate"],
       ["context", "clear"],
       ["context", "history", "--compact", "--compact"],
     ];
@@ -146,6 +170,16 @@ describe("human local context CLI", () => {
       ])
     );
     expect(mutationDenied).toMatchObject({ code: "policy-denied" });
+    expect(await capturedError(() =>
+      runCli([
+        "context",
+        "bind",
+        "task:platform/dev-017--agent-denied",
+        "--task",
+        "1200000000001",
+        "--agent",
+      ])
+    )).toMatchObject({ code: "policy-denied" });
   });
 
   test("executes before PAT resolution in the compiled-style entrypoint", async () => {

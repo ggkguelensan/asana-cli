@@ -5,7 +5,8 @@
 commit [`da67cf3`](https://github.com/ggkguelensan/asana-cli/commit/da67cf3f06062b2d0a3678fe3936e1563d4937bb).
 Запланированная реализация до v1 завершена. Immutable tag `v1.0.0` существует, но его failed
 artifact upload не создал GitHub Release; `v1.0.1` успешно опубликовал тот же product scope после
-исправления container ownership.
+исправления container ownership. Текущая development version `1.1.0` добавляет optional
+worktree-task binding для параллельных агентов; она ещё не опубликована.
 
 Связанные документы:
 
@@ -17,6 +18,7 @@ artifact upload не создал GitHub Release; `v1.0.1` успешно опу
 - [v1 completion audit](v1-completion-audit.md) — direct evidence для каждого критерия v1 и security review.
 - [Curated developer context](developer-context.md) — bounded project/section/membership/custom-field/user reads.
 - [Human local context](local-context.md) — DEV-014 alias/worktree state contract и recovery.
+- [Worktrunk integration](worktrunk.md) — DEV-017 lifecycle hooks и agent-visible isolated binding.
 - [Agent task creation](task-creation.md) — direct/subtask prepare/apply и revisioned repository templates.
 - [Project and section operations](task-project-operations.md) — exact membership/placement prepare/apply.
 - [Task dependency operations](task-dependency-operations.md) — exact relation writes и bounded cycle proof.
@@ -186,6 +188,14 @@ Gate выхода:
   `not-found`/`ambiguous`/`stale`; `agent context --git-current-candidates` remains a separate
   candidate surface and never selects implicitly;
 - owner-controlled local context state outside the checkout: versioned Zod snapshots, opaque repository/worktree identities, atomic locked updates, retention/erasure, restrictive permissions and no task/comment content, credentials, raw paths, remotes or branch names;
+- optional DEV-017 worktree lifecycle binding: exact/idempotent human `bind`, guarded
+  `deactivate`, and local-only `agent context --worktree-task` projection limited to this linked
+  worktree's `bound`/`unbound`/`stale` task; Worktrunk remains an optional external lifecycle
+  manager, and the binding never becomes write authority or implicit prepare/apply input;
+- completed DEV-018 compiled-binary black-box gate: hermetic suites invoke only
+  `dist/asana-cli`, dynamically verify every published agent schema and embedded integration
+  adapter, and exercise public policy/error/dry-run/Git/worktree/filesystem contracts without
+  importing implementation source or contacting live Asana;
 - live revalidation before prepare/apply: aliases/templates resolve to immutable GIDs, but host policy, membership, owner and concurrency guards remain authoritative;
 - no persistent task cache in v0.5; cache/invalidation and explicitly stale offline reads remain LTR-003 work.
 
@@ -196,7 +206,7 @@ Gate выхода:
 - alias, active worktree context и repository manifest никогда не расширяют write scope: перед prepare и apply повторно проверяются live task state и host policy;
 - обычный developer workflow не требует `api call` или `request`, а write по-прежнему ограничен policy, одной immutable operation и явным apply.
 
-Статус реализации: завершён; все `DEV-001`–`DEV-016` закрыты прямыми tests/evidence.
+Статус реализации: завершён; все `DEV-001`–`DEV-018` закрыты прямыми tests/evidence.
 
 ## v0.6 — Multi-client support
 

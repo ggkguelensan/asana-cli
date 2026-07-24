@@ -56,7 +56,7 @@ export function protectOutput<T>(
   let redactions = 0;
   let truncations = 0;
   const untrustedTextPaths: string[] = [];
-  const visited = new WeakSet<object>();
+  const ancestors = new WeakSet<object>();
   const maxStringLength = options.maxStringLength ?? 100_000;
 
   const sanitizeString = (inputString: string): string => {
@@ -87,33 +87,36 @@ export function protectOutput<T>(
     }
     if (value instanceof Uint8Array) return `[BINARY:${value.byteLength}_BYTES]`;
     if (value instanceof Date) return value.toISOString();
-    if (visited.has(value)) return "[REDACTED:CIRCULAR_REFERENCE]";
-    visited.add(value);
-
-    if (Array.isArray(value)) {
-      return value.map((entry, index) => walk(entry, `${path}[${index}]`, depth + 1));
-    }
-    const parsed = z.looseObject({}).safeParse(value);
-    if (!parsed.success) return "[REDACTED:UNSUPPORTED_OBJECT]";
-    const result: Record<string, unknown> = {};
-    for (const [key, entry] of Object.entries(parsed.data)) {
-      const childPath = path ? `${path}.${key}` : key;
-      if (SENSITIVE_KEY.test(key)) {
-        if (entry !== undefined && entry !== null) redactions += 1;
-        result[key] = "[REDACTED:SENSITIVE_FIELD]";
-        continue;
+    if (ancestors.has(value)) return "[REDACTED:CIRCULAR_REFERENCE]";
+    ancestors.add(value);
+    try {
+      if (Array.isArray(value)) {
+        return value.map((entry, index) => walk(entry, `${path}[${index}]`, depth + 1));
       }
-      if (
-        options.agentMode &&
-        UNTRUSTED_TEXT_KEY.test(key) &&
-        typeof entry === "string" &&
-        untrustedTextPaths.length < 200
-      ) {
-        untrustedTextPaths.push(childPath);
+      const parsed = z.looseObject({}).safeParse(value);
+      if (!parsed.success) return "[REDACTED:UNSUPPORTED_OBJECT]";
+      const result: Record<string, unknown> = {};
+      for (const [key, entry] of Object.entries(parsed.data)) {
+        const childPath = path ? `${path}.${key}` : key;
+        if (SENSITIVE_KEY.test(key)) {
+          if (entry !== undefined && entry !== null) redactions += 1;
+          result[key] = "[REDACTED:SENSITIVE_FIELD]";
+          continue;
+        }
+        if (
+          options.agentMode &&
+          UNTRUSTED_TEXT_KEY.test(key) &&
+          typeof entry === "string" &&
+          untrustedTextPaths.length < 200
+        ) {
+          untrustedTextPaths.push(childPath);
+        }
+        result[key] = walk(entry, childPath, depth + 1);
       }
-      result[key] = walk(entry, childPath, depth + 1);
+      return result;
+    } finally {
+      ancestors.delete(value);
     }
-    return result;
   };
 
   return {

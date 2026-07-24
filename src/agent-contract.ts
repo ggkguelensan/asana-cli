@@ -31,6 +31,7 @@ import {
   searchInputSchema,
   statusInputSchema,
   taskContextInputSchema,
+  worktreeTaskInputSchema,
 } from "./agent-action-schemas";
 import {
   batchTasksDataSchema,
@@ -39,6 +40,7 @@ import { repositoryAsanaContextDataSchema } from "./repository-asana-mapping";
 import { repositoryContextDataSchema } from "./repository-context";
 import { operationStatusProjectionSchema } from "./operations/status-projection";
 import { gitContextSchema } from "./git-context";
+import { worktreeTaskContextDataSchema } from "./context-state";
 import { gitCurrentCandidatesDataSchema, MAX_GIT_CURRENT_CANDIDATES } from "./git-current-candidates";
 import {
   customFieldContextDataSchema,
@@ -193,6 +195,20 @@ const gitCurrentAction = defineAction(
   },
   gitCurrentInputSchema,
   gitContextSchema,
+);
+
+const worktreeTaskAction = defineAction(
+  "worktree-task",
+  {
+    operation: "worktree.task.current",
+    effect: "read",
+    approval: "none",
+    limits: { max_input_bytes: 0, max_result_items: 1 },
+    minimumCliVersion: "1.1.0",
+    command: ["context", "--worktree-task"],
+  },
+  worktreeTaskInputSchema,
+  worktreeTaskContextDataSchema,
 );
 
 const repositoryAsanaAction = defineAction(
@@ -588,6 +604,7 @@ export const AGENT_ACTIONS = {
   [batchTasksAction.descriptor.action]: batchTasksAction,
   [resolveTaskAction.descriptor.action]: resolveTaskAction,
   [gitCurrentAction.descriptor.action]: gitCurrentAction,
+  [worktreeTaskAction.descriptor.action]: worktreeTaskAction,
   [repositoryAsanaAction.descriptor.action]: repositoryAsanaAction,
   [repositoryContextAction.descriptor.action]: repositoryContextAction,
   [gitCurrentCandidatesAction.descriptor.action]: gitCurrentCandidatesAction,

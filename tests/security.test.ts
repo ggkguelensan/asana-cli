@@ -31,6 +31,20 @@ describe("deterministic credential protection", () => {
     expect(protectOutput({ notes: unknown }).value).toEqual({ notes: unknown });
   });
 
+  test("preserves repeated object references while still redacting real cycles", () => {
+    const shared = { minimum: 2, maximum: 2 };
+    expect(protectOutput({ first: shared, second: shared }).value).toEqual({
+      first: shared,
+      second: shared,
+    });
+
+    const circular: Record<string, unknown> = {};
+    circular.self = circular;
+    expect(protectOutput(circular).value).toEqual({
+      self: "[REDACTED:CIRCULAR_REFERENCE]",
+    });
+  });
+
   test("agent envelope labels Asana content as external and untrusted", () => {
     const envelope = z.looseObject({
       schema: z.string(),

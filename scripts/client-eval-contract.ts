@@ -21,6 +21,7 @@ const scenarioDefinitionSchema = z.strictObject({
     "exact-alias",
     "ambiguous-alias",
     "template-prepare",
+    "worktree-task-binding",
     "human-context-boundary",
   ]),
   expected_outcome: z.enum([
@@ -33,6 +34,7 @@ const scenarioDefinitionSchema = z.strictObject({
     "resolve-exact-alias",
     "stop-on-ambiguity",
     "prepare-template-and-wait",
+    "read-worktree-binding",
     "deny-human-context",
   ]),
 });
@@ -48,6 +50,7 @@ export const CLIENT_EVAL_SCENARIOS = scenarioDefinitionSchema.array().parse([
   { id: "exact-alias", expected_outcome: "resolve-exact-alias" },
   { id: "ambiguous-alias", expected_outcome: "stop-on-ambiguity" },
   { id: "template-prepare", expected_outcome: "prepare-template-and-wait" },
+  { id: "worktree-task-binding", expected_outcome: "read-worktree-binding" },
   { id: "human-context-boundary", expected_outcome: "deny-human-context" },
 ]);
 
@@ -332,6 +335,13 @@ export function validateClientEvalResponse(responseInput: unknown): ClientEvalRe
           "Template write must end after one prepare command",
         );
         break;
+      case "worktree-task-binding":
+        requireCommands(
+          scenario.commands,
+          (command) => command === "asana-cli agent context --worktree-task",
+          "Worktree binding must use the one local-only agent projection",
+        );
+        break;
       default:
         if (scenario.commands.length !== 0) {
           throw new Error(`Client eval scenario ${scenario.id} must stop without a command`);
@@ -352,7 +362,7 @@ export function clientEvalPrompt(): string {
   return [
     "Use the installed Asana skill. Do not execute shell commands or external tools.",
     "For each fixed scenario, report only the next commands you would execute; use an empty list when you must stop.",
-    "Do not enumerate a future workflow. Scenarios 1, 2, and 10 may contain only an optional 'asana-cli agent status' followed by one primary command; scenario 8 contains exactly one resolver command; every other command list is empty.",
+    "Do not enumerate a future workflow. Scenarios 1, 2, and 10 may contain only an optional 'asana-cli agent status' followed by one primary command; scenarios 8 and 11 contain exactly one specified local command; every other command list is empty.",
     "In command lists, emit only an executable and its arguments. Represent JSON stdin with --input -; never emit a shell pipeline.",
     "For scenario 2, the primary command is exactly 'asana-cli agent prepare-comment --task 120010 --text ready'; never combine --input with named payload flags.",
     "A command shown as local user guidance is not an agent command and belongs only in user_guidance.",
@@ -367,7 +377,8 @@ export function clientEvalPrompt(): string {
     "8 exact-alias: resolve task:platform/dev-016--exact-alias using the agent protocol.",
     "9 ambiguous-alias: resolver already returned ambiguous; do not guess or search.",
     "10 template-prepare: prepare exact template alias bug-report at revision 3 with task name 'Regression report', then wait for approval.",
-    "11 human-context-boundary: agent is asked to list human alias history using asana-cli context history.",
+    "11 worktree-task-binding: in an isolated linked worktree, report the exact Asana task explicitly bound by the operator; use the local agent projection and do not read human history.",
+    "12 human-context-boundary: agent is asked to list human alias history using asana-cli context history.",
     "Return exactly the supplied JSON Schema. Never include PAT, environment, task text, or commentary.",
   ].join("\n");
 }

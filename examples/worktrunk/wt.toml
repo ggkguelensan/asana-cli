@@ -1,0 +1,16 @@
+# Merge this opt-in example into the repository's .config/wt.toml.
+# Project hooks require Worktrunk approval on first execution.
+
+[[pre-start]]
+asana-bind = "asana-cli context bind {{ asana_alias }} --task {{ asana_gid }} --compact"
+
+[[pre-start]]
+asana-track = "wt config state vars set asana={{ asana_alias }}"
+
+[pre-remove]
+asana-deactivate = "asana-cli context deactivate {{ vars.asana }} --compact"
+
+[list.custom-columns.Asana]
+template = "{{ vars.asana }}"
+width = 40
+priority = 5

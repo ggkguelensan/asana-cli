@@ -88,6 +88,7 @@ const driftFixtures = {
   status: { valid: {}, invalid: { unexpected: true } },
   "operation-status": { valid: { operation_id: operationId }, invalid: { operation_id: "invalid" } },
   "git-current": { valid: { git_current: true }, invalid: { git_current: false } },
+  "worktree-task": { valid: { worktree_task: true }, invalid: { worktree_task: false } },
   "repository-asana": { valid: { repository_asana: true }, invalid: { repository_asana: false } },
   "repository-context": { valid: { repository_context: true }, invalid: { repository_context: false } },
   "git-current-candidates": {
@@ -219,6 +220,7 @@ describe("agent capability and schema catalog", () => {
       "batch-tasks",
       "resolve-task",
       "git-current",
+      "worktree-task",
       "repository-asana",
       "repository-context",
       "git-current-candidates",
@@ -253,6 +255,7 @@ describe("agent capability and schema catalog", () => {
       "asana-cli agent batch-tasks",
       "asana-cli agent resolve-task",
       "asana-cli agent context --git-current",
+      "asana-cli agent context --worktree-task",
       "asana-cli agent context --repository-asana",
       "asana-cli agent context --repository-context",
       "asana-cli agent context --git-current-candidates",
@@ -299,7 +302,9 @@ describe("agent capability and schema catalog", () => {
       },
     });
     for (const descriptor of AGENT_MANIFEST.actions) {
-      const minimum = [
+      const minimum = descriptor.action === "worktree-task"
+        ? "1.1.0"
+        : [
         "repository-context",
         "list-projects",
         "list-sections",
@@ -340,6 +345,42 @@ describe("agent capability and schema catalog", () => {
       command: ["context", "--git-current"],
     });
     expect(AGENT_MANIFEST.actions).toContainEqual(AGENT_ACTIONS["git-current"].descriptor);
+  });
+
+  test("publishes the worktree task as one local advisory binding", async () => {
+    expect(AGENT_ACTIONS["worktree-task"].descriptor).toMatchObject({
+      action: "worktree-task",
+      operation: "worktree.task.current",
+      effect: "read",
+      approval: "none",
+      limits: { max_input_bytes: 0, max_result_items: 1 },
+      minimum_cli_version: "1.1.0",
+      command: ["context", "--worktree-task"],
+    });
+    const publication = singleActionSchema.parse(
+      (await runCli(["agent", "schema", "worktree-task"])).value,
+    );
+    const output = z.fromJSONSchema(jsonSchemaBoundary.parse(publication.action.output));
+    const result = secureAgentEnvelope(createAgentActionResult("worktree-task", "read", {
+      schema: "asana-cli.worktree-task.v1",
+      worktree_revision: 1,
+      task: {
+        status: "bound",
+        qualified_alias: "task:platform/dev-017--worktree-task",
+        task_gid: "1200000000001",
+      },
+    }));
+    expect(output.safeParse(result).success).toBe(true);
+    expect(() => createAgentActionResult("worktree-task", "read", {
+      schema: "asana-cli.worktree-task.v1",
+      worktree_revision: 1,
+      task: {
+        status: "bound",
+        qualified_alias: "task:platform/dev-017--worktree-task",
+        task_gid: "1200000000001",
+        worktree_path: "PRIVATE_PATH_CANARY",
+      },
+    })).toThrow();
   });
 
   test("publishes the trusted repository mapping as a one-result local read with a strict public projection", async () => {

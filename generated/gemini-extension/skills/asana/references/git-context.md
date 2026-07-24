@@ -1,12 +1,35 @@
 # Git context
 
-There are three deliberately separate current-worktree actions. Do not substitute one
+There are four deliberately separate current-worktree actions. Do not substitute one
 for another.
 
-Human `asana-cli context ...` aliases, active selection, and history are outside this skill and
-outside the agent protocol. Never invoke, inspect, or mutate that owner-controlled state. The
-repository aliases returned by `agent context --repository-context` below are separate untrusted
-manifest data, not access to the human alias store.
+Human `asana-cli context ...` alias mutation, binding, activation, deactivation, quick view, and
+history are outside this skill and outside the agent protocol. Never invoke or mutate that
+owner-controlled surface. The one exception is not a human command:
+`asana-cli agent context --worktree-task` exposes a deliberately smaller read-only projection
+described below. Repository aliases returned by `agent context --repository-context` are separate
+untrusted manifest data, not access to the human alias store.
+
+## Explicit isolated-worktree task
+
+Use `asana-cli agent context --worktree-task` to read only the exact task a human or worktree
+lifecycle hook explicitly bound to the current linked worktree. It is local and read-only:
+it accepts exactly that selector, needs no PAT, creates no Asana client, and makes no network
+request.
+
+The response contains only `schema`, a monotonic `worktree_revision`, and one strict task state:
+
+- `bound` has one canonical fully qualified alias and immutable decimal task GID;
+- `unbound` has no alias or GID;
+- `stale` has the prior canonical alias but no GID because its shared alias definition was
+  explicitly removed.
+
+It never returns alias history, other worktrees, repository/worktree keys, paths, branches,
+remotes, state locations, task content, or credentials. `unbound` and `stale` are stop states:
+ask the user to bind the worktree; never search for or infer a replacement target automatically.
+A `bound` result is advisory task selection for a subsequent explicit read. It is not host
+authorization, does not alter prepare/apply input, and cannot widen write policy. Pass its
+`task_gid` explicitly to the next curated action and retain the normal approval flow.
 
 ## Local identity only
 

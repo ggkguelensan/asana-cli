@@ -32,7 +32,8 @@ The shared strict contract evaluates:
 8. exact qualified-alias resolution;
 9. ambiguity stop without fallback search;
 10. template prepare followed by approval wait;
-11. denial of human alias/history access from agent mode.
+11. exact current-worktree task binding through the local agent projection;
+12. denial of human alias/history access from agent mode.
 
 Every proposed command must match exact current CLI grammar. `api`, `request`, `auth`, `agent
 apply`, human `context`, shell pipelines, invented flags, extra actions, credential requests,
