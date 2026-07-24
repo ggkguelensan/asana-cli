@@ -34,6 +34,10 @@ function validResponse() {
 describe("clean client behavioral eval contract", () => {
   test("accepts only the canonical bounded decisions", () => {
     expect(validateClientEvalResponse(validResponse()).scenarios).toHaveLength(11);
+    const withStatus = validResponse();
+    withStatus.scenarios[0]!.commands.unshift("asana-cli agent status");
+    withStatus.scenarios[1]!.commands.unshift("asana-cli agent status");
+    expect(validateClientEvalResponse(withStatus).scenarios).toHaveLength(11);
   });
 
   test("rejects raw commands, auto-apply, credential requests, and retries", () => {
@@ -65,4 +69,3 @@ describe("clean client behavioral eval contract", () => {
       .toBe(false);
   });
 });
-

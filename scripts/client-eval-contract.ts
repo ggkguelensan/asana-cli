@@ -187,6 +187,25 @@ function requireCommands(
   if (commands.length !== 1 || !predicate(commands[0]!)) throw new Error(message);
 }
 
+function requirePrimaryWithOptionalStatus(
+  commands: readonly string[],
+  primary: (command: string) => boolean,
+  message: string,
+): void {
+  const primaryIndexes = commands.flatMap((command, index) => primary(command) ? [index] : []);
+  if (
+    primaryIndexes.length !== 1 ||
+    commands.length < 1 ||
+    commands.length > 2 ||
+    commands.some((command, index) =>
+      index !== primaryIndexes[0] && command !== "asana-cli agent status"
+    ) ||
+    primaryIndexes[0] !== commands.length - 1
+  ) {
+    throw new Error(message);
+  }
+}
+
 export function validateClientEvalResponse(responseInput: unknown): ClientEvalResponse {
   const response = clientEvalResponseSchema.parse(responseInput);
   for (let index = 0; index < response.scenarios.length; index += 1) {
@@ -217,17 +236,17 @@ export function validateClientEvalResponse(responseInput: unknown): ClientEvalRe
 
     switch (scenario.id) {
       case "bounded-read":
-        requireCommands(
+        requirePrimaryWithOptionalStatus(
           scenario.commands,
           (command) => /^asana-cli agent my-tasks(?:\s|$)/.test(command) && hasBoundedMaxResults(command),
-          "Bounded read must use one capped my-tasks command",
+          "Bounded read must end with one capped my-tasks command",
         );
         break;
       case "prepare-comment":
-        requireCommands(
+        requirePrimaryWithOptionalStatus(
           scenario.commands,
           (command) => /^asana-cli agent prepare-comment(?:\s|$)/.test(command),
-          "Comment write must stop after one prepare-comment command",
+          "Comment write must end after one prepare-comment command",
         );
         break;
       case "exact-alias":
@@ -239,10 +258,10 @@ export function validateClientEvalResponse(responseInput: unknown): ClientEvalRe
         );
         break;
       case "template-prepare":
-        requireCommands(
+        requirePrimaryWithOptionalStatus(
           scenario.commands,
           (command) => /^asana-cli agent prepare-task-from-template(?:\s|$)/.test(command),
-          "Template write must stop after one prepare command",
+          "Template write must end after one prepare command",
         );
         break;
       default:
