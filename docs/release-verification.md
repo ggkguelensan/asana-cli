@@ -9,9 +9,14 @@
 - `<artifact>.provenance.sigstore.json` — Sigstore bundle с SLSA provenance;
 - `<artifact>.sbom.sigstore.json` — Sigstore bundle с подписанным SPDX predicate.
 
-Release также содержит `asana-cli.rb`, `SHA256SUMS` и
+Release также содержит `asana-cli.rb`, `release-evidence.json`, `SHA256SUMS` и
 `SHA256SUMS.sigstore.json`. `SHA256SUMS` перечисляет точный canonical payload set; файл подписи
 не входит сам в себя.
+
+`release-evidence.json` — deterministic index, связывающий tag/commit, protocol compatibility,
+workflow/contract/lock digests, все шесть target binary и sidecars, Homebrew Formula и
+evidence-derived qualification каждого client. Manifest не подписывает сам себя: его digest
+входит в `SHA256SUMS`, а checksum manifest получает отдельную attestation.
 
 ## Онлайн-проверка
 
@@ -41,6 +46,7 @@ gh attestation verify SHA256SUMS \
 
 ```sh
 grep "  $ARTIFACT$" SHA256SUMS | shasum -a 256 -c -
+grep "  release-evidence.json$" SHA256SUMS | shasum -a 256 -c -
 ```
 
 И отдельно проверьте build provenance и SBOM attestation самого binary:

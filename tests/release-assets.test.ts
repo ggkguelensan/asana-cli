@@ -26,7 +26,7 @@ describe("release checksum manifest", () => {
     const entries = parseReleaseChecksums(text);
 
     expect(entries.map(({ name }) => name)).toEqual([...RELEASE_PAYLOAD_NAMES]);
-    expect(entries).toHaveLength(37);
+    expect(entries).toHaveLength(38);
     expect(entries.every(({ sha256 }) => /^[a-f0-9]{64}$/.test(sha256))).toBeTrue();
     expect(text.endsWith("\n")).toBeTrue();
   });

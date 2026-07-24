@@ -176,6 +176,14 @@ jobs:
           dist
           "$GITHUB_REF_NAME"
           --output dist/asana-cli.rb
+      - name: Generate machine-readable release evidence
+        run: >-
+          bun run generate:release-evidence --
+          dist
+          "$GITHUB_REF_NAME"
+          "$GITHUB_SHA"
+          "${{ steps.source.outputs.epoch }}"
+          --output dist/release-evidence.json
       - name: Generate canonical checksums
         run: bun run generate:release-checksums -- dist --output dist/SHA256SUMS
       - name: Verify merged release assets

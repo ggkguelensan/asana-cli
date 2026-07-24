@@ -117,7 +117,7 @@ Issue ID следует сохранить в заголовке.
 | REL-007 | P1 | done | Release compatibility gate | AP-013, INT-014, REL-001 | Каждый target после build/lifecycle выполняет единый contract для protocol, generated skills, support matrix, client evidence, security и exact package content; workflow drift тестируется |
 | REL-008 | P0 | done | Исполняемая macOS/Linux support matrix | — | Runtime, build script, CI, release workflow, docs и verifier согласованы; native Windows отсутствует в новых release gates |
 | REL-009 | P1 | done | Reproducible build verification | REL-003, REL-004 | Каждый matrix job повторно компилирует тот же target с exact commit/lock/Bun/SOURCE_DATE_EPOCH; release требует byte-identical digest/size и публикует path-free evidence с пустыми differences |
-| REL-010 | P1 | ready | Machine-readable release evidence manifest | INT-019, REL-002, REL-003, REL-004, REL-007, REL-009 | Manifest связывает commit, protocol, supported targets, artifact digests, SBOM/provenance и client eval evidence |
+| REL-010 | P1 | done | Machine-readable release evidence manifest | INT-019, REL-002, REL-003, REL-004, REL-007, REL-009 | Deterministic `release-evidence.json` связывает tag/commit, protocol, workflow/contract/lock, шесть target binary и sidecars, Homebrew и evidence-derived client qualifications; его digest входит в signed checksum set |
 
 ## v1.0 stabilization
 

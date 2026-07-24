@@ -21,6 +21,7 @@ export const RELEASE_PAYLOAD_NAMES = Object.freeze([
     ...RELEASE_SIDECAR_SUFFIXES.map((suffix) => `${output}${suffix}`),
   ]),
   "asana-cli.rb",
+  "release-evidence.json",
 ].sort());
 
 export const RELEASE_DISTRIBUTION_NAMES = Object.freeze([

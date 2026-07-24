@@ -8,6 +8,7 @@ import { integrationLifecycleEvidenceSchema } from "./integration-lifecycle-e2e"
 import { verifyReleaseChecksums } from "./release-assets";
 import { verifyReleaseSbom } from "./check-release-sbom";
 import { verifyReproducibleBuildEvidence } from "./reproducible-build";
+import { verifyReleaseEvidenceManifest } from "./release-evidence-manifest";
 import { RELEASE_TARGETS } from "./check-support-matrix";
 import {
   BUILD_PROVENANCE_PREDICATE,
@@ -95,6 +96,12 @@ export async function verifyReleaseAssets(
       ),
     ]);
   }
+  await verifyReleaseEvidenceManifest(
+    directory,
+    tag,
+    sourceCommit,
+    sourceDateEpoch,
+  );
 }
 
 if (import.meta.main) {
