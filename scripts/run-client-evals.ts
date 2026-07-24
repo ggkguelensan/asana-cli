@@ -218,6 +218,7 @@ async function evaluateClient(
   executable: string,
   project: string,
   schemaPath: string,
+  model?: string,
 ): Promise<Readonly<{
   version: string;
   model: string;
@@ -253,6 +254,7 @@ async function evaluateClient(
   const result = await runProcess(executable, [
     "--print",
     "--no-session-persistence",
+    ...(model === undefined ? [] : ["--model", model]),
     "--setting-sources",
     "project",
     "--permission-mode",
@@ -284,6 +286,7 @@ export async function runClientEval(input: Readonly<{
   client: ClientEvalId;
   executable: string;
   binary: string;
+  model?: string;
 }>): Promise<ClientEvalEvidence> {
   const binary = isAbsolute(input.binary) ? input.binary : resolve(input.binary);
   const executable = isAbsolute(input.executable)
@@ -298,7 +301,7 @@ export async function runClientEval(input: Readonly<{
     await writeFile(schemaPath, `${JSON.stringify(CLIENT_EVAL_OUTPUT_JSON_SCHEMA, null, 2)}\n`, {
       mode: 0o600,
     });
-    const evaluated = await evaluateClient(input.client, executable, project, schemaPath);
+    const evaluated = await evaluateClient(input.client, executable, project, schemaPath, input.model);
     let response;
     try {
       response = validateClientEvalResponse(evaluated.response);
@@ -353,22 +356,34 @@ async function main(): Promise<void> {
   const outputIndex = args.indexOf("--output");
   const executableIndex = args.indexOf("--executable");
   const binaryIndex = args.indexOf("--binary");
+  const modelIndex = args.indexOf("--model");
   if (
-    args.length !== 8 ||
+    ![8, 10].includes(args.length) ||
     clientIndex === -1 ||
     outputIndex === -1 ||
     executableIndex === -1 ||
-    binaryIndex === -1
+    binaryIndex === -1 ||
+    (args.length === 10) !== (modelIndex !== -1)
   ) {
     throw new Error(
-      "Usage: bun run scripts/run-client-evals.ts --client CLIENT --executable PATH --binary PATH --output FILE",
+      "Usage: bun run scripts/run-client-evals.ts --client CLIENT --executable PATH --binary PATH [--model MODEL] --output FILE",
     );
   }
   const client = clientEvalIdSchema.parse(args[clientIndex + 1]);
   const output = z.string().min(1).parse(args[outputIndex + 1]);
   const executable = z.string().min(1).parse(args[executableIndex + 1]);
   const binary = z.string().min(1).parse(args[binaryIndex + 1]);
-  const evidence = await runClientEval({ client, executable, binary });
+  const model = modelIndex === -1
+    ? undefined
+    : z.string().trim().min(1).max(128).parse(args[modelIndex + 1]);
+  if (client === "codex" && model !== undefined) {
+    throw new Error("--model is currently supported only for Claude Code evals");
+  }
+  const evidence = await runClientEval(
+    model === undefined
+      ? { client, executable, binary }
+      : { client, executable, binary, model },
+  );
   await mkdir(dirname(resolve(output)), { recursive: true, mode: 0o700 });
   await writeFile(resolve(output), `${JSON.stringify(evidence, null, 2)}\n`, { mode: 0o600 });
   process.stdout.write(

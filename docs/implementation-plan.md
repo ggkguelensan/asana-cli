@@ -15,17 +15,17 @@
   [`v0.4.0`](https://github.com/ggkguelensan/asana-cli/releases/tag/v0.4.0);
 - tag указывает на immutable commit
   [`81c1b7a`](https://github.com/ggkguelensan/asana-cli/commit/81c1b7afa789527cc52faca8ca300f9f66da63f4);
-- package, CLI и embedded integration bundle объявляют версию `0.4.0`;
+- package, CLI и embedded integration bundle в текущей ветке объявляют release candidate `1.0.0`;
 - новые releases поддерживают только native macOS/Linux; Windows artifact остаётся исторической
   частью immutable `v0.4.0`;
 - плановая реализация `v0.5` → `v1.0` завершена и подтверждена
-  [v1 completion audit](v1-completion-audit.md), но будущая версия не записывается в metadata до
-  отдельного maintainer-решения о SemVer и release scope.
+  [v1 completion audit](v1-completion-audit.md); выбран SemVer `1.0.0`, но tag и release ещё не
+  созданы.
 
-Следующий шаг — не расширять scope автоматически, а подготовить чистый release commit: выбрать
-SemVer, выполнить version/bundle regeneration, повторить полный gate на exact commit, затем
-отдельно tag/publish по maintainer procedure. Исторический `v0.4.0` не получает задним числом
-возможности и evidence из текущих исходников.
+Следующий шаг — не расширять scope автоматически, а проверить release candidate:
+повторить version/bundle/evidence gate на exact commit, затем отдельно выполнить tag/publish
+по maintainer procedure. Исторический `v0.4.0` не получает задним числом возможности и evidence
+из текущих исходников.
 
 ## Рабочие правила
 
@@ -196,7 +196,7 @@ Manifest минимум:
 ```json
 {
   "installer": "asana-cli",
-  "cli_version": "0.4.0",
+  "cli_version": "1.0.0",
   "agent_protocol_version": 2,
   "client": "generic-agent-skills",
   "scope": "project",

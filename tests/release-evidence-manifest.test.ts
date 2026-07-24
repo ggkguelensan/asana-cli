@@ -22,10 +22,14 @@ import {
   BUILD_PROVENANCE_PREDICATE,
   SPDX_SBOM_PREDICATE,
 } from "../scripts/sigstore-bundle";
+import { CLI_VERSION } from "../src/version";
 
 const projectRoot = resolve(import.meta.dir, "..");
 const sourceCommit = "a".repeat(40);
 const sourceDateEpoch = 1_700_000_000;
+const releaseTag = `v${CLI_VERSION}`;
+const releaseBaseUrl =
+  `https://github.com/ggkguelensan/asana-cli/releases/download/${releaseTag}`;
 
 function sha256(bytes: Uint8Array): string {
   return createHash("sha256").update(bytes).digest("hex");
@@ -141,9 +145,9 @@ async function releaseFixture(directory: string): Promise<void> {
     ]);
   }
   await writeFile(join(directory, "asana-cli.rb"), buildHomebrewFormula({
-    version: "0.4.0",
-    tag: "v0.4.0",
-    baseUrl: "https://github.com/ggkguelensan/asana-cli/releases/download/v0.4.0",
+    version: CLI_VERSION,
+    tag: releaseTag,
+    baseUrl: releaseBaseUrl,
     checksums: homebrewChecksums,
   }));
 }
@@ -156,7 +160,7 @@ describe("machine-readable release evidence manifest", () => {
       await releaseFixture(root);
       const manifest = await buildReleaseEvidenceManifest(
         root,
-        "v0.4.0",
+        releaseTag,
         sourceCommit,
         sourceDateEpoch,
       );
@@ -181,14 +185,14 @@ describe("machine-readable release evidence manifest", () => {
       const output = join(root, "release-evidence.json");
       await generateReleaseEvidenceManifest(
         root,
-        "v0.4.0",
+        releaseTag,
         sourceCommit,
         sourceDateEpoch,
         output,
       );
       expect(await verifyReleaseEvidenceManifest(
         root,
-        "v0.4.0",
+        releaseTag,
         sourceCommit,
         sourceDateEpoch,
       )).toEqual(manifest);
@@ -200,7 +204,7 @@ describe("machine-readable release evidence manifest", () => {
       await writeFile(output, `${JSON.stringify(tampered, null, 2)}\n`);
       expect(verifyReleaseEvidenceManifest(
         root,
-        "v0.4.0",
+        releaseTag,
         sourceCommit,
         sourceDateEpoch,
       )).rejects.toThrow("stale");

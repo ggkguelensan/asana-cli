@@ -1,6 +1,6 @@
 {
   "name": "asana-cli",
-  "version": "0.4.0",
+  "version": "1.0.0",
   "description": "A single-binary developer CLI for the Asana API",
   "type": "module",
   "packageManager": "bun@1.3.14",
@@ -43,7 +43,7 @@
     "check:v1-examples": "bun run --no-env-file scripts/check-v1-examples.ts",
     "check:v1-audit": "bun run --no-env-file scripts/check-v1-completion-audit.ts",
     "eval:codex": "bun run --no-env-file scripts/run-client-evals.ts --client codex --executable codex --binary dist/asana-cli --output evidence/client-evals/codex.json",
-    "eval:claude-code": "bun run --no-env-file scripts/run-client-evals.ts --client claude-code --executable claude --binary dist/asana-cli --output evidence/client-evals/claude-code.json",
+    "eval:claude-code": "bun run --no-env-file scripts/run-client-evals.ts --client claude-code --executable claude --binary dist/asana-cli --model haiku --output evidence/client-evals/claude-code.json",
     "eval:opencode-discovery": "bun run --no-env-file scripts/native-client-discovery.ts --executable opencode --binary dist/asana-cli --output evidence/client-adapters/opencode.json",
     "eval:gemini-discovery": "bun run --no-env-file scripts/gemini-native-discovery.ts --executable npm --binary dist/asana-cli --output evidence/client-adapters/gemini-cli.json",
     "eval:copilot-discovery": "bun run --no-env-file scripts/copilot-native-discovery.ts --executable npm --binary dist/asana-cli --output evidence/client-adapters/github-copilot.json",

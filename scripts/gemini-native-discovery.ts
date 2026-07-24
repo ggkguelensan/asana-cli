@@ -13,6 +13,7 @@ import {
   renderGeminiExtensionFiles,
 } from "./generate-gemini-extension";
 import { nativeDiscoveryContractSha256 } from "./native-client-discovery";
+import { CLI_VERSION } from "../src/version";
 
 const sha256Schema = z.string().regex(/^[a-f0-9]{64}$/);
 export const geminiNativeDiscoveryEvidenceSchema = z.strictObject({
@@ -158,7 +159,7 @@ exit [lindex $result 3]
       "list",
     ], { cwd: project, environment });
     if (
-      !listing.includes("asana-cli (0.4.0)") ||
+      !listing.includes(`asana-cli (${CLI_VERSION})`) ||
       !listing.includes("Agent skills:") ||
       !listing.includes("asana: Safely inspect assigned Asana work")
     ) {
@@ -194,7 +195,7 @@ exit [lindex $result 3]
       binary_sha256: sha256(binaryBytes),
       discovery_output_sha256: sha256(JSON.stringify({
         extension_name: "asana-cli",
-        extension_version: "0.4.0",
+        extension_version: CLI_VERSION,
         extension_enabled: true,
         skill_name: "asana",
         skill_reported: true,

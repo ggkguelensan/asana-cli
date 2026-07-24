@@ -5,9 +5,9 @@ criteria have direct digest-bound evidence, and this review found no open critic
 findings.
 
 This is a code-completion result, not a claim that `v1.0.0` has already been published. The current
-source version remains `0.4.0`. Release attestations, checksums, SBOMs, reproducibility records, and
-`release-evidence.json` are created and verified only when an authorized maintainer selects a
-version, tags an exact `main` commit, and runs the release workflow.
+source version is the `1.0.0` release candidate. Release attestations, checksums, SBOMs,
+reproducibility records, and `release-evidence.json` are created and verified only when an
+authorized maintainer tags an exact `main` commit and runs the release workflow.
 
 ## Roadmap results
 

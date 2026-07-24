@@ -19,10 +19,10 @@
 > **Статус release (2026-07-24).** Текущий опубликованный GitHub Release —
 > [`v0.4.0`](https://github.com/ggkguelensan/asana-cli/releases/tag/v0.4.0), tag указывает на
 > commit [`81c1b7a`](https://github.com/ggkguelensan/asana-cli/commit/81c1b7afa789527cc52faca8ca300f9f66da63f4).
-> Release workflow успешно собрал семь platform binaries и `SHA256SUMS`. Версия исходников,
-> embedded integration bundle и CLI остаётся `0.4.0`. Плановая реализация до v1 завершена и
-> проверяется [completion audit](docs/v1-completion-audit.md), но изменения после tag не являются
-> новым release до отдельного выбора версии, version bump и tag.
+> Release workflow успешно собрал семь platform binaries и `SHA256SUMS`. В текущих исходниках
+> package, embedded integration bundle и CLI подняты до release candidate `1.0.0`. Плановая
+> реализация проверяется [completion audit](docs/v1-completion-audit.md), но `v1.0.0` ещё не
+> является опубликованным release до merge в `main`, tag и успешного workflow.
 >
 > **Platform policy после `v0.4.0`:** новые releases поддерживают только native macOS и Linux.
 > Windows x64 artifact в `v0.4.0` остаётся историческим и не означает дальнейшую поддержку.
@@ -59,7 +59,7 @@ bun run check
 ```
 
 Результат: `dist/asana-cli` — самостоятельный нативный executable.
-Для зафиксированного состояния `v0.4.0` и действий maintainer перед следующим tag см.
+Для зафиксированного состояния `v0.4.0` и действий maintainer перед tag `v1.0.0` см.
 [release record и release procedure](docs/implementation-plan.md#release-record-v040).
 
 ## PAT и `asana-cli auth pat`
@@ -463,6 +463,7 @@ bun run check
 - [Platform support policy](docs/support-policy.md) — поддерживаемые runtime/artifacts и executable gate.
 - [Critical v1 workflows](docs/v1-workflows.md) — исполняемые installation/auth/permission/recovery examples.
 - [v1 completion audit](docs/v1-completion-audit.md) — direct evidence по всем roadmap criteria и security review.
+- [v1.0.0 release notes](docs/release-notes-v1.0.0.md) — release scope, breaking changes и upgrade path.
 - [Task dependency operations](docs/task-dependency-operations.md) — exact dependency writes и cycle bounds.
 - [Bounded batch reads](docs/batch-reads.md) — общий budget и machine-readable partial failures.
 - [Human local context](docs/local-context.md) — aliases, worktree scope, CAS, хранение и recovery.

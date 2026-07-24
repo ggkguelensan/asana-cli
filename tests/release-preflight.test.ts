@@ -4,28 +4,30 @@ import {
   verifyReleaseCommit,
   type GitExecutor,
 } from "../scripts/release-preflight";
+import { CLI_VERSION } from "../src/version";
 
 const commit = "a".repeat(40);
+const releaseTag = `v${CLI_VERSION}`;
 
 describe("release preflight", () => {
   test("requires package metadata to match the compiled CLI version", () => {
     expect(() => parseReleaseMetadata(
       { GITHUB_REF_NAME: "v9.9.9", GITHUB_SHA: commit },
       { version: "9.9.9" },
-    )).toThrow("must exactly match CLI version 0.4.0");
+    )).toThrow(`must exactly match CLI version ${CLI_VERSION}`);
   });
 
   test("requires the release tag to exactly match the package version", () => {
     expect(() => parseReleaseMetadata(
       { GITHUB_REF_NAME: "v0.2.1", GITHUB_SHA: commit },
-      { version: "0.4.0" },
-    )).toThrow("must exactly match package version v0.4.0");
+      { version: CLI_VERSION },
+    )).toThrow(`must exactly match package version ${releaseTag}`);
   });
 
   test("rejects a branch reference where release metadata requires an immutable Git object ID", () => {
     expect(() => parseReleaseMetadata(
-      { GITHUB_REF_NAME: "v0.4.0", GITHUB_SHA: "refs/heads/main" },
-      { version: "0.4.0" },
+      { GITHUB_REF_NAME: releaseTag, GITHUB_SHA: "refs/heads/main" },
+      { version: CLI_VERSION },
     )).toThrow("Invalid string: must match pattern");
   });
 
@@ -37,8 +39,8 @@ describe("release preflight", () => {
       return { exitCode: 0, stdout: commit, stderr: "" };
     };
     const metadata = parseReleaseMetadata(
-      { GITHUB_REF_NAME: "v0.4.0", GITHUB_SHA: commit },
-      { version: "0.4.0" },
+      { GITHUB_REF_NAME: releaseTag, GITHUB_SHA: commit },
+      { version: CLI_VERSION },
     );
 
     expect(verifyReleaseCommit(metadata, runGit)).toBe(commit);
@@ -51,8 +53,8 @@ describe("release preflight", () => {
       return { exitCode: 0, stdout: commit, stderr: "" };
     };
     const metadata = parseReleaseMetadata(
-      { GITHUB_REF_NAME: "v0.4.0", GITHUB_SHA: commit },
-      { version: "0.4.0" },
+      { GITHUB_REF_NAME: releaseTag, GITHUB_SHA: commit },
+      { version: CLI_VERSION },
     );
 
     expect(() => verifyReleaseCommit(metadata, runGit)).toThrow("does not belong to origin/main");
@@ -66,8 +68,8 @@ describe("release preflight", () => {
       return { exitCode: 0, stdout: resolution === 2 ? otherCommit : commit, stderr: "" };
     };
     const metadata = parseReleaseMetadata(
-      { GITHUB_REF_NAME: "v0.4.0", GITHUB_SHA: commit },
-      { version: "0.4.0" },
+      { GITHUB_REF_NAME: releaseTag, GITHUB_SHA: commit },
+      { version: CLI_VERSION },
     );
 
     expect(() => verifyReleaseCommit(metadata, runGit)).toThrow("do not resolve to the same commit");

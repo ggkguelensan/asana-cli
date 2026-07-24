@@ -97,6 +97,7 @@ describe("clean client behavioral eval contract", () => {
     const prompt = clientEvalPrompt();
     expect(prompt).toContain("Do not enumerate a future workflow");
     expect(prompt).toContain("optional 'asana-cli agent status' followed by one primary command");
+    expect(prompt).toContain("prepare-comment --task 120010 --text ready");
     expect(prompt).toContain("every other command list is empty");
   });
 });

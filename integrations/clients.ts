@@ -10,7 +10,7 @@ import {
 import { AGENT_PROTOCOL_COMPATIBILITY, AGENT_PROTOCOL_VERSION } from "../src/version";
 
 export const INTEGRATION_BUNDLE_SCHEMA = "asana-cli.integration-bundle.v1" as const;
-export const INTEGRATION_BUNDLE_VERSION = "0.4.0" as const;
+export const INTEGRATION_BUNDLE_VERSION = "1.0.0" as const;
 export const INTEGRATION_AGENT_PROTOCOL_VERSION = AGENT_PROTOCOL_VERSION;
 
 const portableRelativePathSchema = z.string()

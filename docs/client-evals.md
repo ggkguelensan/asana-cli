@@ -14,6 +14,10 @@ environment policy that inherits nothing. Claude loads project settings only and
 `Skill` and internal `StructuredOutput` tools. The native `$asana` and `/asana` entrypoints are
 used, rather than merely mentioning a skill path in the prompt.
 
+The checked-in Claude eval command selects the `haiku` model tier explicitly instead of inheriting
+an account-dependent default. Evidence records the canonical model name reported by Claude Code;
+the same strict schema, tool isolation, budget and scenarios apply.
+
 ## Required scenarios
 
 The shared strict contract evaluates:
@@ -64,4 +68,3 @@ Claude Structured Outputs accepts a documented subset of JSON Schema. The harnes
 unsupported grammar constraints before the remote request and then applies the complete Zod
 schema locally, as recommended by the
 [Anthropic Structured Outputs documentation](https://platform.claude.com/docs/en/build-with-claude/structured-outputs).
-
