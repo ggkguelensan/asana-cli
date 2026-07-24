@@ -76,12 +76,12 @@ Issue ID следует сохранить в заголовке.
 | INT-012 | P0 | done | Claude Code plugin adapter | INT-010 | Plugin не содержит credential и self-update logic; clean Claude session обнаруживает skill |
 | INT-013 | P1 | done | `integrations policy CLIENT` | INT-003 | Печатает узкие suggested rules и никогда не применяет broad auto-allow автоматически |
 | INT-014 | P1 | done | Реальные behavioral/security evals Codex и Claude | INT-011, INT-012, AP-009 | Read, prepare/approval/apply, malicious content, missing PAT и ambiguous outcome проходят в clean sessions |
-| INT-015 | P1 | ready | Gemini CLI extension без MCP | INT-014 | Native install/discovery и policy tests проходят; общий skill не форкнут |
-| INT-016 | P1 | ready | GitHub Copilot CLI skill/plugin | INT-014 | Нет broad `allowed-tools: shell`; native discovery/evals проходят |
-| INT-017 | P1 | ready | OpenCode adapter | INT-014 | Shared skill и permission example проходят discovery/evals |
-| INT-018 | P1 | ready | Cursor adapter | INT-014 | Skill обнаруживается; документация честно оставляет shell/apply approval-required |
-| INT-019 | P2 | blocked | Генерируемая compatibility matrix | INT-015, INT-016, INT-017, INT-018 | Статусы `supported`/`experimental`/`generic` получаются из test evidence |
-| INT-020 | P3 | research | Pi/Kimi и другие clients | INT-019 | Клиент не получает `supported` без полного acceptance suite |
+| INT-015 | P1 | done | Gemini CLI extension без MCP | INT-014 | Native 0.50.0 validate/install/discovery и policy tests проходят; общий skill не форкнут; без behavioral suite adapter остаётся `experimental` |
+| INT-016 | P1 | done | GitHub Copilot CLI skill/plugin | INT-014 | Нет broad `allowed-tools: shell`; native 1.0.74 project discovery и adapter evals проходят; без behavioral suite adapter остаётся `experimental` |
+| INT-017 | P1 | done | OpenCode adapter | INT-014 | Shared skill, native 1.18.3 discovery и permission example проходят; без behavioral suite adapter остаётся `experimental` |
+| INT-018 | P1 | done | Cursor adapter | INT-014 | Нативный discovery root и lifecycle покрыты; документация честно оставляет shell/apply approval-required; без clean-session evidence adapter остаётся `experimental` |
+| INT-019 | P2 | done | Генерируемая compatibility matrix | INT-015, INT-016, INT-017, INT-018 | Статусы `supported`/`experimental`/`generic` получаются из сохранённого evidence; drift блокирует gate |
+| INT-020 | P3 | done | Pi/Kimi и другие clients | INT-019 | Native roots исследованы и добавлены как `experimental`; клиент не получает `supported` без полного acceptance suite |
 
 ## Developer context и Asana workflows
 
@@ -123,7 +123,7 @@ Issue ID следует сохранить в заголовке.
 
 | ID | P | Статус | Задача | Зависит от | Acceptance criteria |
 |---|---|---|---|---|---|
-| V1-001 | P1 | blocked | Исполняемые installation/auth/permission/recovery examples | DEV-016, INT-019 | Документированные critical workflows выполняются fixtures и не расходятся с CLI/help/policy |
+| V1-001 | P1 | ready | Исполняемые installation/auth/permission/recovery examples | DEV-016, INT-019 | Документированные critical workflows выполняются fixtures и не расходятся с CLI/help/policy |
 | V1-002 | P1 | blocked | Completion и security audit | SEC-002, SEC-003, SEC-007, DEV-016, REL-010, V1-001 | Для каждого критерия roadmap сохранено прямое evidence; critical/high findings отсутствуют |
 
 ## Later
