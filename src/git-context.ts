@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+import { isAbsolute, resolve } from "node:path";
 import { z } from "zod";
 import { CliError } from "./errors";
 
@@ -65,6 +67,8 @@ const GIT_COMMANDS = {
   branch: ["git", "symbolic-ref", "--quiet", "--short", "HEAD"],
   commit: ["git", "rev-parse", "--verify", "HEAD^{commit}"],
   root: ["git", "rev-parse", "--show-toplevel"],
+  commonDirectory: ["git", "rev-parse", "--path-format=absolute", "--git-common-dir"],
+  worktreeDirectory: ["git", "rev-parse", "--path-format=absolute", "--git-dir"],
 } as const;
 
 type GitCommandName = keyof typeof GIT_COMMANDS;
@@ -108,11 +112,12 @@ function invalidGitOutput(): CliError {
   return new CliError("validation", "Git context contains unsupported or invalid data");
 }
 
-async function runFixedGitCommand(name: GitCommandName): Promise<string | null> {
+async function runFixedGitCommand(name: GitCommandName, cwd?: string): Promise<string | null> {
   let process: Bun.Subprocess;
   try {
     process = Bun.spawn({
       cmd: [...GIT_COMMANDS[name]],
+      ...(cwd === undefined ? {} : { cwd }),
       env: GIT_ENV,
       stdin: "ignore",
       stdout: "pipe",
@@ -226,4 +231,36 @@ export async function readCurrentRepositoryRoot(): Promise<string> {
   const root = await runFixedGitCommand("root");
   if (root === null) throw gitUnavailable();
   return root;
+}
+
+const opaqueGitStorageKeySchema = z.string().regex(/^sha256:[0-9a-f]{64}$/);
+
+export const gitStorageIdentitySchema = z.strictObject({
+  repository_key: opaqueGitStorageKeySchema,
+  worktree_key: opaqueGitStorageKeySchema,
+});
+
+export type GitStorageIdentity = z.output<typeof gitStorageIdentitySchema>;
+
+function opaqueGitStorageKey(kind: "repository" | "worktree", path: string): string {
+  if (!isAbsolute(path)) throw invalidGitOutput();
+  return `sha256:${createHash("sha256").update(`${kind}\u0000${resolve(path)}`, "utf8").digest("hex")}`;
+}
+
+/**
+ * Produces stable opaque keys for state outside the checkout. Linked worktrees share
+ * repository_key while worktree_key remains isolated. Raw Git paths are never returned.
+ */
+export async function readCurrentGitStorageIdentity(
+  cwd: string = process.cwd(),
+): Promise<GitStorageIdentity> {
+  const [commonDirectory, worktreeDirectory] = await Promise.all([
+    runFixedGitCommand("commonDirectory", cwd),
+    runFixedGitCommand("worktreeDirectory", cwd),
+  ]);
+  if (commonDirectory === null || worktreeDirectory === null) throw gitUnavailable();
+  return gitStorageIdentitySchema.parse({
+    repository_key: opaqueGitStorageKey("repository", commonDirectory),
+    worktree_key: opaqueGitStorageKey("worktree", worktreeDirectory),
+  });
 }

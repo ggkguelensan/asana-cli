@@ -1,13 +1,22 @@
 import { z } from "zod";
 import { gidSchema } from "../schemas";
 
-export const AUDIT_EVENT_SCHEMA = "asana-cli.audit-event.v1" as const;
-export const AUDIT_EVENT_FILE_FORMAT_VERSION = 1 as const;
+export const AUDIT_EVENT_SCHEMA = "asana-cli.audit-event.v2" as const;
+export const AUDIT_EVENT_FILE_FORMAT_VERSION = 2 as const;
 
 const hashSchema = z.string().regex(/^sha256:[0-9a-f]{64}$/);
 const timestampSchema = z.iso.datetime({ offset: true });
 
-export const auditActionSchema = z.enum(["task.update", "task.comment"]);
+export const auditActionSchema = z.enum([
+  "task.update",
+  "task.comment",
+  "task.create",
+  "task.project.add",
+  "task.project.remove",
+  "task.section.move",
+  "task.dependency.add",
+  "task.dependency.remove",
+]);
 export const auditFailureClassSchema = z.enum([
   "policy_denied",
   "validation",
@@ -39,9 +48,22 @@ export const auditResultSchema = z.discriminatedUnion("outcome", [
   }),
 ]);
 
+export const auditTargetSchema = z.union([
+  z.strictObject({
+    kind: z.literal("task"),
+    task_gid: gidSchema,
+  }),
+  z.strictObject({
+    kind: z.literal("task-create"),
+    workspace_gid: gidSchema,
+    project_gid: gidSchema,
+    parent_task_gid: gidSchema.optional(),
+  }),
+]);
+
 export const createMetadataAuditEventInputSchema = z.strictObject({
   operation_id: z.uuid(),
-  target_task_gid: gidSchema,
+  target: auditTargetSchema,
   action: auditActionSchema,
   plan_hash: hashSchema,
   record_hash: hashSchema,

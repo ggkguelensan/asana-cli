@@ -1,39 +1,33 @@
-import { isAbsolute, join, win32 } from "node:path";
+import { isAbsolute, join } from "node:path";
 import { z } from "zod";
+import {
+  assertSupportedRuntimePlatform,
+  type SupportedRuntimePlatform,
+} from "../platform-support";
 
 const operationPathEnvironmentSchema = z.object({
   HOME: z.string().min(1).optional(),
   XDG_STATE_HOME: z.string().min(1).optional(),
-  LOCALAPPDATA: z.string().min(1).optional(),
 });
 
-export type OperationPathPlatform = "darwin" | "linux" | "win32";
+export type OperationPathPlatform = SupportedRuntimePlatform;
 
-function requireAbsolute(path: string, platform: OperationPathPlatform, source: string): string {
-  const absolute = platform === "win32" ? win32.isAbsolute(path) : isAbsolute(path);
-  if (!absolute) throw new Error(`${source} must be an absolute path`);
+function requireAbsolute(path: string, source: string): string {
+  if (!isAbsolute(path)) throw new Error(`${source} must be an absolute path`);
   return path;
 }
 
 export function resolveOperationJournalDirectory(
   environment: Record<string, string | undefined> = process.env,
-  platform: OperationPathPlatform = process.platform === "win32"
-    ? "win32"
-    : process.platform === "darwin" ? "darwin" : "linux",
+  platform: OperationPathPlatform = assertSupportedRuntimePlatform(),
 ): string {
   const env = operationPathEnvironmentSchema.parse(environment);
 
-  if (platform === "win32") {
-    const localAppData = env.LOCALAPPDATA ?? (env.HOME ? win32.join(env.HOME, "AppData", "Local") : undefined);
-    if (!localAppData) throw new Error("LOCALAPPDATA or HOME is required for the operation journal");
-    return win32.join(requireAbsolute(localAppData, platform, "LOCALAPPDATA"), "asana-cli", "operations");
-  }
-
   if (env.XDG_STATE_HOME) {
-    return join(requireAbsolute(env.XDG_STATE_HOME, platform, "XDG_STATE_HOME"), "asana-cli", "operations");
+    return join(requireAbsolute(env.XDG_STATE_HOME, "XDG_STATE_HOME"), "asana-cli", "operations");
   }
   if (!env.HOME) throw new Error("HOME is required for the operation journal");
-  const home = requireAbsolute(env.HOME, platform, "HOME");
+  const home = requireAbsolute(env.HOME, "HOME");
   if (platform === "darwin") {
     return join(home, "Library", "Application Support", "asana-cli", "operations");
   }

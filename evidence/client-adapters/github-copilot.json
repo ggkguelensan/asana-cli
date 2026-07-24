@@ -1,0 +1,32 @@
+{
+  "schema": "asana-cli.native-client-discovery.v1",
+  "client": "github-copilot",
+  "client_version": "1.0.74",
+  "evaluated_commit": "55723b607c7c8b5512113e714b3a96c8433177da",
+  "contract_sha256": "e9223dc5ac472701c9de7d42e2dd14aa04e9a9a25c28f6d52e5769c4f8a6b70e",
+  "subject_sha256": "233d54593a28ef93f883ae249515528ef4388f0407255990031b3b134172ad01",
+  "bundle_sha256": "3802f7e7f51af459ac868e711853f525db7afdfd339b00b9a6c461ff5abdccf4",
+  "skill_sha256": "0241fb62e86f0355b2b59fa99d68d4dd6a9c190ad379f98303f2953309bd15b4",
+  "binary_sha256": "3de65d1a2a392d8782f3306543558e364f8957cbccc82ed4e20da01bc365322a",
+  "discovery_output_sha256": "8e5efab4709a4d32f0085f3e109769fe53bdfafcb02da7bdae69f809fec51a11",
+  "environment": {
+    "platform": "darwin",
+    "architecture": "arm64",
+    "scope": "project",
+    "user_configuration": false,
+    "provider_credentials": false,
+    "model_invoked": false,
+    "external_commands_executed": false
+  },
+  "install": {
+    "root": ".github/skills/asana",
+    "state": "managed",
+    "allowed_tools_declared": false
+  },
+  "discovery": {
+    "command": "npm exec --yes --package=@github/copilot@1.0.74 -- copilot skill list",
+    "skill_name": "asana",
+    "skill_reported": true
+  },
+  "verdict": "passed"
+}

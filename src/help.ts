@@ -16,17 +16,44 @@ ACCOUNT
   asana-cli me                           Current Asana user
   asana-cli workspaces [--all]           Accessible workspaces
 
+LOCAL DEVELOPER CONTEXT (HUMAN-ONLY, NO PAT)
+  asana-cli context alias list
+  asana-cli context alias set QUALIFIED --task GID
+  asana-cli context alias replace QUALIFIED --task GID --expected-task GID --revision N
+  asana-cli context alias remove QUALIFIED --expected-task GID --revision N
+  asana-cli context activate QUALIFIED
+  asana-cli context quick
+  asana-cli context history
+  asana-cli context clear --revision N
+
 AGENT CLIENTS (DIRECT CLI, NO MCP)
   asana-cli agent capabilities           Machine-readable safe command contract
   asana-cli agent schema [ACTION]        JSON Schema for agent actions
   asana-cli agent status                 Validate auth for Codex/Claude
   asana-cli agent my-tasks --max-results 20
+  asana-cli agent list-projects --workspace GID
+  asana-cli agent list-sections --project GID
+  asana-cli agent list-project-memberships --project GID [--member GID]
+  asana-cli agent list-custom-fields --workspace GID
+  asana-cli agent get-custom-field --field GID [--include-values]
+  asana-cli agent resolve-user --workspace GID --user GID|me|EMAIL
+  asana-cli agent resolve-task --reference REFERENCE
+  asana-cli agent context --task GID [--include notes|field-values]
+  asana-cli agent batch-tasks --input -
   asana-cli agent get-task --task GID [--include notes]
   asana-cli agent list-comments --task GID [--max-content-bytes N]
   asana-cli agent find-git --query ID [--field GID]
   asana-cli agent my-tasks --input -     Compatible JSON stdin mode
   asana-cli agent prepare-task-update --input -
   asana-cli agent prepare-comment --task GID --text TEXT
+  asana-cli agent prepare-task-create --input -
+  asana-cli agent prepare-subtask-create --input -
+  asana-cli agent prepare-task-from-template --input -
+  asana-cli agent prepare-task-project-add --input -
+  asana-cli agent prepare-task-project-remove --input -
+  asana-cli agent prepare-task-section-move --input -
+  asana-cli agent prepare-task-dependency-add --input -
+  asana-cli agent prepare-task-dependency-remove --input -
   asana-cli agent apply --operation-id UUID
   asana-cli agent operation status UUID      Read local operation metadata
   asana-cli agent context --git-current     Read normalized local Git context
@@ -40,14 +67,15 @@ INTEGRATIONS (STATIC SKILL BUNDLE, NO MCP)
   asana-cli integrations list
   asana-cli integrations detect --client CLIENT --scope user|project
   asana-cli integrations status --client CLIENT --scope user|project
-  asana-cli integrations doctor --client CLIENT --scope user|project
+  asana-cli integrations doctor --client CLIENT --scope user|project [--auto-allow COMMAND]...
   asana-cli integrations policy CLIENT
   asana-cli integrations install --client CLIENT --scope user|project --dry-run|--apply
   asana-cli integrations update --client CLIENT --scope user|project --dry-run|--apply
   asana-cli integrations diff --client CLIENT --scope user|project
   asana-cli integrations uninstall --client CLIENT --scope user|project --dry-run|--apply
 
-  CLIENT is generic-agent-skills, codex, or claude-code. Every install/update/uninstall
+  CLIENT is generic-agent-skills, codex, claude-code, gemini-cli, github-copilot,
+  opencode, cursor, pi, or kimi-code. Every install/update/uninstall
   requires explicit --dry-run or --apply. --apply performs the atomic managed-file plan;
   it never edits AGENTS.md, CLAUDE.md, settings, hooks, marketplace, or MCP configuration.
 
@@ -101,7 +129,7 @@ export const AUTH_HELP = `Asana PAT setup
      asana-cli auth pat status
 
    The hidden prompt never puts the token in shell history. Storage uses macOS
-   Keychain, Linux Secret Service, or Windows Credential Manager.
+   Keychain or Linux Secret Service.
 
 3. Recommended for CI and ephemeral shells — process environment (higher priority).
    Use ASANA_ACCESS_TOKEN; the TOKEN suffix is recognized by agent environment filters.

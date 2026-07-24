@@ -9,12 +9,12 @@ import { gidSchema } from "./schemas";
 
 export const MAX_REPOSITORY_CONTEXT_BYTES = 49_152;
 
-const projectAliasSchema = z.string().regex(
+export const projectAliasSchema = z.string().regex(
   /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/,
   "Invalid repository context alias",
 );
 const scopedAliasSchema = projectAliasSchema;
-const taskAliasSchema = z.string()
+export const taskAliasSchema = z.string()
   .min(3)
   .max(96)
   .regex(
@@ -24,6 +24,11 @@ const taskAliasSchema = z.string()
   .refine((value) => value.indexOf("--") === value.lastIndexOf("--"), {
     message: "Invalid repository context task alias",
   });
+
+export const qualifiedTaskAliasSchema = z.string().regex(
+  /^task:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\/(?=.{3,96}$)(?:\d{1,64}|[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)--[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/,
+  "Invalid qualified task alias",
+);
 
 const projectMappingSchema = z.strictObject({
   kind: z.literal("project"),
@@ -159,7 +164,7 @@ const projectProjectionSchema = projectMappingSchema.omit({ kind: true });
 const sectionProjectionSchema = sectionMappingSchema.omit({ kind: true });
 const customFieldProjectionSchema = customFieldMappingSchema.omit({ kind: true });
 const taskProjectionSchema = taskMappingSchema.omit({ kind: true }).extend({
-  qualified_alias: z.string().regex(/^task:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\/.+$/),
+  qualified_alias: qualifiedTaskAliasSchema,
 });
 
 export const repositoryContextDataSchema = z.strictObject({

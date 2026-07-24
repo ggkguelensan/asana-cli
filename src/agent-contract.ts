@@ -1,25 +1,57 @@
 import { z } from "zod";
 import {
   applyOperationInputSchema,
+  batchTasksInputSchema,
   findGitInputSchema,
   gitCurrentInputSchema,
   gitCurrentCandidatesInputSchema,
+  getCustomFieldInputSchema,
   getTaskInputSchema,
+  listCustomFieldsInputSchema,
   listCommentsInputSchema,
+  listProjectMembershipsInputSchema,
+  listProjectsInputSchema,
+  listSectionsInputSchema,
   myTasksInputSchema,
   operationStatusInputSchema,
   prepareCommentInputSchema,
+  prepareSubtaskCreateInputSchema,
+  prepareTaskDependencyAddInputSchema,
+  prepareTaskDependencyRemoveInputSchema,
+  prepareTaskProjectAddInputSchema,
+  prepareTaskProjectRemoveInputSchema,
+  prepareTaskSectionMoveInputSchema,
+  prepareTaskFromTemplateInputSchema,
+  prepareTaskCreateInputSchema,
   prepareTaskUpdateInputSchema,
   repositoryAsanaInputSchema,
   repositoryContextInputSchema,
+  resolveTaskInputSchema,
+  resolveUserInputSchema,
   searchInputSchema,
   statusInputSchema,
+  taskContextInputSchema,
 } from "./agent-action-schemas";
+import {
+  batchTasksDataSchema,
+} from "./batch-tasks";
 import { repositoryAsanaContextDataSchema } from "./repository-asana-mapping";
 import { repositoryContextDataSchema } from "./repository-context";
 import { operationStatusProjectionSchema } from "./operations/status-projection";
 import { gitContextSchema } from "./git-context";
 import { gitCurrentCandidatesDataSchema, MAX_GIT_CURRENT_CANDIDATES } from "./git-current-candidates";
+import {
+  customFieldContextDataSchema,
+  customFieldListContextDataSchema,
+  MAX_CONTEXT_RESULTS,
+  MAX_CUSTOM_FIELD_VALUES,
+  projectListContextDataSchema,
+  projectMembershipListContextDataSchema,
+  resolvedUserContextDataSchema,
+  sectionListContextDataSchema,
+} from "./developer-context";
+import { taskContextDataSchema } from "./task-context";
+import { resolvedTaskReferenceDataSchema } from "./task-reference";
 import { AGENT_ERROR_SCHEMA_ID, CliError, errorPayloadSchema } from "./errors";
 import { readAgentJsonInput } from "./io";
 import { jsonObjectSchema, zodIssueSummary } from "./schemas";
@@ -213,6 +245,136 @@ const myTasksAction = defineAction(
   myTasksInputSchema,
 );
 
+const listProjectsAction = defineAction(
+  "list-projects",
+  {
+    operation: "projects.list",
+    effect: "read",
+    approval: "none",
+    limits: { max_input_bytes: MAX_AGENT_INPUT_BYTES, max_result_items: MAX_CONTEXT_RESULTS },
+    minimumCliVersion: "0.5.0",
+  },
+  listProjectsInputSchema,
+  projectListContextDataSchema,
+);
+
+const listSectionsAction = defineAction(
+  "list-sections",
+  {
+    operation: "sections.list",
+    effect: "read",
+    approval: "none",
+    limits: { max_input_bytes: MAX_AGENT_INPUT_BYTES, max_result_items: MAX_CONTEXT_RESULTS },
+    minimumCliVersion: "0.5.0",
+  },
+  listSectionsInputSchema,
+  sectionListContextDataSchema,
+);
+
+const listProjectMembershipsAction = defineAction(
+  "list-project-memberships",
+  {
+    operation: "project-memberships.list",
+    effect: "read",
+    approval: "none",
+    limits: { max_input_bytes: MAX_AGENT_INPUT_BYTES, max_result_items: MAX_CONTEXT_RESULTS },
+    minimumCliVersion: "0.5.0",
+  },
+  listProjectMembershipsInputSchema,
+  projectMembershipListContextDataSchema,
+);
+
+const listCustomFieldsAction = defineAction(
+  "list-custom-fields",
+  {
+    operation: "custom-fields.list",
+    effect: "read",
+    approval: "none",
+    limits: { max_input_bytes: MAX_AGENT_INPUT_BYTES, max_result_items: MAX_CONTEXT_RESULTS },
+    minimumCliVersion: "0.5.0",
+  },
+  listCustomFieldsInputSchema,
+  customFieldListContextDataSchema,
+);
+
+const getCustomFieldAction = defineAction(
+  "get-custom-field",
+  {
+    operation: "custom-field.get",
+    effect: "read",
+    approval: "none",
+    limits: {
+      max_input_bytes: MAX_AGENT_INPUT_BYTES,
+      max_result_items: MAX_CUSTOM_FIELD_VALUES,
+      max_content_bytes: 65_536,
+    },
+    minimumCliVersion: "0.5.0",
+  },
+  getCustomFieldInputSchema,
+  customFieldContextDataSchema,
+);
+
+const resolveUserAction = defineAction(
+  "resolve-user",
+  {
+    operation: "user.resolve",
+    effect: "read",
+    approval: "none",
+    limits: { max_input_bytes: MAX_AGENT_INPUT_BYTES, max_result_items: 1 },
+    minimumCliVersion: "0.5.0",
+  },
+  resolveUserInputSchema,
+  resolvedUserContextDataSchema,
+);
+
+const taskContextAction = defineAction(
+  "task-context",
+  {
+    operation: "task.context.get",
+    effect: "read",
+    approval: "none",
+    limits: {
+      max_input_bytes: 0,
+      max_result_items: 400,
+      max_content_bytes: 65_536,
+    },
+    minimumCliVersion: "0.5.0",
+    command: ["context", "--task", "GID"],
+  },
+  taskContextInputSchema,
+  taskContextDataSchema,
+);
+
+const batchTasksAction = defineAction(
+  "batch-tasks",
+  {
+    operation: "tasks.batch.get",
+    effect: "read",
+    approval: "none",
+    limits: {
+      max_input_bytes: MAX_AGENT_INPUT_BYTES,
+      max_result_items: 10,
+      max_content_bytes: 65_536,
+    },
+    minimumCliVersion: "0.5.0",
+  },
+  batchTasksInputSchema,
+  batchTasksDataSchema,
+);
+
+const resolveTaskAction = defineAction(
+  "resolve-task",
+  {
+    operation: "task.reference.resolve",
+    effect: "read",
+    approval: "none",
+    limits: { max_input_bytes: MAX_AGENT_INPUT_BYTES, max_result_items: 1 },
+    minimumCliVersion: "0.5.0",
+  },
+  resolveTaskInputSchema,
+  resolvedTaskReferenceDataSchema,
+);
+
 const getTaskAction = defineAction(
   "get-task",
   {
@@ -292,6 +454,114 @@ const prepareCommentAction = defineAction(
   prepareCommentInputSchema,
 );
 
+const prepareTaskCreateAction = defineAction(
+  "prepare-task-create",
+  {
+    operation: "task.create.prepare",
+    effect: "prepare",
+    approval: "none",
+    limits: {
+      max_input_bytes: MAX_AGENT_INPUT_BYTES,
+      max_text_chars: 8_000,
+      max_custom_fields: 50,
+    },
+    minimumCliVersion: "0.5.0",
+  },
+  prepareTaskCreateInputSchema,
+);
+
+const prepareSubtaskCreateAction = defineAction(
+  "prepare-subtask-create",
+  {
+    operation: "subtask.create.prepare",
+    effect: "prepare",
+    approval: "none",
+    limits: {
+      max_input_bytes: MAX_AGENT_INPUT_BYTES,
+      max_text_chars: 8_000,
+      max_custom_fields: 50,
+    },
+    minimumCliVersion: "0.5.0",
+  },
+  prepareSubtaskCreateInputSchema,
+);
+
+const prepareTaskFromTemplateAction = defineAction(
+  "prepare-task-from-template",
+  {
+    operation: "task.create-from-template.prepare",
+    effect: "prepare",
+    approval: "none",
+    limits: {
+      max_input_bytes: MAX_AGENT_INPUT_BYTES,
+      max_text_chars: 8_000,
+      max_custom_fields: 50,
+    },
+    minimumCliVersion: "0.5.0",
+  },
+  prepareTaskFromTemplateInputSchema,
+);
+
+const prepareTaskProjectAddAction = defineAction(
+  "prepare-task-project-add",
+  {
+    operation: "task.project.add.prepare",
+    effect: "prepare",
+    approval: "none",
+    limits: { max_input_bytes: MAX_AGENT_INPUT_BYTES },
+    minimumCliVersion: "0.5.0",
+  },
+  prepareTaskProjectAddInputSchema,
+);
+
+const prepareTaskProjectRemoveAction = defineAction(
+  "prepare-task-project-remove",
+  {
+    operation: "task.project.remove.prepare",
+    effect: "prepare",
+    approval: "none",
+    limits: { max_input_bytes: MAX_AGENT_INPUT_BYTES },
+    minimumCliVersion: "0.5.0",
+  },
+  prepareTaskProjectRemoveInputSchema,
+);
+
+const prepareTaskSectionMoveAction = defineAction(
+  "prepare-task-section-move",
+  {
+    operation: "task.section.move.prepare",
+    effect: "prepare",
+    approval: "none",
+    limits: { max_input_bytes: MAX_AGENT_INPUT_BYTES },
+    minimumCliVersion: "0.5.0",
+  },
+  prepareTaskSectionMoveInputSchema,
+);
+
+const prepareTaskDependencyAddAction = defineAction(
+  "prepare-task-dependency-add",
+  {
+    operation: "task.dependency.add.prepare",
+    effect: "prepare",
+    approval: "none",
+    limits: { max_input_bytes: MAX_AGENT_INPUT_BYTES },
+    minimumCliVersion: "0.5.0",
+  },
+  prepareTaskDependencyAddInputSchema,
+);
+
+const prepareTaskDependencyRemoveAction = defineAction(
+  "prepare-task-dependency-remove",
+  {
+    operation: "task.dependency.remove.prepare",
+    effect: "prepare",
+    approval: "none",
+    limits: { max_input_bytes: MAX_AGENT_INPUT_BYTES },
+    minimumCliVersion: "0.5.0",
+  },
+  prepareTaskDependencyRemoveInputSchema,
+);
+
 const applyOperationAction = defineAction(
   "apply",
   {
@@ -308,6 +578,15 @@ export const AGENT_ACTIONS = {
   [statusAction.descriptor.action]: statusAction,
   [operationStatusAction.descriptor.action]: operationStatusAction,
   [myTasksAction.descriptor.action]: myTasksAction,
+  [listProjectsAction.descriptor.action]: listProjectsAction,
+  [listSectionsAction.descriptor.action]: listSectionsAction,
+  [listProjectMembershipsAction.descriptor.action]: listProjectMembershipsAction,
+  [listCustomFieldsAction.descriptor.action]: listCustomFieldsAction,
+  [getCustomFieldAction.descriptor.action]: getCustomFieldAction,
+  [resolveUserAction.descriptor.action]: resolveUserAction,
+  [taskContextAction.descriptor.action]: taskContextAction,
+  [batchTasksAction.descriptor.action]: batchTasksAction,
+  [resolveTaskAction.descriptor.action]: resolveTaskAction,
   [gitCurrentAction.descriptor.action]: gitCurrentAction,
   [repositoryAsanaAction.descriptor.action]: repositoryAsanaAction,
   [repositoryContextAction.descriptor.action]: repositoryContextAction,
@@ -318,6 +597,14 @@ export const AGENT_ACTIONS = {
   [findGitAction.descriptor.action]: findGitAction,
   [prepareTaskUpdateAction.descriptor.action]: prepareTaskUpdateAction,
   [prepareCommentAction.descriptor.action]: prepareCommentAction,
+  [prepareTaskCreateAction.descriptor.action]: prepareTaskCreateAction,
+  [prepareSubtaskCreateAction.descriptor.action]: prepareSubtaskCreateAction,
+  [prepareTaskFromTemplateAction.descriptor.action]: prepareTaskFromTemplateAction,
+  [prepareTaskProjectAddAction.descriptor.action]: prepareTaskProjectAddAction,
+  [prepareTaskProjectRemoveAction.descriptor.action]: prepareTaskProjectRemoveAction,
+  [prepareTaskSectionMoveAction.descriptor.action]: prepareTaskSectionMoveAction,
+  [prepareTaskDependencyAddAction.descriptor.action]: prepareTaskDependencyAddAction,
+  [prepareTaskDependencyRemoveAction.descriptor.action]: prepareTaskDependencyRemoveAction,
   [applyOperationAction.descriptor.action]: applyOperationAction,
 };
 

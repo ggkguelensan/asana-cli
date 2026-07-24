@@ -1,0 +1,5 @@
+{
+  "name": "asana-cli",
+  "version": "1.0.0",
+  "description": "Safe direct Asana workflows through the curated asana-cli agent protocol."
+}

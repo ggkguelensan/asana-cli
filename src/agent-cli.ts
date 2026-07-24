@@ -19,6 +19,7 @@ import {
   readRepositoryAsanaAgentInput,
   readRepositoryContextAgentInput,
   readStdinAgentInput,
+  readTaskContextAgentInput,
 } from "./agent-input";
 import { readCurrentGitContext } from "./git-context";
 import { findGitCurrentCandidates } from "./git-current-candidates";
@@ -54,6 +55,7 @@ import {
   taskMetadataProjection,
 } from "./agent-projections";
 import { ContentBudget } from "./content-budget";
+import { batchReadTasks } from "./batch-tasks";
 import {
   parseExternalData,
   taskListEnvelopeSchema,
@@ -66,6 +68,17 @@ import {
 import { type AsanaClient } from "./sdk";
 import type { OperationRepository } from "./operations/repository";
 import { operationStatusProjection } from "./operations/status-projection";
+import {
+  getCustomFieldContext,
+  listCustomFieldsContext,
+  listProjectMembershipsContext,
+  listProjectsContext,
+  listSectionsContext,
+  resolveUserContext,
+} from "./developer-context";
+import { getTaskContext } from "./task-context";
+import { resolveTaskReference } from "./task-reference";
+import type { TaskCreateTemplateProvider } from "./task-create-templates";
 
 type JsonObject = Record<string, unknown>;
 
@@ -179,6 +192,13 @@ export async function runAgentCommand(
 
 
   if (action === "context") {
+    if (Object.hasOwn(args.flags, "task")) {
+      const input = readTaskContextAgentInput(args);
+      return agentResult(
+        "task-context",
+        await getTaskContext(client, input),
+      );
+    }
     const input = readGitCurrentCandidatesAgentInput(args);
     const context = await readCurrentGitContext();
     return agentResult("git-current-candidates", await findGitCurrentCandidates(client, input, context));
@@ -207,6 +227,60 @@ export async function runAgentCommand(
       fields: AGENT_TASK_FIELDS,
     });
     return agentResult("my-tasks", projectTaskCollection(data, "TasksApi.getTasks"));
+  }
+
+  if (action === "list-projects") {
+    const input = await readDirectAgentInput(args, "list-projects");
+    return agentResult("list-projects", await listProjectsContext(client, input));
+  }
+
+  if (action === "list-sections") {
+    const input = await readDirectAgentInput(args, "list-sections");
+    return agentResult("list-sections", await listSectionsContext(client, input));
+  }
+
+  if (action === "list-project-memberships") {
+    const input = await readDirectAgentInput(args, "list-project-memberships");
+    return agentResult(
+      "list-project-memberships",
+      await listProjectMembershipsContext(client, input),
+    );
+  }
+
+  if (action === "list-custom-fields") {
+    const input = await readDirectAgentInput(args, "list-custom-fields");
+    return agentResult(
+      "list-custom-fields",
+      await listCustomFieldsContext(client, input),
+    );
+  }
+
+  if (action === "get-custom-field") {
+    const input = await readDirectAgentInput(args, "get-custom-field");
+    return agentResult(
+      "get-custom-field",
+      await getCustomFieldContext(client, input),
+    );
+  }
+
+  if (action === "resolve-user") {
+    const input = await readDirectAgentInput(args, "resolve-user");
+    return agentResult("resolve-user", await resolveUserContext(client, input));
+  }
+
+  if (action === "resolve-task") {
+    const input = await readDirectAgentInput(args, "resolve-task");
+    return agentResult(
+      "resolve-task",
+      await resolveTaskReference(client, input.reference, {
+        repositoryContext: runtime.repositoryContext,
+      }),
+    );
+  }
+
+  if (action === "batch-tasks") {
+    const input = await readStdinAgentInput(args, "batch-tasks");
+    return agentResult("batch-tasks", await batchReadTasks(client, input));
   }
 
   if (action === "get-task") {
@@ -349,6 +423,75 @@ export async function runAgentCommand(
     return agentResult("prepare-comment", await service.prepareComment(input));
   }
 
+  if (action === "prepare-task-create") {
+    const input = await readStdinAgentInput(args, "prepare-task-create");
+    const service = new AgentOperationService(client, runtime.operations, runtime);
+    return agentResult("prepare-task-create", await service.prepareTaskCreate(input));
+  }
+
+  if (action === "prepare-subtask-create") {
+    const input = await readStdinAgentInput(args, "prepare-subtask-create");
+    const service = new AgentOperationService(client, runtime.operations, runtime);
+    return agentResult(
+      "prepare-subtask-create",
+      await service.prepareSubtaskCreate(input),
+    );
+  }
+
+  if (action === "prepare-task-from-template") {
+    const input = await readStdinAgentInput(args, "prepare-task-from-template");
+    const service = new AgentOperationService(client, runtime.operations, runtime);
+    return agentResult(
+      "prepare-task-from-template",
+      await service.prepareTaskFromTemplate(input),
+    );
+  }
+
+  if (action === "prepare-task-project-add") {
+    const input = await readStdinAgentInput(args, "prepare-task-project-add");
+    const service = new AgentOperationService(client, runtime.operations, runtime);
+    return agentResult(
+      "prepare-task-project-add",
+      await service.prepareTaskProjectAdd(input),
+    );
+  }
+
+  if (action === "prepare-task-project-remove") {
+    const input = await readStdinAgentInput(args, "prepare-task-project-remove");
+    const service = new AgentOperationService(client, runtime.operations, runtime);
+    return agentResult(
+      "prepare-task-project-remove",
+      await service.prepareTaskProjectRemove(input),
+    );
+  }
+
+  if (action === "prepare-task-section-move") {
+    const input = await readStdinAgentInput(args, "prepare-task-section-move");
+    const service = new AgentOperationService(client, runtime.operations, runtime);
+    return agentResult(
+      "prepare-task-section-move",
+      await service.prepareTaskSectionMove(input),
+    );
+  }
+
+  if (action === "prepare-task-dependency-add") {
+    const input = await readStdinAgentInput(args, "prepare-task-dependency-add");
+    const service = new AgentOperationService(client, runtime.operations, runtime);
+    return agentResult(
+      "prepare-task-dependency-add",
+      await service.prepareTaskDependencyAdd(input),
+    );
+  }
+
+  if (action === "prepare-task-dependency-remove") {
+    const input = await readStdinAgentInput(args, "prepare-task-dependency-remove");
+    const service = new AgentOperationService(client, runtime.operations, runtime);
+    return agentResult(
+      "prepare-task-dependency-remove",
+      await service.prepareTaskDependencyRemove(input),
+    );
+  }
+
   if (action === "apply") {
     if (policy() !== "read-write") {
       throw new CliError(
@@ -427,4 +570,6 @@ export interface AgentCommandRuntime {
   operations: OperationRepository;
   writePolicy?: HostScopedWritePolicyProvider;
   audit?: MetadataAuditStore;
+  repositoryContext?: RepositoryContextManifestProvider;
+  taskCreateTemplates?: TaskCreateTemplateProvider;
 }

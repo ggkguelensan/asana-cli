@@ -1,15 +1,15 @@
 import { z } from "zod";
+import {
+  clientAdapterIdSchema,
+  type ClientAdapterId,
+} from "../client-adapter-specs";
 
 export const INTEGRATION_MANIFEST_SCHEMA = "asana-cli.integration-manifest.v1" as const;
 export const INTEGRATION_MANIFEST_FILE = ".asana-cli-integration.json" as const;
 export const INTEGRATION_INSTALLER = "asana-cli" as const;
 
-export const integrationClientSchema = z.enum([
-  "generic-agent-skills",
-  "codex",
-  "claude-code",
-]);
-export type IntegrationClient = z.output<typeof integrationClientSchema>;
+export const integrationClientSchema = clientAdapterIdSchema;
+export type IntegrationClient = ClientAdapterId;
 
 export const integrationScopeSchema = z.enum(["user", "project"]);
 export type IntegrationScope = z.output<typeof integrationScopeSchema>;
@@ -93,5 +93,11 @@ export type IntegrationBundleInput = z.output<typeof integrationBundleInputSchem
 export const integrationDoctorInputSchema = z.strictObject({
   target: integrationTargetInputSchema,
   environment: z.record(z.string(), z.string().optional()).optional(),
+  probe_credential_store: z.boolean().default(true),
+  auto_allow_commands: z
+    .array(z.string().trim().min(1).max(1_024))
+    .max(100)
+    .refine((commands) => new Set(commands).size === commands.length, "auto-allow commands must be unique")
+    .default([]),
 });
 export type IntegrationDoctorInput = z.output<typeof integrationDoctorInputSchema>;

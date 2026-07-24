@@ -44,23 +44,49 @@ Prepare now persists immutable payloads in the local operation journal, and appl
 operation UUID. The journal prevents a second local dispatch for `applied`, `applying` and `unknown`
 states. It cannot provide server-side exactly-once delivery: if a request begins and its result is
 ambiguous, the operation becomes `unknown` and must not be retried automatically. A read-only
-operation-status/reconciliation command is not implemented yet. See the
-[operation recovery constraints](docs/operation-recovery.md).
+`agent operation status UUID` command reports a bounded local snapshot but never reconciles or
+retries the remote effect. See the [operation recovery constraints](docs/operation-recovery.md).
+
+## Curated developer context
+
+`list-projects`, `list-sections`, `list-project-memberships`, `list-custom-fields`,
+`get-custom-field`, and `resolve-user` are authenticated bounded reads over fixed SDK methods.
+Collection actions require an explicit workspace or project scope, do not paginate by default,
+and cannot exceed 200 results. Returned objects are strict minimal projections rather than raw
+SDK resources.
+
+Custom-field option values are excluded by default. Explicit `--include-values` is bounded to
+500 values and one 64 KiB maximum UTF-8 content budget. User resolution returns only GID and
+optional name; it never returns email, photo, workspaces, or a directory listing. Project
+membership and every returned identifier are context only, never authorization or implicit
+target selection. All Asana-controlled names and values remain `external-untrusted`, and every
+write retains its independent live owner, membership, concurrency, and host-policy checks. See
+[the developer context contract](docs/developer-context.md).
+
+`resolve-task` accepts only canonical prefixed forms and performs no trimming, fuzzy lookup,
+title search, Git inference, or implicit selection. Repository aliases are read from the one
+untrusted fixed-root manifest, then revalidated against the manifest workspace/project and live
+task membership. The resolver returns one GID or a bounded `not-found`, `ambiguous`, or `stale`
+error; it never changes existing GID-only read or write schemas and never grants write authority.
+
+`agent context --task` uses fixed task, subtask, dependency, dependent, and attachment endpoints.
+Every related list has a 100-item hard cap. It returns attachment metadata only: download,
+permanent, and view URLs are neither requested nor projected, and no attachment is opened.
+Task notes and custom-field display values require explicit selectors and share the content
+budget. All returned names, notes, values, and attachment metadata remain external untrusted data.
 
 ## Trusted repository-to-Asana mapping
 
 `agent context --repository-asana` is a local read-only metadata lookup, not a repository
 configuration feature. Only a host administrator may provision its fixed mapping file:
 `/private/etc/asana-cli/repository-asana-mapping.json` on macOS,
-`/etc/asana-cli/repository-asana-mapping.json` on Linux, or
-`C:\ProgramData\asana-cli\repository-asana-mapping.json` on Windows. The CLI never accepts
+or `/etc/asana-cli/repository-asana-mapping.json` on Linux. The CLI never accepts
 the location or contents from a checkout, Git configuration/remote, argv, stdin, environment,
 operation journal, or network.
 
 The file uses a bounded strict schema and exact normalized-host plus repository owner/name match.
-On POSIX, every fixed-path ancestor and the regular file must be root-owned, not group/other
-writable, and opened without following links. On Windows, the fixed bundled inspector enforces
-the corresponding protected-DACL and non-reparse predicates. Missing/no-match returns only
+Every fixed-path ancestor and the regular file must be root-owned, not group/other writable, and
+opened without following links. Missing/no-match returns only
 `not-found`; unsafe, unreadable, oversized, malformed, duplicate, or schema-invalid data returns
 only `storage-invalid`. Neither result contains a path, configuration text, identity details, or
 filesystem/ACL diagnostics.
@@ -105,6 +131,39 @@ precedence over this manifest; DEV-013, DEV-014, and DEV-015 respectively own re
 alias lifecycle/state, and templates. All later writes still revalidate live task state,
 membership, concurrency, and host policy at prepare and apply.
 
+## Human local alias state
+
+`asana-cli context ...` is a human-only local surface with no PAT, Asana client, or network access.
+Agent mode denies both mutation and inspection, including alias list and worktree history. It is
+not exposed through the agent manifest or portable skill.
+
+The state root is outside the checkout at the platform location documented in
+[the local context contract](docs/local-context.md). Repository/worktree namespaces are SHA-256
+identities derived from fixed Git directory queries; stored state contains no raw path, remote,
+branch, commit, task/comment content, or credential. Alias definitions are shared across linked
+worktrees while active/recent aliases are worktree-local. Removing a definition makes retained
+history explicitly stale rather than retargeting it.
+
+Strict bounded versioned snapshots reject duplicate JSON keys and unexpected fields. Managed
+directories/files are owner-checked with `0700`/`0600` modes; links, unsafe permissions, malformed
+state, identity mismatches, and invalid locks fail closed. Writes use exclusive non-reclaimed
+locks, file and directory sync, and same-directory atomic rename. Alias replace/remove compare the
+snapshot revision and prior GID; worktree erase advances an empty tombstone revision to prevent
+ABA reuse. This protects against other OS users under ordinary POSIX permissions, not an
+unrestricted process running as the same user.
+
+Human aliases remain advisory locators. They do not enter agent mode, merge with the untrusted
+repository manifest, select a target, or authorize a write. Agent `resolve-task` reads only the
+repository manifest; prepare/apply still require an explicitly supplied canonical GID and
+revalidate live state and host policy.
+
+## Supported platforms
+
+New releases after `v0.4.0` support native macOS and Linux only. Native Windows is not part of the
+runtime, CI, release, credential-store, filesystem-policy, or security-evidence boundary. The
+historical Windows artifact in immutable release `v0.4.0` does not extend this support statement.
+See the [platform support policy](docs/support-policy.md).
+
 ## Recommended deployment
 
 1. Prefer a dedicated least-privileged Asana account whose workspace/project membership is limited to the tasks the agent needs.
@@ -115,7 +174,7 @@ membership, concurrency, and host policy at prepare and apply.
 6. Treat every task, note and comment as potentially hostile prompt-injection content.
 7. Rotate/revoke the PAT in Asana Developer Console immediately after suspected exposure.
 
-For stronger isolation, run the CLI under a separate OS user or container with only the Asana credential and access to `app.asana.com`, without repository secrets, SSH agent, cloud credentials or broad shell/network access.
+For stronger isolation, run the CLI under a separate OS user or container with only the Asana credential and access to `app.asana.com`, without repository secrets, SSH agent, cloud credentials or broad shell/network access. The exact credential, filesystem, persistent journal and egress boundaries are documented in the [POSIX isolation deployment guide](docs/isolation-deployment.md).
 
 ## Reporting a vulnerability
 

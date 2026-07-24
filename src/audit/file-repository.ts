@@ -4,6 +4,7 @@ import { chmod, lstat, mkdir, open } from "node:fs/promises";
 import { isAbsolute } from "node:path";
 import { z } from "zod";
 import { auditEventPath, resolveAuditLogDirectory, type AuditPathPlatform } from "./paths";
+import { assertSupportedRuntimePlatform } from "../platform-support";
 import {
   AuditStorageError,
   type AuditClock,
@@ -34,17 +35,13 @@ export class FileMetadataAuditStore implements MetadataAuditStore {
   readonly baseDirectory: string;
   readonly #clock: AuditClock;
   readonly #eventIdGenerator: AuditEventIdGenerator;
-  readonly #isPosix: boolean;
 
   constructor(options: FileMetadataAuditStoreOptions = {}) {
-    const platform = options.platform ?? (process.platform === "win32"
-      ? "win32"
-      : process.platform === "darwin" ? "darwin" : "linux");
+    const platform = options.platform ?? assertSupportedRuntimePlatform();
     this.baseDirectory = options.baseDirectory ?? resolveAuditLogDirectory(options.environment, platform);
     if (!isAbsolute(this.baseDirectory)) throw new Error("Audit log base directory must be absolute");
     this.#clock = options.clock ?? (() => new Date());
     this.#eventIdGenerator = options.eventIdGenerator ?? randomUUID;
-    this.#isPosix = platform !== "win32";
   }
 
   async append(input: CreateMetadataAuditEventInput): Promise<MetadataAuditEvent> {
@@ -62,7 +59,7 @@ export class FileMetadataAuditStore implements MetadataAuditStore {
         throw new AuditStorageError("INSECURE_STORAGE", "Audit log path is not a real directory");
       }
       this.#assertOwner(stats.uid, "Audit log directory");
-      if (this.#isPosix) await chmod(this.baseDirectory, DIRECTORY_MODE);
+      await chmod(this.baseDirectory, DIRECTORY_MODE);
     } catch (error: unknown) {
       if (error instanceof AuditStorageError) throw error;
       throw new AuditStorageError("STORAGE_ERROR", "Unable to initialize audit log directory", { cause: error });
@@ -70,7 +67,12 @@ export class FileMetadataAuditStore implements MetadataAuditStore {
   }
 
   #assertOwner(owner: number, label: string): void {
-    if (!this.#isPosix || typeof process.getuid !== "function") return;
+    if (typeof process.getuid !== "function") {
+      throw new AuditStorageError(
+        "INSECURE_STORAGE",
+        "Current user cannot be determined for audit log ownership checks",
+      );
+    }
     if (owner !== process.getuid()) {
       throw new AuditStorageError("INSECURE_STORAGE", `${label} is owned by another user`);
     }
@@ -88,7 +90,7 @@ export class FileMetadataAuditStore implements MetadataAuditStore {
       handle = await open(path, constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY, FILE_MODE);
       await handle.writeFile(serialized, "utf8");
       await handle.sync();
-      if (this.#isPosix) await chmod(path, FILE_MODE);
+      await chmod(path, FILE_MODE);
       await handle.close();
       handle = undefined;
       await this.#syncDirectory();
@@ -106,7 +108,6 @@ export class FileMetadataAuditStore implements MetadataAuditStore {
   }
 
   async #syncDirectory(): Promise<void> {
-    if (!this.#isPosix) return;
     const directory = await open(this.baseDirectory, constants.O_RDONLY);
     try {
       await directory.sync();

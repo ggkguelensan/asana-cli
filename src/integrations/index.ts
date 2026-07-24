@@ -28,7 +28,6 @@ export {
 export {
   resolveIntegrationPaths,
   type IntegrationPaths,
-  type IntegrationPlatform,
 } from "./paths";
 export {
   INTEGRATION_INSTALLER,

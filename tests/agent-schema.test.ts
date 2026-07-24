@@ -72,7 +72,7 @@ function withoutUnsupportedNot(value: unknown): unknown {
   const record = z.looseObject({}).parse(value);
   return Object.fromEntries(
     Object.entries(record)
-      .filter(([key]) => key !== "not")
+      .filter(([key]) => !["not", "if", "then", "else"].includes(key))
       .map(([key, entry]) => [key, withoutUnsupportedNot(entry)]),
   );
 }
@@ -95,6 +95,44 @@ const driftFixtures = {
     invalid: { workspace_gid: "1200", query: "Acme/widgets" },
   },
   "my-tasks": { valid: {}, invalid: { limit: 0 } },
+  "list-projects": {
+    valid: { workspace_gid: "1200" },
+    invalid: { workspace_gid: "invalid" },
+  },
+  "list-sections": {
+    valid: { project_gid: "2200" },
+    invalid: { max_results: 201 },
+  },
+  "list-project-memberships": {
+    valid: { project_gid: "2200", member_gid: "3300" },
+    invalid: { project_gid: "2200", member_gid: "invalid" },
+  },
+  "list-custom-fields": {
+    valid: { workspace_gid: "1200" },
+    invalid: { workspace_gid: "1200", unexpected: true },
+  },
+  "get-custom-field": {
+    valid: { field_gid: "4400", include_values: true, max_content_bytes: 1024 },
+    invalid: { field_gid: "invalid" },
+  },
+  "resolve-user": {
+    valid: { workspace_gid: "1200", user: "me" },
+    invalid: { workspace_gid: "1200", user: "not-an-identifier" },
+  },
+  "task-context": {
+    valid: { task_gid: "123", include: ["notes"], max_related_results: 10 },
+    invalid: { task_gid: "123", max_related_results: 101 },
+  },
+  "batch-tasks": {
+    valid: { task_gids: ["123", "124"], include: ["notes"] },
+    invalid: {
+      task_gids: Array.from({ length: 11 }, (_, index) => String(index + 1)),
+    },
+  },
+  "resolve-task": {
+    valid: { reference: "gid:123" },
+    invalid: { reference: "Task title" },
+  },
   "get-task": { valid: { task_gid: "123" }, invalid: { task_gid: "not-a-gid" } },
   "list-comments": { valid: { task_gid: "123" }, invalid: { max_results: 501 } },
   "search-tasks": { valid: { query: "git-123" }, invalid: { query: "" } },
@@ -107,6 +145,61 @@ const driftFixtures = {
     valid: { task_gid: "123", text: "Comment" },
     invalid: { task_gid: "123", text: "" },
   },
+  "prepare-task-create": {
+    valid: {
+      workspace_gid: "100",
+      project_gid: "200",
+      task: { name: "Implement feature" },
+    },
+    invalid: {
+      workspace_gid: "100",
+      project_gid: "invalid",
+      task: { name: "Implement feature" },
+    },
+  },
+  "prepare-subtask-create": {
+    valid: {
+      parent_task_gid: "123",
+      project_gid: "200",
+      task: { name: "Add tests" },
+    },
+    invalid: {
+      parent_task_gid: "invalid",
+      project_gid: "200",
+      task: { name: "Add tests" },
+    },
+  },
+  "prepare-task-from-template": {
+    valid: {
+      template: "feature",
+      template_revision: 3,
+      task: { name: "Implement feature" },
+    },
+    invalid: {
+      template: "Feature",
+      template_revision: 3,
+    },
+  },
+  "prepare-task-project-add": {
+    valid: { task_gid: "123", project_gid: "200", section_gid: "300" },
+    invalid: { task_gid: "123", project_gid: "invalid" },
+  },
+  "prepare-task-project-remove": {
+    valid: { task_gid: "123", project_gid: "200" },
+    invalid: { task_gid: "invalid", project_gid: "200" },
+  },
+  "prepare-task-section-move": {
+    valid: { task_gid: "123", project_gid: "200", section_gid: "300" },
+    invalid: { task_gid: "123", project_gid: "200", section_gid: "invalid" },
+  },
+  "prepare-task-dependency-add": {
+    valid: { task_gid: "123", dependency_task_gid: "124" },
+    invalid: { task_gid: "123", dependency_task_gid: "invalid" },
+  },
+  "prepare-task-dependency-remove": {
+    valid: { task_gid: "123", dependency_task_gid: "124" },
+    invalid: { task_gid: "invalid", dependency_task_gid: "124" },
+  },
   apply: { valid: { operation_id: operationId }, invalid: { operation_id: "invalid" } },
 } satisfies Record<AgentActionName, DriftFixture>;
 
@@ -116,6 +209,15 @@ describe("agent capability and schema catalog", () => {
       "status",
       "operation-status",
       "my-tasks",
+      "list-projects",
+      "list-sections",
+      "list-project-memberships",
+      "list-custom-fields",
+      "get-custom-field",
+      "resolve-user",
+      "task-context",
+      "batch-tasks",
+      "resolve-task",
       "git-current",
       "repository-asana",
       "repository-context",
@@ -126,6 +228,14 @@ describe("agent capability and schema catalog", () => {
       "find-git",
       "prepare-task-update",
       "prepare-comment",
+      "prepare-task-create",
+      "prepare-subtask-create",
+      "prepare-task-from-template",
+      "prepare-task-project-add",
+      "prepare-task-project-remove",
+      "prepare-task-section-move",
+      "prepare-task-dependency-add",
+      "prepare-task-dependency-remove",
       "apply",
     ]);
     expect(AGENT_MANIFEST.actions).toHaveLength(AGENT_ACTION_NAMES.length);
@@ -133,6 +243,15 @@ describe("agent capability and schema catalog", () => {
       "asana-cli agent status",
       "asana-cli agent operation status UUID",
       "asana-cli agent my-tasks",
+      "asana-cli agent list-projects",
+      "asana-cli agent list-sections",
+      "asana-cli agent list-project-memberships",
+      "asana-cli agent list-custom-fields",
+      "asana-cli agent get-custom-field",
+      "asana-cli agent resolve-user",
+      "asana-cli agent context --task GID",
+      "asana-cli agent batch-tasks",
+      "asana-cli agent resolve-task",
       "asana-cli agent context --git-current",
       "asana-cli agent context --repository-asana",
       "asana-cli agent context --repository-context",
@@ -143,6 +262,14 @@ describe("agent capability and schema catalog", () => {
       "asana-cli agent find-git",
       "asana-cli agent prepare-task-update",
       "asana-cli agent prepare-comment",
+      "asana-cli agent prepare-task-create",
+      "asana-cli agent prepare-subtask-create",
+      "asana-cli agent prepare-task-from-template",
+      "asana-cli agent prepare-task-project-add",
+      "asana-cli agent prepare-task-project-remove",
+      "asana-cli agent prepare-task-section-move",
+      "asana-cli agent prepare-task-dependency-add",
+      "asana-cli agent prepare-task-dependency-remove",
     ]);
     expect(Object.keys(AGENT_MANIFEST.guarded_commands)).toEqual([
       "asana-cli agent apply",
@@ -152,6 +279,7 @@ describe("agent capability and schema catalog", () => {
       "asana-cli agent api",
       "asana-cli auth pat set",
       "asana-cli auth pat delete",
+      "asana-cli context ...",
       "asana-cli integrations install --apply",
       "asana-cli integrations update --apply",
       "asana-cli integrations uninstall --apply",
@@ -171,7 +299,26 @@ describe("agent capability and schema catalog", () => {
       },
     });
     for (const descriptor of AGENT_MANIFEST.actions) {
-      const minimum = descriptor.action === "repository-context"
+      const minimum = [
+        "repository-context",
+        "list-projects",
+        "list-sections",
+        "list-project-memberships",
+        "list-custom-fields",
+        "get-custom-field",
+        "resolve-user",
+        "task-context",
+        "batch-tasks",
+        "resolve-task",
+        "prepare-task-create",
+        "prepare-subtask-create",
+        "prepare-task-from-template",
+        "prepare-task-project-add",
+        "prepare-task-project-remove",
+        "prepare-task-section-move",
+        "prepare-task-dependency-add",
+        "prepare-task-dependency-remove",
+      ].includes(descriptor.action)
         ? "0.5.0"
         : ["operation-status", "prepare-task-update", "prepare-comment", "apply"]
           .includes(descriptor.action)
@@ -380,6 +527,11 @@ describe("agent capability and schema catalog", () => {
       task_gid: "123",
       patch: {},
     }).success).toBe(false);
+    expect(AGENT_ACTIONS["prepare-task-create"].inputSchema.safeParse({
+      workspace_gid: "100",
+      project_gid: "200",
+      task: { name: "Invalid start", start_on: "2026-07-15" },
+    }).success).toBe(false);
   });
 
   test("publishes JSON Schema metadata for runtime object refinements", async () => {
@@ -426,6 +578,54 @@ describe("agent capability and schema catalog", () => {
       expect(taskPatchSchema.safeParse(fixture.patch).success).toBe(fixture.valid);
       expect(rejectedByPublishedNot(fixture.patch)).toBe(!fixture.valid);
     }
+
+    const createPublication = singleActionSchema.parse(
+      (await runCli(["agent", "schema", "prepare-task-create"])).value,
+    );
+    const createDateRules = z.looseObject({
+      properties: z.looseObject({
+        task: z.looseObject({
+          not: z.looseObject({
+            required: z.tuple([z.literal("due_on"), z.literal("due_at")]),
+          }),
+          if: z.looseObject({
+            required: z.tuple([z.literal("start_on")]),
+          }),
+          then: z.looseObject({
+            anyOf: z.tuple([
+              z.looseObject({ required: z.tuple([z.literal("due_on")]) }),
+              z.looseObject({ required: z.tuple([z.literal("due_at")]) }),
+            ]),
+          }),
+        }),
+      }),
+    }).parse(createPublication.action.input).properties.task;
+    expect(createDateRules.not.required).toEqual(["due_on", "due_at"]);
+    expect(createDateRules.if.required).toEqual(["start_on"]);
+    expect(createDateRules.then.anyOf.map((rule) => rule.required[0]))
+      .toEqual(["due_on", "due_at"]);
+
+    const customFieldPublication = singleActionSchema.parse(
+      (await runCli(["agent", "schema", "get-custom-field"])).value,
+    );
+    const selectionRule = z.looseObject({
+      if: z.looseObject({
+        properties: z.looseObject({
+          include_values: z.looseObject({ const: z.literal(false) }),
+        }),
+      }),
+      then: z.looseObject({
+        not: z.looseObject({
+          required: z.tuple([z.literal("max_content_bytes")]),
+        }),
+      }),
+    }).parse(customFieldPublication.action.input);
+    expect(selectionRule.if.properties.include_values.const).toBe(false);
+    expect(selectionRule.then.not.required).toEqual(["max_content_bytes"]);
+    expect(AGENT_ACTIONS["get-custom-field"].inputSchema.safeParse({
+      field_gid: "4400",
+      max_content_bytes: 1024,
+    }).success).toBe(false);
   });
 
   test("rejects an unknown schema action before authentication", async () => {

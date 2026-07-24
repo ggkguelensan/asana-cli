@@ -10,32 +10,17 @@ import {
 } from "./git-context";
 import { CliError } from "./errors";
 import { gidSchema } from "./schemas";
+import {
+  assertSupportedRuntimePlatform,
+  type SupportedRuntimePlatform,
+} from "./platform-support";
 
-export type RepositoryAsanaMappingPlatform = "darwin" | "linux" | "win32";
+export type RepositoryAsanaMappingPlatform = SupportedRuntimePlatform;
 
 const LINUX_MAPPING_ROOT = "/etc";
 const DARWIN_MAPPING_ROOT = "/private/etc";
-const WINDOWS_MAPPING_PATH = "C:\\ProgramData\\asana-cli\\repository-asana-mapping.json";
-const WINDOWS_POWER_SHELL_PATH = "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe";
 const MAX_MAPPING_BYTES = 49_152;
-const MAX_WINDOWS_INSPECTOR_OUTPUT_BYTES = 65_536;
-const MAX_WINDOWS_INSPECTOR_ERROR_BYTES = 8_192;
 const GROUP_OR_OTHER_WRITABLE = 0o022;
-
-import WINDOWS_MAPPING_INSPECTOR_SCRIPT from "../assets/windows-repository-asana-mapping-inspector.ps1" with { type: "text" };
-
-const WINDOWS_MAPPING_COMMAND = Object.freeze([
-  WINDOWS_POWER_SHELL_PATH,
-  "-NoLogo",
-  "-NoProfile",
-  "-NonInteractive",
-  "-Command",
-  WINDOWS_MAPPING_INSPECTOR_SCRIPT,
-]);
-const WINDOWS_MAPPING_ENV = Object.freeze({
-  SystemRoot: "C:\\Windows",
-  WINDIR: "C:\\Windows",
-});
 
 const mappingEntrySchema = z.strictObject({
   remote: z.strictObject({ host: normalizedHostSchema }),
@@ -86,21 +71,9 @@ export interface RepositoryAsanaMappingProvider {
   find(identity: GitRepositoryIdentity): Promise<RepositoryAsanaMapping | undefined>;
 }
 
-export type WindowsRepositoryAsanaMappingCommandResult = Readonly<{
-  stdout: Uint8Array;
-  stderr: Uint8Array;
-  exitCode: number;
-}>;
-
-/** Injectable only to exercise the fixed Windows inspector on non-Windows hosts. */
-export type WindowsRepositoryAsanaMappingCommandRunner = (
-  command: readonly string[],
-) => Promise<WindowsRepositoryAsanaMappingCommandResult>;
-
 export type FixedFileRepositoryAsanaMappingProviderOptions = Readonly<{
   path?: string;
   platform?: RepositoryAsanaMappingPlatform;
-  windowsCommandRunner?: WindowsRepositoryAsanaMappingCommandRunner;
 }>;
 
 function mappingIdentity(identity: GitRepositoryIdentity): string {
@@ -113,17 +86,24 @@ export function parseRepositoryAsanaMappingFile(value: unknown): RepositoryAsana
   return parsed.data;
 }
 
+export function findRepositoryAsanaMapping(
+  file: RepositoryAsanaMappingFile,
+  identity: GitRepositoryIdentity,
+): RepositoryAsanaMapping | undefined {
+  const parsedIdentity = gitRepositoryIdentitySchema.parse(identity);
+  return file.mappings.find(
+    (entry) => mappingIdentity(entry) === mappingIdentity(parsedIdentity),
+  );
+}
+
 function currentPlatform(): RepositoryAsanaMappingPlatform {
-  if (process.platform === "win32") return "win32";
-  if (process.platform === "darwin") return "darwin";
-  return "linux";
+  return assertSupportedRuntimePlatform();
 }
 
 /** Returns the sole host-administered repository-to-Asana mapping location. */
 export function fixedRepositoryAsanaMappingPath(
   platform: RepositoryAsanaMappingPlatform = currentPlatform(),
 ): string {
-  if (platform === "win32") return WINDOWS_MAPPING_PATH;
   return join(
     platform === "darwin" ? DARWIN_MAPPING_ROOT : LINUX_MAPPING_ROOT,
     "asana-cli",
@@ -226,86 +206,6 @@ async function readTrustedPosixMapping(path: string, platform: RepositoryAsanaMa
   }
 }
 
-async function readBoundedBytes(
-  stream: ReadableStream<Uint8Array>,
-  maximumBytes: number,
-): Promise<Uint8Array> {
-  const reader = stream.getReader();
-  const chunks: Uint8Array[] = [];
-  let length = 0;
-  try {
-    for (;;) {
-      const next = await reader.read();
-      if (next.done) break;
-      length += next.value.byteLength;
-      if (length > maximumBytes) {
-        await reader.cancel();
-        throw new Error("Repository mapping inspector output exceeded the limit");
-      }
-      chunks.push(next.value);
-    }
-  } finally {
-    reader.releaseLock();
-  }
-
-  const bytes = new Uint8Array(length);
-  let offset = 0;
-  for (const chunk of chunks) {
-    bytes.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  return bytes;
-}
-
-async function runWindowsRepositoryAsanaMappingInspector(
-  command: readonly string[],
-): Promise<WindowsRepositoryAsanaMappingCommandResult> {
-  const process = Bun.spawn({
-    cmd: [...command],
-    env: WINDOWS_MAPPING_ENV,
-    stdin: "ignore",
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-  const [stdout, stderr, exitCode] = await Promise.all([
-    readBoundedBytes(process.stdout, MAX_WINDOWS_INSPECTOR_OUTPUT_BYTES),
-    readBoundedBytes(process.stderr, MAX_WINDOWS_INSPECTOR_ERROR_BYTES),
-    process.exited,
-  ]);
-  return { stdout, stderr, exitCode };
-}
-
-function parseWindowsRepositoryAsanaMappingPayload(
-  output: WindowsRepositoryAsanaMappingCommandResult,
-): RepositoryAsanaMappingFile {
-  if (
-    output.exitCode !== 0 ||
-    output.stdout.byteLength > MAX_WINDOWS_INSPECTOR_OUTPUT_BYTES ||
-    output.stderr.byteLength > MAX_WINDOWS_INSPECTOR_ERROR_BYTES ||
-    output.stderr.byteLength !== 0
-  ) {
-    throw new Error("Repository mapping inspector failed");
-  }
-
-  const base64 = new TextDecoder("utf-8", { fatal: true }).decode(output.stdout);
-  if (!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(base64)) {
-    throw new Error("Repository mapping inspector returned invalid output");
-  }
-
-  const bytes = Uint8Array.from(Buffer.from(base64, "base64"));
-  if (
-    bytes.byteLength === 0 ||
-    bytes.byteLength > MAX_MAPPING_BYTES ||
-    Buffer.from(bytes).toString("base64") !== base64
-  ) {
-    throw new Error("Repository mapping inspector returned invalid output");
-  }
-
-  return parseRepositoryAsanaMappingFile(
-    JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)),
-  );
-}
-
 function mappingNotFound(): CliError {
   return new CliError(
     "not-found",
@@ -327,14 +227,10 @@ function mappingStorageInvalid(): CliError {
 export class FixedFileRepositoryAsanaMappingProvider implements RepositoryAsanaMappingProvider {
   readonly path: string;
   readonly platform: RepositoryAsanaMappingPlatform;
-  readonly #windowsCommandRunner: WindowsRepositoryAsanaMappingCommandRunner;
 
   constructor(options: FixedFileRepositoryAsanaMappingProviderOptions = {}) {
     this.platform = options.platform ?? currentPlatform();
-    this.path = this.platform === "win32"
-      ? WINDOWS_MAPPING_PATH
-      : options.path ?? fixedRepositoryAsanaMappingPath(this.platform);
-    this.#windowsCommandRunner = options.windowsCommandRunner ?? runWindowsRepositoryAsanaMappingInspector;
+    this.path = options.path ?? fixedRepositoryAsanaMappingPath(this.platform);
   }
 
   async find(identity: GitRepositoryIdentity): Promise<RepositoryAsanaMapping | undefined> {
@@ -342,15 +238,10 @@ export class FixedFileRepositoryAsanaMappingProvider implements RepositoryAsanaM
     if (!parsedIdentity.success) throw mappingNotFound();
 
     try {
-      const value = this.platform === "win32"
-        ? parseWindowsRepositoryAsanaMappingPayload(
-          await this.#windowsCommandRunner(WINDOWS_MAPPING_COMMAND),
-        )
-        : await readTrustedPosixMapping(this.path, this.platform);
+      const value = await readTrustedPosixMapping(this.path, this.platform);
       if (value === undefined) throw mappingNotFound();
       const file = parseRepositoryAsanaMappingFile(value);
-      const mapping = file.mappings.find((entry) => mappingIdentity(entry) === mappingIdentity(parsedIdentity.data));
-      return mapping;
+      return findRepositoryAsanaMapping(file, parsedIdentity.data);
     } catch (error) {
       if (error instanceof CliError) throw error;
       throw mappingStorageInvalid();

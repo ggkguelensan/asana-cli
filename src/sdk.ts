@@ -129,13 +129,22 @@ export async function collectPages<T>(
   maxResults: number,
   itemSchema: z.ZodType<T>,
   context = "Asana collection",
-): Promise<{ data: T[]; next_page: unknown }> {
+  reportTruncation = false,
+): Promise<{ data: T[]; next_page: unknown; truncated?: boolean }> {
   const data: T[] = [];
   let page: CollectionLike | undefined = first;
+  const result = (nextPage: unknown, truncated: boolean) => ({
+    data,
+    next_page: nextPage,
+    ...(reportTruncation ? { truncated } : {}),
+  });
 
   while (page && Array.isArray(page.data)) {
     const remaining = maxResults - data.length;
-    if (remaining <= 0) break;
+    if (remaining <= 0) {
+      return result(page._response?.next_page ?? null, true);
+    }
+    const pageWasSliced = page.data.length > remaining;
     const parsedItems = z.array(itemSchema).safeParse(page.data.slice(0, remaining));
     if (!parsedItems.success) {
       throw new CliError(
@@ -145,13 +154,14 @@ export async function collectPages<T>(
     }
     data.push(...parsedItems.data);
     const nextPage = page._response?.next_page ?? null;
+    if (pageWasSliced) return result(nextPage, true);
     if (!all || !nextPage || data.length >= maxResults || !page.nextPage) {
-      return { data, next_page: nextPage };
+      return result(nextPage, nextPage !== null && nextPage !== undefined);
     }
     page = await page.nextPage();
   }
 
-  return { data, next_page: null };
+  return result(null, false);
 }
 
 export function asCollection(value: unknown, context: string): CollectionLike {

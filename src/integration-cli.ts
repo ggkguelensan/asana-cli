@@ -16,7 +16,7 @@ import {
   clientAdapterDetectionProbes,
   renderClientPolicyGuidance,
 } from "./client-adapter-specs";
-import { booleanFlag, stringFlag, type ParsedArgs } from "./args";
+import { booleanFlag, flagStrings, stringFlag, type ParsedArgs } from "./args";
 import { CliError } from "./errors";
 import {
   diffIntegration,
@@ -64,10 +64,35 @@ function requireAllowedFlags(args: ParsedArgs, allowed: readonly string[]): void
   }
 }
 
+function doctorOptions(args: ParsedArgs): Readonly<{
+  auto_allow_commands: string[];
+  probe_credential_store: boolean;
+}> {
+  requireAllowedFlags(
+    { ...args, flags: Object.fromEntries(Object.entries(args.flags).filter(([name]) => name !== "auto-allow")) },
+    ["client", "scope", "compact", "skip-credential-store"],
+  );
+  const rawAutoAllow = args.flags["auto-allow"];
+  if (
+    rawAutoAllow === true ||
+    rawAutoAllow === false ||
+    (Array.isArray(rawAutoAllow) && rawAutoAllow.some((value) => value === "true" || value === "false"))
+  ) {
+    throw new CliError("usage", "--auto-allow requires a command value");
+  }
+  return {
+    auto_allow_commands: flagStrings(args, "auto-allow"),
+    probe_credential_store: !booleanFlag(args, "skip-credential-store"),
+  };
+}
+
 function integrationClientOption(value: unknown, label: "--client" | "CLIENT") {
   const parsed = integrationClientIdSchema.safeParse(value);
   if (!parsed.success) {
-    throw new CliError("validation", `${label} must be generic-agent-skills, codex, or claude-code`);
+    throw new CliError(
+      "validation",
+      `${label} must be one of: ${integrationClientIdSchema.options.join(", ")}`,
+    );
   }
   return parsed.data;
 }
@@ -198,6 +223,10 @@ export async function runIntegrationCommand(args: ParsedArgs): Promise<{ value?:
         schema: EMBEDDED_INTEGRATION_BUNDLE.schema,
         bundle_version: EMBEDDED_INTEGRATION_BUNDLE.bundle_version,
         agent_protocol_version: EMBEDDED_INTEGRATION_BUNDLE.agent_protocol_version,
+        runtime: {
+          platform: process.platform,
+          architecture: process.arch,
+        },
         clients: INTEGRATION_CLIENTS,
       },
     };
@@ -211,15 +240,17 @@ export async function runIntegrationCommand(args: ParsedArgs): Promise<{ value?:
 
   requireExactPositionals(args, 2, `asana-cli integrations ${action} --client CLIENT --scope user|project`);
   const mutation = action === "install" || action === "update" || action === "uninstall";
-  requireAllowedFlags(args, mutation ? ["client", "scope", "dry-run", "apply", "compact"] : ["client", "scope", "compact"]);
+  const doctorInput = action === "doctor" ? doctorOptions(args) : undefined;
+  if (action !== "doctor") {
+    requireAllowedFlags(args, mutation ? ["client", "scope", "dry-run", "apply", "compact"] : ["client", "scope", "compact"]);
+  }
   const target = integrationTarget(args);
 
   if (action === "detect") return { value: await detectIntegration(target) };
   if (action === "status") return { value: await inspectIntegration(target) };
-  if (action === "doctor") return { value: await doctorIntegration({ target }) };
+  if (action === "doctor") return { value: await doctorIntegration({ target, ...doctorInput }) };
   if (action === "diff") return { value: await diffIntegration(bundleForTarget(target)) };
 
   const mode = executionMode(args, action);
   return { value: await mutateIntegration(action, target, mode) };
 }
-

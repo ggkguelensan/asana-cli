@@ -1,6 +1,10 @@
 import { createHash, randomUUID } from "node:crypto";
 import { z } from "zod";
-import { taskPatchSchema } from "../agent-action-schemas";
+import {
+  expandedTaskCreateFieldsSchema,
+  taskCreateTemplateMetadataSchema,
+  taskPatchSchema,
+} from "../agent-action-schemas";
 import { AGENT_PROTOCOL_VERSION } from "../version";
 
 export const OPERATION_FILE_FORMAT_VERSION = 1 as const;
@@ -20,16 +24,53 @@ export const operationStateSchema = z.enum([
   "expired",
 ]);
 
-export const operationNameSchema = z.enum(["task.update", "task.comment"]);
+export const operationNameSchema = z.enum([
+  "task.update",
+  "task.comment",
+  "task.create",
+  "task.project.add",
+  "task.project.remove",
+  "task.section.move",
+  "task.dependency.add",
+  "task.dependency.remove",
+]);
 
-export const operationTargetSchema = z.strictObject({
+const existingTaskOperationTargetSchema = z.strictObject({
   task_gid: gidSchema,
 });
 
-export const operationGuardsSchema = z.strictObject({
+const taskCreateOperationTargetSchema = z.strictObject({
+  workspace_gid: gidSchema,
+  project_gid: gidSchema,
+  parent_task_gid: gidSchema.optional(),
+});
+
+export const operationTargetSchema = z.union([
+  existingTaskOperationTargetSchema,
+  taskCreateOperationTargetSchema,
+]);
+
+const existingTaskOperationGuardsSchema = z.strictObject({
   expected_modified_at: timestampSchema,
   prepared_by_gid: gidSchema,
 });
+
+const taskCreateOperationGuardsSchema = z.strictObject({
+  prepared_by_gid: gidSchema,
+  expected_parent_modified_at: timestampSchema.optional(),
+});
+
+const taskDependencyOperationGuardsSchema = z.strictObject({
+  expected_modified_at: timestampSchema,
+  expected_dependency_modified_at: timestampSchema,
+  prepared_by_gid: gidSchema,
+});
+
+export const operationGuardsSchema = z.union([
+  existingTaskOperationGuardsSchema,
+  taskCreateOperationGuardsSchema,
+  taskDependencyOperationGuardsSchema,
+]);
 
 const taskUpdatePayloadSchema = z.strictObject({
   changes: taskPatchSchema,
@@ -37,6 +78,29 @@ const taskUpdatePayloadSchema = z.strictObject({
 
 const taskCommentPayloadSchema = z.strictObject({
   text: z.string().min(1).max(8_000),
+});
+
+const taskCreatePayloadSchema = z.strictObject({
+  fields: expandedTaskCreateFieldsSchema,
+  template: taskCreateTemplateMetadataSchema.optional(),
+});
+
+const taskProjectAddPayloadSchema = z.strictObject({
+  project_gid: gidSchema,
+  section_gid: gidSchema.optional(),
+});
+
+const taskProjectRemovePayloadSchema = z.strictObject({
+  project_gid: gidSchema,
+});
+
+const taskSectionMovePayloadSchema = z.strictObject({
+  project_gid: gidSchema,
+  section_gid: gidSchema,
+});
+
+const taskDependencyPayloadSchema = z.strictObject({
+  dependency_task_gid: gidSchema,
 });
 
 const appliedResultSchema = z.strictObject({
@@ -70,8 +134,6 @@ const recordBaseShape = {
   agent_protocol_version: z.literal(AGENT_PROTOCOL_VERSION),
   id: z.uuid(),
   state: operationStateSchema,
-  target: operationTargetSchema,
-  guards: operationGuardsSchema,
   created_at: timestampSchema,
   expires_at: timestampSchema,
   attempt_started_at: timestampSchema.optional(),
@@ -83,18 +145,92 @@ const recordBaseShape = {
 const taskUpdateRecordSchema = z.strictObject({
   ...recordBaseShape,
   operation: z.literal("task.update"),
+  target: existingTaskOperationTargetSchema,
+  guards: existingTaskOperationGuardsSchema,
   payload: taskUpdatePayloadSchema,
 });
 
 const taskCommentRecordSchema = z.strictObject({
   ...recordBaseShape,
   operation: z.literal("task.comment"),
+  target: existingTaskOperationTargetSchema,
+  guards: existingTaskOperationGuardsSchema,
   payload: taskCommentPayloadSchema,
+});
+
+const taskProjectAddRecordSchema = z.strictObject({
+  ...recordBaseShape,
+  operation: z.literal("task.project.add"),
+  target: existingTaskOperationTargetSchema,
+  guards: existingTaskOperationGuardsSchema,
+  payload: taskProjectAddPayloadSchema,
+});
+
+const taskProjectRemoveRecordSchema = z.strictObject({
+  ...recordBaseShape,
+  operation: z.literal("task.project.remove"),
+  target: existingTaskOperationTargetSchema,
+  guards: existingTaskOperationGuardsSchema,
+  payload: taskProjectRemovePayloadSchema,
+});
+
+const taskSectionMoveRecordSchema = z.strictObject({
+  ...recordBaseShape,
+  operation: z.literal("task.section.move"),
+  target: existingTaskOperationTargetSchema,
+  guards: existingTaskOperationGuardsSchema,
+  payload: taskSectionMovePayloadSchema,
+});
+
+const taskDependencyAddRecordSchema = z.strictObject({
+  ...recordBaseShape,
+  operation: z.literal("task.dependency.add"),
+  target: existingTaskOperationTargetSchema,
+  guards: taskDependencyOperationGuardsSchema,
+  payload: taskDependencyPayloadSchema,
+}).refine((record) => record.target.task_gid !== record.payload.dependency_task_gid, {
+  message: "a task cannot depend on itself",
+  path: ["payload", "dependency_task_gid"],
+});
+
+const taskDependencyRemoveRecordSchema = z.strictObject({
+  ...recordBaseShape,
+  operation: z.literal("task.dependency.remove"),
+  target: existingTaskOperationTargetSchema,
+  guards: taskDependencyOperationGuardsSchema,
+  payload: taskDependencyPayloadSchema,
+}).refine((record) => record.target.task_gid !== record.payload.dependency_task_gid, {
+  message: "a task cannot be its own dependency",
+  path: ["payload", "dependency_task_gid"],
+});
+
+const taskCreateRecordSchema = z.strictObject({
+  ...recordBaseShape,
+  operation: z.literal("task.create"),
+  target: taskCreateOperationTargetSchema,
+  guards: taskCreateOperationGuardsSchema,
+  payload: taskCreatePayloadSchema,
+}).superRefine((record, context) => {
+  const hasParent = record.target.parent_task_gid !== undefined;
+  const hasParentGuard = record.guards.expected_parent_modified_at !== undefined;
+  if (hasParent !== hasParentGuard) {
+    context.addIssue({
+      code: "custom",
+      path: ["guards", "expected_parent_modified_at"],
+      message: "subtask creation requires an exact parent concurrency guard",
+    });
+  }
 });
 
 export const operationRecordFileSchema = z.discriminatedUnion("operation", [
   taskUpdateRecordSchema,
   taskCommentRecordSchema,
+  taskCreateRecordSchema,
+  taskProjectAddRecordSchema,
+  taskProjectRemoveRecordSchema,
+  taskSectionMoveRecordSchema,
+  taskDependencyAddRecordSchema,
+  taskDependencyRemoveRecordSchema,
 ]).superRefine((record, context) => {
   const createdAt = Date.parse(record.created_at);
   const expiresAt = Date.parse(record.expires_at);
@@ -132,8 +268,6 @@ export const operationRecordFileSchema = z.discriminatedUnion("operation", [
 });
 
 const createBaseShape = {
-  target: operationTargetSchema,
-  guards: operationGuardsSchema,
   ttl_ms: z.number().int().positive().max(MAX_OPERATION_TTL_MS).default(DEFAULT_OPERATION_TTL_MS),
 };
 
@@ -141,12 +275,74 @@ export const createOperationInputSchema = z.discriminatedUnion("operation", [
   z.strictObject({
     ...createBaseShape,
     operation: z.literal("task.update"),
+    target: existingTaskOperationTargetSchema,
+    guards: existingTaskOperationGuardsSchema,
     payload: taskUpdatePayloadSchema,
   }),
   z.strictObject({
     ...createBaseShape,
     operation: z.literal("task.comment"),
+    target: existingTaskOperationTargetSchema,
+    guards: existingTaskOperationGuardsSchema,
     payload: taskCommentPayloadSchema,
+  }),
+  z.strictObject({
+    ...createBaseShape,
+    operation: z.literal("task.create"),
+    target: taskCreateOperationTargetSchema,
+    guards: taskCreateOperationGuardsSchema,
+    payload: taskCreatePayloadSchema,
+  }).superRefine((record, context) => {
+    const hasParent = record.target.parent_task_gid !== undefined;
+    const hasParentGuard = record.guards.expected_parent_modified_at !== undefined;
+    if (hasParent !== hasParentGuard) {
+      context.addIssue({
+        code: "custom",
+        path: ["guards", "expected_parent_modified_at"],
+        message: "subtask creation requires an exact parent concurrency guard",
+      });
+    }
+  }),
+  z.strictObject({
+    ...createBaseShape,
+    operation: z.literal("task.project.add"),
+    target: existingTaskOperationTargetSchema,
+    guards: existingTaskOperationGuardsSchema,
+    payload: taskProjectAddPayloadSchema,
+  }),
+  z.strictObject({
+    ...createBaseShape,
+    operation: z.literal("task.project.remove"),
+    target: existingTaskOperationTargetSchema,
+    guards: existingTaskOperationGuardsSchema,
+    payload: taskProjectRemovePayloadSchema,
+  }),
+  z.strictObject({
+    ...createBaseShape,
+    operation: z.literal("task.section.move"),
+    target: existingTaskOperationTargetSchema,
+    guards: existingTaskOperationGuardsSchema,
+    payload: taskSectionMovePayloadSchema,
+  }),
+  z.strictObject({
+    ...createBaseShape,
+    operation: z.literal("task.dependency.add"),
+    target: existingTaskOperationTargetSchema,
+    guards: taskDependencyOperationGuardsSchema,
+    payload: taskDependencyPayloadSchema,
+  }).refine((record) => record.target.task_gid !== record.payload.dependency_task_gid, {
+    message: "a task cannot depend on itself",
+    path: ["payload", "dependency_task_gid"],
+  }),
+  z.strictObject({
+    ...createBaseShape,
+    operation: z.literal("task.dependency.remove"),
+    target: existingTaskOperationTargetSchema,
+    guards: taskDependencyOperationGuardsSchema,
+    payload: taskDependencyPayloadSchema,
+  }).refine((record) => record.target.task_gid !== record.payload.dependency_task_gid, {
+    message: "a task cannot be its own dependency",
+    path: ["payload", "dependency_task_gid"],
   }),
 ]);
 

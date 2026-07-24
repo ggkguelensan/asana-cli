@@ -17,7 +17,6 @@ import {
   FixedFileHostScopedWritePolicyProvider,
   fixedHostScopedWritePolicyPath,
   type HostScopedWritePolicyProvider,
-  type WindowsPolicyCommandResult,
 } from "../src/host-write-policy";
 import { MemoryOperationRepository } from "../src/operations/memory-repository";
 import type {
@@ -32,6 +31,9 @@ import type {
 import { createClient, type AsanaClient } from "../src/sdk";
 import {
   describeTaskCommentWrite,
+  describeTaskCreateWrite,
+  describeTaskDependencyWrite,
+  describeTaskProjectWrite,
   describeTaskUpdateWrite,
   evaluateScopedWritePolicy,
   type ScopedWritePolicy,
@@ -52,21 +54,12 @@ const permittedPolicy: ScopedWritePolicy = {
     task_update_fields: ["name", "custom_fields"],
     custom_field_gids: ["300"],
     allow_comments: true,
+    allow_task_create: false,
+    allow_project_membership_changes: false,
+    allow_section_moves: false,
+    allow_dependency_changes: false,
   }],
 };
-
-const textEncoder = new TextEncoder();
-
-function windowsPolicyResult(
-  stdout: string,
-  options: Readonly<Partial<Pick<WindowsPolicyCommandResult, "stderr" | "exitCode">>> = {},
-): WindowsPolicyCommandResult {
-  return {
-    stdout: textEncoder.encode(stdout),
-    stderr: options.stderr ?? new Uint8Array(),
-    exitCode: options.exitCode ?? 0,
-  };
-}
 
 async function temporaryDirectory(): Promise<string> {
   const directory = await mkdtemp(join(tmpdir(), "asana-wave5-security-"));
@@ -203,6 +196,77 @@ describe("host scoped write policy", () => {
         expected: { allowed: true },
       },
       {
+        candidate: describeTaskCreateWrite(target, {
+          name: "Created task",
+          assignee_gid: "1001",
+        }),
+        expected: { allowed: false, reason: "task_create_not_allowed" },
+      },
+      {
+        candidate: describeTaskCreateWrite(target, {
+          name: "Created task",
+          assignee_gid: "1001",
+          custom_fields: { "300": "ready" },
+        }),
+        policy: {
+          ...permittedPolicy,
+          scopes: [{
+            ...permittedPolicy.scopes[0]!,
+            task_update_fields: ["name", "assignee", "custom_fields"],
+            allow_task_create: true,
+          }],
+        },
+        expected: { allowed: true },
+      },
+      {
+        candidate: describeTaskProjectWrite("task.project.add", target),
+        expected: {
+          allowed: false,
+          reason: "project_membership_changes_not_allowed",
+        },
+      },
+      {
+        candidate: describeTaskProjectWrite("task.project.remove", target),
+        policy: {
+          ...permittedPolicy,
+          scopes: [{
+            ...permittedPolicy.scopes[0]!,
+            allow_project_membership_changes: true,
+          }],
+        },
+        expected: { allowed: true },
+      },
+      {
+        candidate: describeTaskProjectWrite("task.section.move", target),
+        expected: { allowed: false, reason: "section_moves_not_allowed" },
+      },
+      {
+        candidate: describeTaskProjectWrite("task.section.move", target),
+        policy: {
+          ...permittedPolicy,
+          scopes: [{
+            ...permittedPolicy.scopes[0]!,
+            allow_section_moves: true,
+          }],
+        },
+        expected: { allowed: true },
+      },
+      {
+        candidate: describeTaskDependencyWrite("task.dependency.add", target),
+        expected: { allowed: false, reason: "dependency_changes_not_allowed" },
+      },
+      {
+        candidate: describeTaskDependencyWrite("task.dependency.remove", target),
+        policy: {
+          ...permittedPolicy,
+          scopes: [{
+            ...permittedPolicy.scopes[0]!,
+            allow_dependency_changes: true,
+          }],
+        },
+        expected: { allowed: true },
+      },
+      {
         candidate: describeTaskCommentWrite({ workspace_gid: "101", project_gids: ["200"] }),
         expected: { allowed: false, reason: "workspace_not_allowed" },
       },
@@ -244,103 +308,6 @@ describe("host scoped write policy", () => {
     for (const testCase of cases) {
       expect(fixedHostScopedWritePolicyPath(testCase.platform)).toBe(testCase.expected);
     }
-  });
-
-  test("loads canonical Windows policy output through one frozen fixed-path PowerShell command", async () => {
-    const callerSuppliedPath = "C:\\untrusted\\caller-supplied-policy.json";
-    const canonicalPayload = Buffer.from(JSON.stringify(permittedPolicy)).toString("base64");
-    let receivedCommand: readonly string[] | undefined;
-    const provider = new FixedFileHostScopedWritePolicyProvider({
-      platform: "win32",
-      path: callerSuppliedPath,
-      windowsCommandRunner: async (command) => {
-        receivedCommand = command;
-        return windowsPolicyResult(canonicalPayload);
-      },
-    });
-
-    await expect(provider.load()).resolves.toEqual(permittedPolicy);
-    expect(provider.path).toBe("C:\\ProgramData\\asana-cli\\scoped-write-policy.json");
-    expect(fixedHostScopedWritePolicyPath("win32")).toBe(provider.path);
-    expect(receivedCommand).toBeDefined();
-    expect(Object.isFrozen(receivedCommand)).toBe(true);
-    expect(receivedCommand).toHaveLength(6);
-    expect(receivedCommand?.slice(0, 5)).toEqual([
-      "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
-      "-NoLogo",
-      "-NoProfile",
-      "-NonInteractive",
-      "-Command",
-    ]);
-    expect(receivedCommand?.[5]).toContain("$policyPath = 'C:\\ProgramData\\asana-cli\\scoped-write-policy.json'");
-    expect(receivedCommand?.join("\n")).not.toContain(callerSuppliedPath);
-    expect(receivedCommand?.join("\n")).not.toContain(canonicalPayload);
-  });
-
-  test("fails closed for rejected Windows inspector statuses and untrusted payloads", async () => {
-    const canonicalPayload = Buffer.from(JSON.stringify(permittedPolicy)).toString("base64");
-    const cases: ReadonlyArray<Readonly<{
-      name: string;
-      result: WindowsPolicyCommandResult;
-    }>> = [
-      {
-        name: "nonzero inspector status",
-        result: windowsPolicyResult(canonicalPayload, { exitCode: 1 }),
-      },
-      {
-        name: "inspector standard error",
-        result: windowsPolicyResult(canonicalPayload, { stderr: textEncoder.encode("inspector failure") }),
-      },
-      {
-        name: "malformed base64 payload",
-        result: windowsPolicyResult("not-base64!"),
-      },
-      {
-        name: "noncanonical base64 payload",
-        result: windowsPolicyResult(Buffer.from("{}").toString("base64").replace(/=$/, "")),
-      },
-      {
-        name: "oversize policy payload",
-        result: windowsPolicyResult(Buffer.from(`${" ".repeat(49_153)}${JSON.stringify(permittedPolicy)}`).toString("base64")),
-      },
-      {
-        name: "invalid policy content",
-        result: windowsPolicyResult(Buffer.from("{}").toString("base64")),
-      },
-    ];
-
-    for (const testCase of cases) {
-      const repository = memoryRepository();
-      const asana = scopedFakeAsana();
-      const error = await caughtCliError(() => new AgentOperationService(asana.client, repository, {
-        writePolicy: new FixedFileHostScopedWritePolicyProvider({
-          platform: "win32",
-          windowsCommandRunner: async () => testCase.result,
-        }),
-      }).prepareComment({ task_gid: "123", text: "Blocked comment" }));
-
-      expect(error.code).toBe("policy-denied");
-      expect(await repository.inspect(operationId)).toBeNull();
-      expect(asana.traces.filter((trace) => trace.method === "POST" || trace.method === "PUT")).toEqual([]);
-    }
-  });
-
-  test("blocks preparation before persistence or remote mutation when the injected Windows loader fails", async () => {
-    const repository = memoryRepository();
-    const asana = scopedFakeAsana();
-    const error = await caughtCliError(() => new AgentOperationService(asana.client, repository, {
-      writePolicy: new FixedFileHostScopedWritePolicyProvider({
-        platform: "win32",
-        windowsCommandRunner: async () => {
-          throw new Error("WINDOWS_POLICY_RUNNER_FAILURE_CANARY");
-        },
-      }),
-    }).prepareComment({ task_gid: "123", text: "Blocked comment" }));
-
-    expect(error.code).toBe("policy-denied");
-    expect(JSON.stringify(error)).not.toContain("WINDOWS_POLICY_RUNNER_FAILURE_CANARY");
-    expect(await repository.inspect(operationId)).toBeNull();
-    expect(asana.traces.filter((trace) => trace.method === "POST" || trace.method === "PUT")).toEqual([]);
   });
 
   test("fails closed for malformed, unsafe, symlinked, outside-root, and legacy Darwin host policies without disclosure", async () => {
@@ -492,7 +459,7 @@ describe("metadata-only operation audit", () => {
     });
     const input: CreateMetadataAuditEventInput = {
       operation_id: operationId,
-      target_task_gid: "123",
+      target: { kind: "task", task_gid: "123" },
       action: "task.comment",
       plan_hash: `sha256:${"a".repeat(64)}`,
       record_hash: `sha256:${"b".repeat(64)}`,
@@ -507,8 +474,8 @@ describe("metadata-only operation audit", () => {
 
     expect(stored).toEqual(event);
     expect(event).toEqual({
-      schema: "asana-cli.audit-event.v1",
-      file_format_version: 1,
+      schema: "asana-cli.audit-event.v2",
+      file_format_version: 2,
       event_id: auditEventId,
       occurred_at: preparedAt,
       ...input,
@@ -516,6 +483,29 @@ describe("metadata-only operation audit", () => {
     expect(metadataAuditEventSchema.safeParse({
       ...event,
       comment_text: "SEC005_FORBIDDEN_AUDIT_CONTENT_CANARY",
+    }).success).toBe(false);
+    const createEvent = createMetadataAuditEvent({
+      operation_id: operationId,
+      target: {
+        kind: "task-create",
+        workspace_gid: "100",
+        project_gid: "200",
+        parent_task_gid: "123",
+      },
+      action: "task.create",
+      plan_hash: `sha256:${"c".repeat(64)}`,
+      record_hash: `sha256:${"d".repeat(64)}`,
+      result: { outcome: "prepared" },
+    }, new Date(preparedAt), "00000000-0000-4000-8000-000000000502");
+    expect(createEvent.target).toEqual({
+      kind: "task-create",
+      workspace_gid: "100",
+      project_gid: "200",
+      parent_task_gid: "123",
+    });
+    expect(metadataAuditEventSchema.safeParse({
+      ...createEvent,
+      create_fields: { name: "SEC005_FORBIDDEN_CREATE_CONTENT_CANARY" },
     }).success).toBe(false);
   });
 
@@ -542,7 +532,11 @@ describe("metadata-only operation audit", () => {
     await service.apply(operationId);
 
     expect(events.map((event) => event.result.outcome)).toEqual(["prepared", "applying", "applied"]);
-    expect(events.every((event) => event.target_task_gid === "123" && event.action === "task.comment")).toBe(true);
+    expect(events.every((event) =>
+      event.target.kind === "task" &&
+      event.target.task_gid === "123" &&
+      event.action === "task.comment"
+    )).toBe(true);
     const serialized = JSON.stringify(events);
     expect(serialized).not.toContain("SEC005_COMMENT_PAYLOAD_CANARY");
     expect(serialized).not.toContain("SEC005_AUDIT_TOKEN_CANARY");

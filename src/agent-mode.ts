@@ -33,6 +33,12 @@ export function enforceAgentPolicy(args: ParsedArgs): void {
   if (command === "request" || command === "api" && action === "call") {
     throw new CliError("policy-denied", "Raw/API calls are not part of the direct agent contract");
   }
+  if (command === "context") {
+    throw new CliError(
+      "policy-denied",
+      "Agent mode cannot inspect or mutate human alias and worktree context state",
+    );
+  }
   if (
     command === "integrations" &&
     ["install", "update", "uninstall"].includes(action ?? "") &&
@@ -86,6 +92,7 @@ export const AGENT_MANIFEST = {
     "asana-cli agent api",
     "asana-cli auth pat set",
     "asana-cli auth pat delete",
+    "asana-cli context ...",
     "asana-cli integrations install --apply",
     "asana-cli integrations update --apply",
     "asana-cli integrations uninstall --apply",

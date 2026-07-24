@@ -1,0 +1,101 @@
+{
+  "schema": "asana-cli.integration-lifecycle-evidence.v1",
+  "target": "bun-linux-x64-baseline",
+  "platform": "linux",
+  "architecture": "x64",
+  "subject_sha256": "233d54593a28ef93f883ae249515528ef4388f0407255990031b3b134172ad01",
+  "binary_sha256": "12c9fbda833d130fbd1b83a02c96cc3f4b2ed596c0ce2a175a096e3eac04203c",
+  "bundle_sha256": "3802f7e7f51af459ac868e711853f525db7afdfd339b00b9a6c461ff5abdccf4",
+  "cases": [
+    {
+      "client": "generic-agent-skills",
+      "scope": "user",
+      "status": "passed"
+    },
+    {
+      "client": "generic-agent-skills",
+      "scope": "project",
+      "status": "passed"
+    },
+    {
+      "client": "codex",
+      "scope": "user",
+      "status": "passed"
+    },
+    {
+      "client": "codex",
+      "scope": "project",
+      "status": "passed"
+    },
+    {
+      "client": "claude-code",
+      "scope": "user",
+      "status": "passed"
+    },
+    {
+      "client": "claude-code",
+      "scope": "project",
+      "status": "passed"
+    },
+    {
+      "client": "gemini-cli",
+      "scope": "user",
+      "status": "passed"
+    },
+    {
+      "client": "gemini-cli",
+      "scope": "project",
+      "status": "passed"
+    },
+    {
+      "client": "github-copilot",
+      "scope": "user",
+      "status": "passed"
+    },
+    {
+      "client": "github-copilot",
+      "scope": "project",
+      "status": "passed"
+    },
+    {
+      "client": "opencode",
+      "scope": "user",
+      "status": "passed"
+    },
+    {
+      "client": "opencode",
+      "scope": "project",
+      "status": "passed"
+    },
+    {
+      "client": "cursor",
+      "scope": "user",
+      "status": "passed"
+    },
+    {
+      "client": "cursor",
+      "scope": "project",
+      "status": "passed"
+    },
+    {
+      "client": "pi",
+      "scope": "user",
+      "status": "passed"
+    },
+    {
+      "client": "pi",
+      "scope": "project",
+      "status": "passed"
+    },
+    {
+      "client": "kimi-code",
+      "scope": "user",
+      "status": "passed"
+    },
+    {
+      "client": "kimi-code",
+      "scope": "project",
+      "status": "passed"
+    }
+  ]
+}

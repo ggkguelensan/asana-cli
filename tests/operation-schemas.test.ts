@@ -145,4 +145,124 @@ describe("operation record schemas", () => {
       ttl_ms: 60_000,
     })).toThrow();
   });
+
+  test("requires complete immutable task-create targets, assignee, and subtask guards", () => {
+    const task = createOperationRecord({
+      operation: "task.create",
+      target: { workspace_gid: "100", project_gid: "200" },
+      payload: {
+        fields: {
+          name: "Create me",
+          assignee_gid: "123456",
+          custom_fields: { "300": "ready" },
+        },
+      },
+      guards: { prepared_by_gid: "123456" },
+      ttl_ms: 60_000,
+    }, createdAt, operationId);
+    expect(task).toMatchObject({
+      operation: "task.create",
+      target: { workspace_gid: "100", project_gid: "200" },
+      payload: { fields: { assignee_gid: "123456" } },
+    });
+
+    expect(() => createOperationInputSchema.parse({
+      operation: "task.create",
+      target: {
+        workspace_gid: "100",
+        project_gid: "200",
+        parent_task_gid: "987654",
+      },
+      payload: {
+        fields: { name: "Missing parent guard", assignee_gid: "123456" },
+      },
+      guards: { prepared_by_gid: "123456" },
+    })).toThrow("subtask creation requires an exact parent concurrency guard");
+
+    expect(() => createOperationInputSchema.parse({
+      operation: "task.create",
+      target: { workspace_gid: "100", project_gid: "200" },
+      payload: {
+        fields: {
+          name: "Invalid start date",
+          assignee_gid: "123456",
+          start_on: "2026-08-01",
+        },
+      },
+      guards: { prepared_by_gid: "123456" },
+    })).toThrow("task start_on requires due_on or due_at");
+  });
+
+  test("stores each project and section mutation as one strict immutable operation", () => {
+    const base = {
+      target: { task_gid: "987654" },
+      guards,
+      ttl_ms: 60_000,
+    };
+    const add = createOperationRecord({
+      ...base,
+      operation: "task.project.add",
+      payload: { project_gid: "200", section_gid: "300" },
+    }, createdAt, operationId);
+    expect(add).toMatchObject({
+      operation: "task.project.add",
+      target: { task_gid: "987654" },
+      payload: { project_gid: "200", section_gid: "300" },
+    });
+    expect(parseOperationRecord(add)).toEqual(add);
+
+    expect(createOperationInputSchema.parse({
+      ...base,
+      operation: "task.project.remove",
+      payload: { project_gid: "200" },
+    })).toMatchObject({ operation: "task.project.remove" });
+    expect(createOperationInputSchema.parse({
+      ...base,
+      operation: "task.section.move",
+      payload: { project_gid: "200", section_gid: "300" },
+    })).toMatchObject({ operation: "task.section.move" });
+    expect(() => createOperationInputSchema.parse({
+      ...base,
+      operation: "task.section.move",
+      payload: { project_gid: "200" },
+    })).toThrow();
+  });
+
+  test("stores one exact dependency relation with guards for both tasks", () => {
+    const dependencyGuards = {
+      ...guards,
+      expected_dependency_modified_at: "2026-07-15T08:30:00.000Z",
+    };
+    const add = createOperationRecord({
+      operation: "task.dependency.add",
+      target: { task_gid: "987654" },
+      payload: { dependency_task_gid: "987655" },
+      guards: dependencyGuards,
+      ttl_ms: 60_000,
+    }, createdAt, operationId);
+    expect(parseOperationRecord(add)).toEqual(add);
+    expect(add).toMatchObject({
+      operation: "task.dependency.add",
+      payload: { dependency_task_gid: "987655" },
+      guards: dependencyGuards,
+    });
+    expect(createOperationInputSchema.parse({
+      operation: "task.dependency.remove",
+      target: { task_gid: "987654" },
+      payload: { dependency_task_gid: "987655" },
+      guards: dependencyGuards,
+    })).toMatchObject({ operation: "task.dependency.remove" });
+    expect(() => createOperationInputSchema.parse({
+      operation: "task.dependency.add",
+      target: { task_gid: "987654" },
+      payload: { dependency_task_gid: "987654" },
+      guards: dependencyGuards,
+    })).toThrow("a task cannot depend on itself");
+    expect(() => createOperationInputSchema.parse({
+      operation: "task.dependency.remove",
+      target: { task_gid: "987654" },
+      payload: { dependency_task_gid: "987655" },
+      guards,
+    })).toThrow();
+  });
 });

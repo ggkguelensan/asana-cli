@@ -10,9 +10,13 @@ import {
   EMBEDDED_INTEGRATION_BUNDLE,
   type EmbeddedIntegrationClientId,
 } from "../generated/integrations/bundle";
-import { INTEGRATION_CLIENTS } from "../integrations/clients";
+import {
+  INTEGRATION_CLIENTS,
+  INTEGRATION_CLIENT_IDS,
+} from "../integrations/clients";
 import {
   INTEGRATION_MANIFEST_FILE,
+  doctorIntegration,
   inspectIntegration,
   integrationManifestSchema,
   planUninstallIntegration,
@@ -31,11 +35,9 @@ type LifecycleCase = Readonly<{ client: EmbeddedIntegrationClientId; scope: Scop
 
 type CliResult = Readonly<{ stdout: string; stderr: string; exitCode: number }>;
 
-const lifecycleCases = [
-  { client: "generic-agent-skills", scope: "user" },
-  { client: "codex", scope: "project" },
-  { client: "claude-code", scope: "project" },
-] as const satisfies readonly LifecycleCase[];
+const lifecycleCases: readonly LifecycleCase[] = EMBEDDED_INTEGRATION_BUNDLE.clients.flatMap(
+  ({ client }) => (["user", "project"] as const).map((scope) => ({ client, scope })),
+);
 
 const inspectionSchema = z.looseObject({
   state: z.enum(["absent", "managed", "modified", "unmanaged", "invalid", "unsafe"]),
@@ -53,6 +55,19 @@ const executionResultSchema = z.looseObject({ plan: planSchema, execution: execu
 const doctorSchema = z.looseObject({
   inspection: inspectionSchema,
   inherited_credentials: z.array(z.enum(["ASANA_ACCESS_TOKEN", "ASANA_PAT"])),
+  credential_sources: z.looseObject({
+    effective: z.enum(["ASANA_ACCESS_TOKEN", "ASANA_PAT", "os-credential-store", "none", "unknown"]),
+    environment: z.looseObject({ status: z.enum(["clear", "inherited"]) }),
+    os_credential_store: z.looseObject({
+      status: z.enum(["configured", "absent", "unavailable", "not-checked"]),
+    }),
+  }),
+  warnings: z.array(z.looseObject({ code: z.string() })),
+  permission_review: z.looseObject({
+    status: z.enum(["not-provided", "no-known-broad-permissions", "unsafe"]),
+    checked_rules: z.number(),
+    findings: z.array(z.looseObject({ rule_index: z.number(), code: z.string() })),
+  }),
   suggested_never_auto_allow: z.array(z.string()),
 });
 
@@ -142,10 +157,47 @@ describe("pre-PAT integration commands", () => {
       schema: z.string(),
       bundle_version: z.string(),
       agent_protocol_version: z.number(),
+      runtime: z.looseObject({
+        platform: z.enum(["darwin", "linux"]),
+        architecture: z.enum(["arm64", "x64"]),
+      }),
       clients: z.record(z.string(), z.unknown()),
     }).parse(parseOutput(listed.stdout));
     expect(list.schema).toBe("asana-cli.integration-bundle.v1");
-    expect(Object.keys(list.clients).sort()).toEqual(["claude-code", "codex", "generic-agent-skills"]);
+    expect(list.runtime).toEqual({
+      platform: z.enum(["darwin", "linux"]).parse(process.platform),
+      architecture: z.enum(["arm64", "x64"]).parse(process.arch),
+    });
+    expect(Object.keys(list.clients).sort()).toEqual([...INTEGRATION_CLIENT_IDS].sort());
+    expect(Object.fromEntries(
+      Object.entries(INTEGRATION_CLIENTS).map(([id, client]) => [id, client.support]),
+    )).toEqual({
+      "generic-agent-skills": "generic",
+      codex: "supported",
+      "claude-code": "supported",
+      "gemini-cli": "experimental",
+      "github-copilot": "experimental",
+      opencode: "experimental",
+      cursor: "experimental",
+      pi: "experimental",
+      "kimi-code": "experimental",
+    });
+    expect(Object.fromEntries(
+      Object.entries(INTEGRATION_CLIENTS).map(([id, client]) => [
+        id,
+        client.qualification.kind,
+      ]),
+    )).toEqual({
+      "generic-agent-skills": "generic-contract",
+      codex: "behavioral-eval",
+      "claude-code": "behavioral-eval",
+      "gemini-cli": "adapter-only",
+      "github-copilot": "adapter-only",
+      opencode: "adapter-only",
+      cursor: "adapter-only",
+      pi: "adapter-only",
+      "kimi-code": "adapter-only",
+    });
 
     const detected = await runIntegration([
       "integrations", "detect", "--client", "codex", "--scope", "project",
@@ -164,11 +216,29 @@ describe("pre-PAT integration commands", () => {
     const pat = "DOCTOR_PAT_CANARY_987654";
     const doctor = await runIntegration([
       "integrations", "doctor", "--client", "codex", "--scope", "project",
+      "--skip-credential-store",
+      "--auto-allow", "asana-cli agent status",
+      "--auto-allow", "asana-cli api *",
+      "--auto-allow", "/usr/local/bin/asana-cli agent apply --operation-id *",
     ], { cwd: project, home, env: { ASANA_ACCESS_TOKEN: accessToken, ASANA_PAT: pat } });
     expect(doctor.exitCode).toBe(0);
     const doctorResult = doctorSchema.parse(parseOutput(doctor.stdout));
     expect(doctorResult.inspection.state).toBe("absent");
     expect(doctorResult.inherited_credentials).toEqual(["ASANA_ACCESS_TOKEN", "ASANA_PAT"]);
+    expect(doctorResult.credential_sources.effective).toBe("ASANA_ACCESS_TOKEN");
+    expect(doctorResult.credential_sources.environment.status).toBe("inherited");
+    expect(doctorResult.credential_sources.os_credential_store.status).toBe("not-checked");
+    expect(doctorResult.warnings.map((warning) => warning.code)).toEqual([
+      "inherited-environment-credential",
+    ]);
+    expect(doctorResult.permission_review).toMatchObject({
+      status: "unsafe",
+      checked_rules: 3,
+      findings: [
+        { rule_index: 1, code: "raw-api" },
+        { rule_index: 2, code: "write-apply" },
+      ],
+    });
     expect(doctorResult.suggested_never_auto_allow).toEqual(["api", "request", "auth", "apply"]);
     expect(`${doctor.stdout}${doctor.stderr}`).not.toContain(accessToken);
     expect(`${doctor.stdout}${doctor.stderr}`).not.toContain(pat);
@@ -186,6 +256,26 @@ describe("pre-PAT integration commands", () => {
     ]) {
       expect(policy.stdout).toContain(prohibitedCommand);
     }
+
+    const clientNotes = {
+      "gemini-cli": "contains only this skill and no MCP server",
+      "github-copilot": "Do not add allowed-tools: shell or bash",
+      opencode: "do not use --auto",
+      cursor: "shell permissions are coarse",
+    } as const;
+    for (const [client, note] of Object.entries(clientNotes)) {
+      const result = await runIntegration(
+        ["integrations", "policy", client],
+        { cwd: project, home },
+      );
+      expect(result.exitCode, client).toBe(0);
+      expect(result.stdout, client).toContain(note);
+    }
+    const canonicalSkill = EMBEDDED_INTEGRATION_BUNDLE.clients[0]?.files.find(
+      (file) => file.path === "SKILL.md",
+    )?.content;
+    expect(canonicalSkill).toBeDefined();
+    expect(canonicalSkill).not.toContain("allowed-tools:");
   });
   test("reports Codex .agents/skills/asana discovery roots for user and project scopes", async () => {
     const root = await temporaryDirectory();
@@ -213,6 +303,141 @@ describe("pre-PAT integration commands", () => {
     }
   });
 
+  test("resolves every native client root without touching settings, hooks, or MCP configuration", async () => {
+    const root = await temporaryDirectory();
+    const home = join(root, "home");
+    const project = join(root, "project");
+    await Promise.all([mkdir(home), mkdir(project)]);
+    const expectedRoots = {
+      "generic-agent-skills": {
+        user: ".agents/skills/asana",
+        project: ".agents/skills/asana",
+      },
+      codex: {
+        user: ".agents/skills/asana",
+        project: ".agents/skills/asana",
+      },
+      "claude-code": {
+        user: ".claude/skills/asana",
+        project: ".claude/skills/asana",
+      },
+      "gemini-cli": {
+        user: ".gemini/skills/asana",
+        project: ".gemini/skills/asana",
+      },
+      "github-copilot": {
+        user: ".copilot/skills/asana",
+        project: ".github/skills/asana",
+      },
+      opencode: {
+        user: ".config/opencode/skills/asana",
+        project: ".opencode/skills/asana",
+      },
+      cursor: {
+        user: ".cursor/skills/asana",
+        project: ".cursor/skills/asana",
+      },
+      pi: {
+        user: ".pi/agent/skills/asana",
+        project: ".pi/skills/asana",
+      },
+      "kimi-code": {
+        user: ".kimi-code/skills/asana",
+        project: ".kimi-code/skills/asana",
+      },
+    } as const;
+
+    for (const client of INTEGRATION_CLIENT_IDS) {
+      for (const scope of ["user", "project"] as const) {
+        const detected = await runIntegration([
+          "integrations", "detect", "--client", client, "--scope", scope,
+        ], { cwd: project, home });
+        expect(detected.exitCode, `${client}:${scope}`).toBe(0);
+        const result = z.looseObject({
+          discovery: z.literal("absent"),
+          target: z.looseObject({
+            base_directory: z.string(),
+            installation_directory: z.string(),
+          }),
+        }).parse(parseOutput(detected.stdout));
+        expect(
+          relative(result.target.base_directory, result.target.installation_directory)
+            .split("\\").join("/"),
+          `${client}:${scope}`,
+        ).toBe(expectedRoots[client][scope]);
+      }
+    }
+  }, 15_000);
+
+  test("reports credential-store states without returning secrets or storage errors", async () => {
+    const root = await temporaryDirectory();
+    const project = join(root, "project");
+    await mkdir(project);
+    const input = {
+      target: { client: "codex", scope: "project", project_directory: project },
+      environment: {},
+    } as const;
+    const secret = "DOCTOR_STORED_PAT_CANARY_938245";
+
+    const configured = await doctorIntegration(input, {
+      read_stored_pat: async () => secret,
+    });
+    expect(configured.credential_sources.effective).toBe("os-credential-store");
+    expect(configured.credential_sources.os_credential_store.status).toBe("configured");
+    expect(JSON.stringify(configured)).not.toContain(secret);
+
+    const absent = await doctorIntegration(input, {
+      read_stored_pat: async () => null,
+    });
+    expect(absent.credential_sources.effective).toBe("none");
+    expect(absent.credential_sources.os_credential_store.status).toBe("absent");
+
+    const unavailable = await doctorIntegration(input, {
+      read_stored_pat: async () => {
+        throw new Error(`credential backend leaked ${secret}`);
+      },
+    });
+    expect(unavailable.credential_sources.effective).toBe("unknown");
+    expect(unavailable.credential_sources.os_credential_store.status).toBe("unavailable");
+    expect(unavailable.warnings.map((warning) => warning.code)).toContain("credential-store-unavailable");
+    expect(JSON.stringify(unavailable)).not.toContain(secret);
+  });
+
+  test("doctor detects known broad permission examples without echoing their text", async () => {
+    const root = await temporaryDirectory();
+    const home = join(root, "home");
+    const project = join(root, "project");
+    await Promise.all([mkdir(home), mkdir(project)]);
+    const canary = "PERMISSION_RULE_CANARY_735921";
+    const rules = [
+      "Bash(asana-cli *)",
+      "allow:/opt/asana/bin/asana-cli request *",
+      "Bash(asana-cli auth pat get)",
+      "Bash(asana-cli agent *)",
+      "asana-cli integrations update --apply",
+      `unrecognized-host-syntax ${canary}`,
+    ];
+    const result = await runIntegration([
+      "integrations", "doctor", "--client", "claude-code", "--scope", "project",
+      "--skip-credential-store",
+      ...rules.flatMap((rule) => ["--auto-allow", rule]),
+    ], { cwd: project, home });
+    expect(result.exitCode).toBe(0);
+    const parsed = doctorSchema.parse(parseOutput(result.stdout));
+    expect(parsed.permission_review).toMatchObject({
+      status: "unsafe",
+      checked_rules: rules.length,
+      findings: [
+        { rule_index: 0, code: "broad-cli" },
+        { rule_index: 1, code: "raw-request" },
+        { rule_index: 2, code: "credential-management" },
+        { rule_index: 3, code: "broad-agent" },
+        { rule_index: 4, code: "integration-lifecycle-apply" },
+      ],
+    });
+    expect(`${result.stdout}${result.stderr}`).not.toContain(canary);
+  });
+
   test("rejects malformed client, scope, duplicate options, and ambiguous write confirmation", async () => {
     const root = await temporaryDirectory();
     const home = join(root, "home");
@@ -222,8 +447,8 @@ describe("pre-PAT integration commands", () => {
     const cases = [
       {
         name: "unknown client",
-        args: ["integrations", "status", "--client", "cursor", "--scope", "project"],
-        message: "--client must be generic-agent-skills, codex, or claude-code",
+        args: ["integrations", "status", "--client", "unknown-client", "--scope", "project"],
+        message: "--client must be one of: generic-agent-skills, codex, claude-code, gemini-cli, github-copilot, opencode, cursor, pi, kimi-code",
       },
       {
         name: "invalid scope",
@@ -345,7 +570,7 @@ describe("generated client integration lifecycle", () => {
       expect(executionResultSchema.parse(parseOutput(uninstalled.stdout)).execution.action).toBe("uninstall");
       expect(existsSync(installation)).toBe(false);
       expect(await readFile(unrelated, "utf8")).toBe("do not change\n");
-    });
+    }, 15_000);
   }
 });
 
