@@ -3,9 +3,9 @@
   "target": "bun-linux-arm64",
   "platform": "linux",
   "architecture": "arm64",
-  "subject_sha256": "9ea51a7b72156c64b2f49ab9353ea7bf0369e00d70007d9211cb178757dfe62c",
-  "binary_sha256": "fdd97ca82d401dd29cd426ccd6748543110fe9613888c7f8ef645c2ccb6f39f2",
-  "bundle_sha256": "46e9d17d8f735bdfc5431969fae2b9761369131692c84cb1335dff007436b110",
+  "subject_sha256": "64e4ca26869756b4a43d7dde4cee1c37c8bf1203859412c6d0da852926d37495",
+  "binary_sha256": "071119e6685da939836b66999e7526f13b1f2316e3d797c1cc7053646dc7ce6c",
+  "bundle_sha256": "96ee478ed39052fc77d019c20860ca3ecdc646a03f2f9fa927fd79c5a7f8aba6",
   "cases": [
     {
       "client": "generic-agent-skills",
@@ -34,6 +34,66 @@
     },
     {
       "client": "claude-code",
+      "scope": "project",
+      "status": "passed"
+    },
+    {
+      "client": "gemini-cli",
+      "scope": "user",
+      "status": "passed"
+    },
+    {
+      "client": "gemini-cli",
+      "scope": "project",
+      "status": "passed"
+    },
+    {
+      "client": "github-copilot",
+      "scope": "user",
+      "status": "passed"
+    },
+    {
+      "client": "github-copilot",
+      "scope": "project",
+      "status": "passed"
+    },
+    {
+      "client": "opencode",
+      "scope": "user",
+      "status": "passed"
+    },
+    {
+      "client": "opencode",
+      "scope": "project",
+      "status": "passed"
+    },
+    {
+      "client": "cursor",
+      "scope": "user",
+      "status": "passed"
+    },
+    {
+      "client": "cursor",
+      "scope": "project",
+      "status": "passed"
+    },
+    {
+      "client": "pi",
+      "scope": "user",
+      "status": "passed"
+    },
+    {
+      "client": "pi",
+      "scope": "project",
+      "status": "passed"
+    },
+    {
+      "client": "kimi-code",
+      "scope": "user",
+      "status": "passed"
+    },
+    {
+      "client": "kimi-code",
       "scope": "project",
       "status": "passed"
     }
