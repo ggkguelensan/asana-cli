@@ -74,7 +74,8 @@ INTEGRATIONS (STATIC SKILL BUNDLE, NO MCP)
   asana-cli integrations diff --client CLIENT --scope user|project
   asana-cli integrations uninstall --client CLIENT --scope user|project --dry-run|--apply
 
-  CLIENT is generic-agent-skills, codex, or claude-code. Every install/update/uninstall
+  CLIENT is generic-agent-skills, codex, claude-code, gemini-cli, github-copilot,
+  opencode, or cursor. Every install/update/uninstall
   requires explicit --dry-run or --apply. --apply performs the atomic managed-file plan;
   it never edits AGENTS.md, CLAUDE.md, settings, hooks, marketplace, or MCP configuration.
 

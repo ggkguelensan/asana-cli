@@ -1,6 +1,7 @@
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import { CliError } from "../errors";
 import { assertSupportedRuntimePlatform } from "../platform-support";
+import { clientAdapter } from "../client-adapter-specs";
 import {
   INTEGRATION_MANIFEST_FILE,
   integrationTargetInputSchema,
@@ -16,12 +17,6 @@ export type IntegrationPaths = Readonly<{
   installation_directory: string;
   manifest_path: string;
 }>;
-
-const ROOT_SEGMENTS: Record<IntegrationClient, readonly string[]> = {
-  "generic-agent-skills": [".agents", "skills", "asana"],
-  codex: [".agents", "skills", "asana"],
-  "claude-code": [".claude", "skills", "asana"],
-};
 
 /** Resolves only fixed skill roots; callers cannot redirect lifecycle writes to settings or hooks. */
 export function resolveIntegrationPaths(
@@ -39,7 +34,10 @@ export function resolveIntegrationPaths(
   }
 
   const baseDirectory = resolve(configuredBase);
-  const installationDirectory = resolve(baseDirectory, ...ROOT_SEGMENTS[input.client]);
+  const installationDirectory = resolve(
+    baseDirectory,
+    ...clientAdapter(input.client).roots[input.scope],
+  );
   const pathBelowBase = relative(baseDirectory, installationDirectory);
   if (
     pathBelowBase.length === 0 ||

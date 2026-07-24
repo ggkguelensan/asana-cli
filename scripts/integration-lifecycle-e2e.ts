@@ -12,8 +12,9 @@ import {
   type SupportedBuildTarget,
 } from "./check-support-matrix";
 import { clientEvalSubjectSha256 } from "./client-eval-contract";
+import { integrationClientIdSchema } from "../integrations/clients";
 
-const clientSchema = z.enum(["generic-agent-skills", "codex", "claude-code"]);
+const clientSchema = integrationClientIdSchema;
 const scopeSchema = z.enum(["user", "project"]);
 const planOutputSchema = z.looseObject({
   action: z.enum(["install", "update", "uninstall", "none"]),

@@ -195,8 +195,8 @@ asana-cli request PUT /tasks/1200123456789 \
 ## Portable skill integrations
 
 `asana-cli` embeds one static portable `asana` skill bundle. It can install that bundle into
-Generic Agent Skills, Codex, or Claude Code without MCP, client settings, marketplace registration,
-or repository instructions.
+Generic Agent Skills, Codex, Claude Code, Gemini CLI, GitHub Copilot CLI, OpenCode, or Cursor
+without MCP, client settings, marketplace registration, or repository instructions.
 
 Every target requires an explicit client and `user` or `project` scope. Inspect first; a dry run
 prints the complete managed-file plan, including target paths and hashes:
@@ -220,10 +220,12 @@ read-only checks. `doctor` reports credential-source presence without values or 
 details, warns when the agent inherits PAT-bearing environment variables, and audits repeatable
 `--auto-allow COMMAND` examples for known broad `api`, `request`, `auth`, and apply patterns.
 
-The only managed paths are the client discovery roots (`.agents/skills/asana` for Generic Agent
-Skills and Codex, or `.claude/skills/asana` for Claude Code) plus their ownership manifest. Integrations never
-edit `AGENTS.md`, `CLAUDE.md`, settings, hooks, MCP configuration, marketplace entries, or the CLI
-binary. Use `asana-cli integrations policy CLIENT` for display-only narrow policy guidance.
+The only managed paths are the fixed client discovery roots shown by the
+[compatibility matrix](docs/client-compatibility.md) plus their ownership manifest. Integrations
+never edit `AGENTS.md`, `CLAUDE.md`, settings, hooks, MCP configuration, marketplace entries, or
+the CLI binary. Use `asana-cli integrations policy CLIENT` for display-only narrow policy
+guidance. Codex and Claude Code are evidence-qualified as `supported`; the four new native
+adapters remain `experimental` until they have the same complete behavioral/security evidence.
 
 ## Codex CLI и Claude Code: прямое использование
 

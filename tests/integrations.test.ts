@@ -10,7 +10,10 @@ import {
   EMBEDDED_INTEGRATION_BUNDLE,
   type EmbeddedIntegrationClientId,
 } from "../generated/integrations/bundle";
-import { INTEGRATION_CLIENTS } from "../integrations/clients";
+import {
+  INTEGRATION_CLIENTS,
+  INTEGRATION_CLIENT_IDS,
+} from "../integrations/clients";
 import {
   INTEGRATION_MANIFEST_FILE,
   doctorIntegration,
@@ -32,14 +35,9 @@ type LifecycleCase = Readonly<{ client: EmbeddedIntegrationClientId; scope: Scop
 
 type CliResult = Readonly<{ stdout: string; stderr: string; exitCode: number }>;
 
-const lifecycleCases = [
-  { client: "generic-agent-skills", scope: "user" },
-  { client: "generic-agent-skills", scope: "project" },
-  { client: "codex", scope: "user" },
-  { client: "codex", scope: "project" },
-  { client: "claude-code", scope: "user" },
-  { client: "claude-code", scope: "project" },
-] as const satisfies readonly LifecycleCase[];
+const lifecycleCases: readonly LifecycleCase[] = EMBEDDED_INTEGRATION_BUNDLE.clients.flatMap(
+  ({ client }) => (["user", "project"] as const).map((scope) => ({ client, scope })),
+);
 
 const inspectionSchema = z.looseObject({
   state: z.enum(["absent", "managed", "modified", "unmanaged", "invalid", "unsafe"]),
@@ -170,7 +168,32 @@ describe("pre-PAT integration commands", () => {
       platform: z.enum(["darwin", "linux"]).parse(process.platform),
       architecture: z.enum(["arm64", "x64"]).parse(process.arch),
     });
-    expect(Object.keys(list.clients).sort()).toEqual(["claude-code", "codex", "generic-agent-skills"]);
+    expect(Object.keys(list.clients).sort()).toEqual([...INTEGRATION_CLIENT_IDS].sort());
+    expect(Object.fromEntries(
+      Object.entries(INTEGRATION_CLIENTS).map(([id, client]) => [id, client.support]),
+    )).toEqual({
+      "generic-agent-skills": "generic",
+      codex: "supported",
+      "claude-code": "supported",
+      "gemini-cli": "experimental",
+      "github-copilot": "experimental",
+      opencode: "experimental",
+      cursor: "experimental",
+    });
+    expect(Object.fromEntries(
+      Object.entries(INTEGRATION_CLIENTS).map(([id, client]) => [
+        id,
+        client.qualification.kind,
+      ]),
+    )).toEqual({
+      "generic-agent-skills": "generic-contract",
+      codex: "behavioral-eval",
+      "claude-code": "behavioral-eval",
+      "gemini-cli": "adapter-only",
+      "github-copilot": "adapter-only",
+      opencode: "adapter-only",
+      cursor: "adapter-only",
+    });
 
     const detected = await runIntegration([
       "integrations", "detect", "--client", "codex", "--scope", "project",
@@ -229,6 +252,26 @@ describe("pre-PAT integration commands", () => {
     ]) {
       expect(policy.stdout).toContain(prohibitedCommand);
     }
+
+    const clientNotes = {
+      "gemini-cli": "contains only this skill and no MCP server",
+      "github-copilot": "Do not add allowed-tools: shell or bash",
+      opencode: "do not use --auto",
+      cursor: "shell permissions are coarse",
+    } as const;
+    for (const [client, note] of Object.entries(clientNotes)) {
+      const result = await runIntegration(
+        ["integrations", "policy", client],
+        { cwd: project, home },
+      );
+      expect(result.exitCode, client).toBe(0);
+      expect(result.stdout, client).toContain(note);
+    }
+    const canonicalSkill = EMBEDDED_INTEGRATION_BUNDLE.clients[0]?.files.find(
+      (file) => file.path === "SKILL.md",
+    )?.content;
+    expect(canonicalSkill).toBeDefined();
+    expect(canonicalSkill).not.toContain("allowed-tools:");
   });
   test("reports Codex .agents/skills/asana discovery roots for user and project scopes", async () => {
     const root = await temporaryDirectory();
@@ -253,6 +296,64 @@ describe("pre-PAT integration commands", () => {
         join(".agents", "skills", "asana"),
       );
       expect(result.inspection.state, target.scope).toBe("absent");
+    }
+  });
+
+  test("resolves every native client root without touching settings, hooks, or MCP configuration", async () => {
+    const root = await temporaryDirectory();
+    const home = join(root, "home");
+    const project = join(root, "project");
+    await Promise.all([mkdir(home), mkdir(project)]);
+    const expectedRoots = {
+      "generic-agent-skills": {
+        user: ".agents/skills/asana",
+        project: ".agents/skills/asana",
+      },
+      codex: {
+        user: ".agents/skills/asana",
+        project: ".agents/skills/asana",
+      },
+      "claude-code": {
+        user: ".claude/skills/asana",
+        project: ".claude/skills/asana",
+      },
+      "gemini-cli": {
+        user: ".gemini/skills/asana",
+        project: ".gemini/skills/asana",
+      },
+      "github-copilot": {
+        user: ".copilot/skills/asana",
+        project: ".github/skills/asana",
+      },
+      opencode: {
+        user: ".config/opencode/skills/asana",
+        project: ".opencode/skills/asana",
+      },
+      cursor: {
+        user: ".cursor/skills/asana",
+        project: ".cursor/skills/asana",
+      },
+    } as const;
+
+    for (const client of INTEGRATION_CLIENT_IDS) {
+      for (const scope of ["user", "project"] as const) {
+        const detected = await runIntegration([
+          "integrations", "detect", "--client", client, "--scope", scope,
+        ], { cwd: project, home });
+        expect(detected.exitCode, `${client}:${scope}`).toBe(0);
+        const result = z.looseObject({
+          discovery: z.literal("absent"),
+          target: z.looseObject({
+            base_directory: z.string(),
+            installation_directory: z.string(),
+          }),
+        }).parse(parseOutput(detected.stdout));
+        expect(
+          relative(result.target.base_directory, result.target.installation_directory)
+            .split("\\").join("/"),
+          `${client}:${scope}`,
+        ).toBe(expectedRoots[client][scope]);
+      }
     }
   });
 
@@ -334,8 +435,8 @@ describe("pre-PAT integration commands", () => {
     const cases = [
       {
         name: "unknown client",
-        args: ["integrations", "status", "--client", "cursor", "--scope", "project"],
-        message: "--client must be generic-agent-skills, codex, or claude-code",
+        args: ["integrations", "status", "--client", "unknown-client", "--scope", "project"],
+        message: "--client must be one of: generic-agent-skills, codex, claude-code, gemini-cli, github-copilot, opencode, cursor",
       },
       {
         name: "invalid scope",

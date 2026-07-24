@@ -1,15 +1,15 @@
 import { z } from "zod";
+import {
+  clientAdapterIdSchema,
+  type ClientAdapterId,
+} from "../client-adapter-specs";
 
 export const INTEGRATION_MANIFEST_SCHEMA = "asana-cli.integration-manifest.v1" as const;
 export const INTEGRATION_MANIFEST_FILE = ".asana-cli-integration.json" as const;
 export const INTEGRATION_INSTALLER = "asana-cli" as const;
 
-export const integrationClientSchema = z.enum([
-  "generic-agent-skills",
-  "codex",
-  "claude-code",
-]);
-export type IntegrationClient = z.output<typeof integrationClientSchema>;
+export const integrationClientSchema = clientAdapterIdSchema;
+export type IntegrationClient = ClientAdapterId;
 
 export const integrationScopeSchema = z.enum(["user", "project"]);
 export type IntegrationScope = z.output<typeof integrationScopeSchema>;

@@ -89,7 +89,10 @@ function doctorOptions(args: ParsedArgs): Readonly<{
 function integrationClientOption(value: unknown, label: "--client" | "CLIENT") {
   const parsed = integrationClientIdSchema.safeParse(value);
   if (!parsed.success) {
-    throw new CliError("validation", `${label} must be generic-agent-skills, codex, or claude-code`);
+    throw new CliError(
+      "validation",
+      `${label} must be one of: ${integrationClientIdSchema.options.join(", ")}`,
+    );
   }
   return parsed.data;
 }
