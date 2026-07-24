@@ -89,7 +89,7 @@ async function run(
   if (exitCode !== 0) {
     throw new Error(`Gemini discovery command failed with exit code ${exitCode}: ${stderr}`);
   }
-  return stdout;
+  return `${stdout}${stderr}`;
 }
 
 function extensionSha256(files: Readonly<Record<string, string>>): string {
@@ -165,10 +165,12 @@ export async function runGeminiDiscovery(
     ) {
       throw new Error("Gemini CLI did not report the installed Asana skill");
     }
-    const clientVersion = (await run([...gemini, "--version"], {
+    const versionOutput = await run([...gemini, "--version"], {
       cwd: project,
       environment,
-    })).trim();
+    });
+    const clientVersion = versionOutput.match(/^0\.50\.0$/m)?.[0];
+    if (!clientVersion) throw new Error("Gemini CLI returned an unexpected version");
     const [evaluatedCommit, contractSha256, subjectSha256, binaryBytes, extensionFiles] =
       await Promise.all([
         run(["git", "rev-parse", "HEAD"], {
