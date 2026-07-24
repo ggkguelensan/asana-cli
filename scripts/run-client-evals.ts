@@ -9,6 +9,7 @@ import {
   clientEvalContractSha256,
   clientEvalEvidenceSchema,
   clientEvalIdSchema,
+  clientEvalResponseSchema,
   clientEvalPrompt,
   clientEvalSubjectSha256,
   integrationBundleSha256,
@@ -275,7 +276,19 @@ export async function runClientEval(input: Readonly<{
       mode: 0o600,
     });
     const evaluated = await evaluateClient(input.client, executable, project, schemaPath);
-    const response = validateClientEvalResponse(evaluated.response);
+    let response;
+    try {
+      response = validateClientEvalResponse(evaluated.response);
+    } catch (error: unknown) {
+      const parsed = clientEvalResponseSchema.safeParse(evaluated.response);
+      if (!parsed.success) throw error;
+      const commands = parsed.data.scenarios.map((scenario) => ({
+        id: scenario.id,
+        commands: scenario.commands,
+      }));
+      const reason = error instanceof Error ? error.message : "validation failed";
+      throw new Error(`Client eval rejected: ${reason}; normalized commands: ${JSON.stringify(commands)}`);
+    }
     const binaryBytes = await readFile(binary);
     return clientEvalEvidenceSchema.parse({
       schema: "asana-cli.client-eval-evidence.v1",
