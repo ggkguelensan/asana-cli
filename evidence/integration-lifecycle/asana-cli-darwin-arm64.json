@@ -3,8 +3,8 @@
   "target": "bun-darwin-arm64",
   "platform": "darwin",
   "architecture": "arm64",
-  "subject_sha256": "42dfcdb3ef734b1aee3aa418cf7f7ca3ac67293f651462cc7b76ff2b9014530f",
-  "binary_sha256": "cd8535e3fac797b3dde9b26655a9fbf2deaf0668e8fa93ae027446656e8937a9",
+  "subject_sha256": "15ad26d27232dbd21a770133c2e0a25c20e1a63d4f9aaa7e19fc07cbdf89fa44",
+  "binary_sha256": "9b090c262df6d2ede8755cc674a264e54124e2deab45d3e5717d9450c4b0885b",
   "bundle_sha256": "88af33e0888fb6b8a885fa2d6f08ef1427e2f169888427a80219183def0a2e8c",
   "cases": [
     {

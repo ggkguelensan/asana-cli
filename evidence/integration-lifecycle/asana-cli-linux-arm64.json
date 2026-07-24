@@ -3,8 +3,8 @@
   "target": "bun-linux-arm64",
   "platform": "linux",
   "architecture": "arm64",
-  "subject_sha256": "42dfcdb3ef734b1aee3aa418cf7f7ca3ac67293f651462cc7b76ff2b9014530f",
-  "binary_sha256": "5f2aef39bd6fd417e70ad268a9a383e8fd5382944c6e962902f7964b9591827c",
+  "subject_sha256": "15ad26d27232dbd21a770133c2e0a25c20e1a63d4f9aaa7e19fc07cbdf89fa44",
+  "binary_sha256": "eccfb266333585896637c0db886d4173eb965df05dc204535bb035f7f1c7cc37",
   "bundle_sha256": "88af33e0888fb6b8a885fa2d6f08ef1427e2f169888427a80219183def0a2e8c",
   "cases": [
     {

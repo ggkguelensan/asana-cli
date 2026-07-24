@@ -40,7 +40,7 @@
       "evidence": [
         {
           "path": "generated/client-compatibility.ts",
-          "sha256": "1802267ce889be37f2e7567e0b7b4a52745fe9cb8539109ddaee6daaf318ed05",
+          "sha256": "f8275c04820d99436e69524ae7277424f54a5c6faffdedb1a5fbe743395fb039",
           "claim": "Evidence-derived support classification."
         },
         {
@@ -55,12 +55,12 @@
         },
         {
           "path": "evidence/client-evals/claude-code.json",
-          "sha256": "8056718333e4ee6fddc82bd861959f8b982b7f9a6141e9ead0df178a279c7172",
+          "sha256": "d91f7d5a638ea2bb534e4786c32da346bef1716504a323a7043f180af508c044",
           "claim": "Passed strict behavioral/security evidence for a supported client."
         },
         {
           "path": "evidence/client-evals/codex.json",
-          "sha256": "0d6b3d6cd7b83862776b9d8a531922ea7571dec3bd1dab94ae08d65d926e7c0c",
+          "sha256": "9821c9bf7d7f59f597e44be2a98c50a92b421187e79f8e8a45de932b5a41f832",
           "claim": "Passed strict behavioral/security evidence for a supported client."
         }
       ]
@@ -107,7 +107,7 @@
       "id": "V1-CURATED-WORKFLOWS",
       "roadmap_criterion": "critical developer workflows покрыты curated actions",
       "status": "passed",
-      "conclusion": "Bounded developer reads and immutable prepare/apply writes are present in the agent catalog and exercised without raw API fallback.",
+      "conclusion": "Bounded developer reads and immutable prepare/apply writes are present in the agent catalog; the compiled binary publishes a matching schema for every action without raw API fallback.",
       "evidence": [
         {
           "path": "src/agent-contract.ts",
@@ -133,6 +133,11 @@
           "path": "tests/agent-operations.test.ts",
           "sha256": "e8ddcc0e25ee74eb9ebdc6b294578418fd98c41f0c7ed2d97293e619167807d9",
           "claim": "Immutable prepare/apply workflow behavior."
+        },
+        {
+          "path": "tests/black-box/contract.test.ts",
+          "sha256": "2d69d1eccb6f61e70cd44694b719455795360eca7e0eeee0ee81c48e1b056689",
+          "claim": "Every action advertised by the compiled binary publishes a self-consistent wire schema."
         }
       ]
     },
@@ -154,12 +159,12 @@
         },
         {
           "path": "docs/v1-completion-audit.md",
-          "sha256": "eae20412ab6d0ffd131bf8153b489bcafb864b6643d2763a331551f229df89b9",
+          "sha256": "c1410a1bff613ee85eaefcdc3204e822cdac3cf99e1d8d5bc7ce01ea4f301758",
           "claim": "Dated audit method, result, and residual limitations."
         },
         {
           "path": "tests/security.test.ts",
-          "sha256": "a704bcfad725b7b6bf6b8773d24b232414c608dd305163a0672fac5443e8d2d7",
+          "sha256": "14f9439608ff6c1b988d0749323471e6ec0f2b53b047a34889fb0bd8946c5adb",
           "claim": "Output protection and registered-secret redaction tests."
         },
         {
@@ -178,8 +183,23 @@
           "claim": "Release executable security-boundary tests."
         },
         {
+          "path": "scripts/check-black-box-boundary.ts",
+          "sha256": "d8f67cf8a525072b67aa0eb43d37dbd8bc1ee8108ded11bc23c9ae71216e4471",
+          "claim": "Black-box suites cannot import or execute implementation source."
+        },
+        {
+          "path": "tests/black-box/worktree.test.ts",
+          "sha256": "6d8ec8b4d5a34f6879f87953ca243fe95733ad6209e10bf6333447bb0f9a3e7f",
+          "claim": "Compiled linked-worktree isolation and owner-only state tests."
+        },
+        {
+          "path": "tests/black-box/integrations.test.ts",
+          "sha256": "40711e8156a1723826db84de90fc3ae0ecc5e0102f800aff74d8787ae18e3981",
+          "claim": "Compiled client adapter and managed-file lifecycle tests."
+        },
+        {
           "path": "evidence/v1/dependency-audit.json",
-          "sha256": "5102f634a3d9d425f5c4ac1c630efd6e5d1af2913a202c247d77c1c405071f80",
+          "sha256": "bbfe27159f2de0c638596bfc38484dad8c0fe2bfe07c09c6a2cf0f3bd3a149b4",
           "claim": "Dated production dependency advisory result bound to the lockfile."
         }
       ]
@@ -230,7 +250,7 @@
     ],
     "dependency_audit": {
       "path": "evidence/v1/dependency-audit.json",
-      "sha256": "5102f634a3d9d425f5c4ac1c630efd6e5d1af2913a202c247d77c1c405071f80",
+      "sha256": "bbfe27159f2de0c638596bfc38484dad8c0fe2bfe07c09c6a2cf0f3bd3a149b4",
       "claim": "Bun production-dependency audit found no known vulnerabilities on the reviewed date."
     },
     "open_findings": [],
@@ -254,8 +274,8 @@
     ]
   },
   "pre_v1_backlog": {
-    "total": 69,
-    "done": 68,
+    "total": 70,
+    "done": 69,
     "cancelled": [
       "REL-006"
     ],

@@ -3,8 +3,8 @@
   "target": "bun-linux-x64-baseline",
   "platform": "linux",
   "architecture": "x64",
-  "subject_sha256": "42dfcdb3ef734b1aee3aa418cf7f7ca3ac67293f651462cc7b76ff2b9014530f",
-  "binary_sha256": "ffe633d881cafc5d1caa5aa18e73bd22bfe3b7c3dccb105a6eefb992d6365e27",
+  "subject_sha256": "15ad26d27232dbd21a770133c2e0a25c20e1a63d4f9aaa7e19fc07cbdf89fa44",
+  "binary_sha256": "c42156ac5478eeefae39657dfa162464f319672b161d8abd2e4f4f3bcaf86e2a",
   "bundle_sha256": "88af33e0888fb6b8a885fa2d6f08ef1427e2f169888427a80219183def0a2e8c",
   "cases": [
     {

@@ -3,8 +3,8 @@
   "target": "bun-darwin-x64",
   "platform": "darwin",
   "architecture": "x64",
-  "subject_sha256": "42dfcdb3ef734b1aee3aa418cf7f7ca3ac67293f651462cc7b76ff2b9014530f",
-  "binary_sha256": "515744dfcd28ba90f88b1a8d81fb7243a8d2c5ba73292507b1f362684ac93277",
+  "subject_sha256": "15ad26d27232dbd21a770133c2e0a25c20e1a63d4f9aaa7e19fc07cbdf89fa44",
+  "binary_sha256": "82b608e13330b2b7953b6d5e5700ed1072f3113496cd22dd9c2391ba7c057e57",
   "bundle_sha256": "88af33e0888fb6b8a885fa2d6f08ef1427e2f169888427a80219183def0a2e8c",
   "cases": [
     {
