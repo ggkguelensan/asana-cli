@@ -10,6 +10,7 @@ const safeReleaseFileSchema = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9.-]*$/);
 export const RELEASE_SIDECAR_SUFFIXES = Object.freeze([
   ".lifecycle.json",
   ".spdx.json",
+  ".reproducibility.json",
   ".provenance.sigstore.json",
   ".sbom.sigstore.json",
 ] as const);

@@ -25,6 +25,7 @@
     "generate:release-sbom": "bun run --no-env-file scripts/release-sbom.ts",
     "generate:homebrew-formula": "bun run --no-env-file scripts/homebrew-formula.ts",
     "generate:release-checksums": "bun run --no-env-file scripts/release-assets.ts",
+    "generate:reproducible-build": "bun run --no-env-file scripts/reproducible-build.ts",
     "check:generated-integrations": "bun run --no-env-file scripts/check-generated-integrations.ts",
     "check:client-compatibility": "bun run --no-env-file scripts/check-client-compatibility.ts",
     "check:gemini-extension": "bun run --no-env-file scripts/check-gemini-extension.ts",

@@ -44,7 +44,8 @@ Runtime gate выполняется до credential, filesystem или network a
 Проверка входит в `bun run check`. Изменение support matrix требует одновременного обновления
 policy, verifier, tests, CI, release workflow и пользовательской документации.
 
-Каждый новый target binary получает deterministic SPDX, SLSA provenance и SBOM attestation.
+Каждый новый target binary получает deterministic SPDX, byte-identical independent rebuild
+evidence, SLSA provenance и SBOM attestation.
 Canonical `SHA256SUMS` и его Sigstore bundle связывают полный payload set с tag workflow. Порядок
 проверки и Homebrew Formula описаны в [release verification guide](release-verification.md).
 

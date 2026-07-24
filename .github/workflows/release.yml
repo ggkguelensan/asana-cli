@@ -73,7 +73,10 @@ jobs:
         id: source
         shell: bash
         run: echo "epoch=$(git show -s --format=%ct "$GITHUB_SHA")" >> "$GITHUB_OUTPUT"
-      - run: bun run --no-env-file scripts/build.ts ${{ matrix.target }} dist/${{ matrix.output }}
+      - name: Build target artifact
+        env:
+          SOURCE_DATE_EPOCH: ${{ steps.source.outputs.epoch }}
+        run: bun run --no-env-file scripts/build.ts ${{ matrix.target }} dist/${{ matrix.output }}
       - name: Generate target SPDX SBOM
         run: >-
           bun run --no-env-file scripts/release-sbom.ts
@@ -104,6 +107,14 @@ jobs:
       - name: Enforce release compatibility contract
         if: "!matrix.verify-in-musl-container"
         run: bun run release:contract -- "dist/${{ matrix.output }}"
+      - name: Verify independent byte-identical rebuild
+        run: >-
+          bun run --no-env-file scripts/reproducible-build.ts
+          "dist/${{ matrix.output }}"
+          "${{ matrix.target }}"
+          "$GITHUB_SHA"
+          "${{ steps.source.outputs.epoch }}"
+          --output "dist/${{ matrix.output }}.reproducibility.json"
       - name: Calculate target digest
         id: digest
         shell: bash
@@ -132,6 +143,7 @@ jobs:
             dist/${{ matrix.output }}
             dist/${{ matrix.output }}.lifecycle.json
             dist/${{ matrix.output }}.spdx.json
+            dist/${{ matrix.output }}.reproducibility.json
             dist/${{ matrix.output }}.provenance.sigstore.json
             dist/${{ matrix.output }}.sbom.sigstore.json
 

@@ -5,6 +5,7 @@
 - `<artifact>` — standalone binary;
 - `<artifact>.lifecycle.json` — install/update/uninstall evidence;
 - `<artifact>.spdx.json` — deterministic SPDX 2.3 SBOM;
+- `<artifact>.reproducibility.json` — second-build byte identity evidence;
 - `<artifact>.provenance.sigstore.json` — Sigstore bundle с SLSA provenance;
 - `<artifact>.sbom.sigstore.json` — Sigstore bundle с подписанным SPDX predicate.
 
@@ -105,6 +106,12 @@ SBOM из выбранных binary/source/lockfile, сверяет lifecycle ev
 Homebrew formula и subjects сохранённых Sigstore bundles. Криптографическая проверка сертификата
 и transparency/timestamp material выполняется `gh attestation verify`.
 
+Каждый matrix job независимо компилирует тот же target второй раз с одинаковым source commit,
+lockfile, Bun 1.3.14 и `SOURCE_DATE_EPOCH`. Release разрешён только при полном byte-for-byte
+совпадении. Нормализованное evidence не содержит runner/temp paths и допускает только
+`comparison: "byte-identical"` с пустым `normalized_differences`; любое реальное различие
+останавливает release, а не маскируется как воспроизводимое.
+
 ## Homebrew
 
 `asana-cli.rb` — release-specific Formula, а не автоматически доверенный tap. После проверки
@@ -117,4 +124,3 @@ brew install --formula ./asana-cli.rb
 
 Formula выбирает один macOS/Linux glibc artifact по OS/architecture, проверяет его SHA-256 и
 устанавливает только `asana-cli`. Musl artifacts устанавливаются вручную и Formula их не выбирает.
-

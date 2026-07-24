@@ -116,8 +116,8 @@ Issue ID следует сохранить в заголовке.
 | REL-006 | P2 | cancelled | Scoop/Windows channel | — | Native Windows исключён из support/release matrix; исторический `v0.4.0` не переписывается |
 | REL-007 | P1 | done | Release compatibility gate | AP-013, INT-014, REL-001 | Каждый target после build/lifecycle выполняет единый contract для protocol, generated skills, support matrix, client evidence, security и exact package content; workflow drift тестируется |
 | REL-008 | P0 | done | Исполняемая macOS/Linux support matrix | — | Runtime, build script, CI, release workflow, docs и verifier согласованы; native Windows отсутствует в новых release gates |
-| REL-009 | P1 | ready | Reproducible build verification | REL-003, REL-004 | Повторные builds одного source/lockfile сравниваются; нормализованное evidence публикуется, а различия объясняются |
-| REL-010 | P1 | blocked | Machine-readable release evidence manifest | INT-019, REL-002, REL-003, REL-004, REL-007, REL-009 | Manifest связывает commit, protocol, supported targets, artifact digests, SBOM/provenance и client eval evidence |
+| REL-009 | P1 | done | Reproducible build verification | REL-003, REL-004 | Каждый matrix job повторно компилирует тот же target с exact commit/lock/Bun/SOURCE_DATE_EPOCH; release требует byte-identical digest/size и публикует path-free evidence с пустыми differences |
+| REL-010 | P1 | ready | Machine-readable release evidence manifest | INT-019, REL-002, REL-003, REL-004, REL-007, REL-009 | Manifest связывает commit, protocol, supported targets, artifact digests, SBOM/provenance и client eval evidence |
 
 ## v1.0 stabilization
 
