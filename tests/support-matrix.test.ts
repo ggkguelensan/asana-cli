@@ -24,7 +24,7 @@ const releaseWorkflow = [
     `            runner: ${target.runner}`,
   ]),
   "    steps:",
-  "      - run: bun run --no-env-file scripts/integration-lifecycle-e2e.ts \"dist/${{ matrix.output }}\" > \"dist/${{ matrix.output }}.lifecycle.json\"",
+  "      - run: bun run --no-env-file scripts/integration-lifecycle-e2e.ts \"dist/${{ matrix.output }}\" \"${{ matrix.target }}\" --output \"dist/${{ matrix.output }}.lifecycle.json\"",
   "  publish:",
   "    needs: build",
   "",

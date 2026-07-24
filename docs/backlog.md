@@ -109,7 +109,7 @@ Issue ID следует сохранить в заголовке.
 | ID | P | Статус | Задача | Зависит от | Acceptance criteria |
 |---|---|---|---|---|---|
 | REL-001 | P0 | done | Package-content tests для embedded skill bundle | INT-005 | Каждый release binary содержит ожидаемые manifests, skills, hashes и versions |
-| REL-002 | P1 | ready | macOS/Linux integration E2E с temp HOME | INT-010 | Install/status/update/uninstall проходят на supported macOS/Linux targets, не зависят от реального HOME и не трогают пользовательские файлы |
+| REL-002 | P1 | done | macOS/Linux integration E2E с temp HOME | INT-010 | Install/status/update/uninstall проходят на supported macOS/Linux targets, не зависят от реального HOME и не трогают пользовательские файлы |
 | REL-003 | P1 | ready | Signed checksums и provenance | REL-001 | Пользователь может проверить artifact и связать его с commit/workflow |
 | REL-004 | P1 | ready | SBOM для release artifacts | REL-001 | SBOM публикуется вместе с release и соответствует lockfile/binary build |
 | REL-005 | P2 | blocked | Homebrew distribution | REL-003 | Formula проверяет checksum и устанавливает один executable |

@@ -166,7 +166,9 @@ export function verifySupportMatrix(input: Readonly<{
   }
   if (
     !input.releaseWorkflow.includes("scripts/integration-lifecycle-e2e.ts") ||
-    !input.releaseWorkflow.includes('dist/${{ matrix.output }}.lifecycle.json')
+    !input.releaseWorkflow.includes(
+      '"${{ matrix.target }}" --output "dist/${{ matrix.output }}.lifecycle.json"',
+    )
   ) {
     throw new Error("Every release target must publish compiled integration lifecycle evidence");
   }

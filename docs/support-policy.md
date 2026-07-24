@@ -43,3 +43,15 @@ Runtime gate выполняется до credential, filesystem или network a
 
 Проверка входит в `bun run check`. Изменение support matrix требует одновременного обновления
 policy, verifier, tests, CI, release workflow и пользовательской документации.
+
+## Native lifecycle evidence
+
+`evidence/integration-lifecycle` содержит полный install/detect/status/update/uninstall roundtrip
+собранного standalone binary для каждого target. Darwin arm64 выполняется нативно, Darwin x64 —
+через Rosetta; Linux glibc и musl arm64/x64 выполняются в соответствующих native/emulated
+containers. Каждый run использует отдельные временные HOME/project roots и проверяет, что
+unrelated файлы остаются неизменными.
+
+`bun run check:integration-lifecycle-evidence` требует ровно шесть canonical records, уникальный
+binary digest для каждого target и актуальные source/bundle digests. Release workflow повторяет
+тот же executable и публикует target-specific lifecycle JSON рядом с каждым artifact.

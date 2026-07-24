@@ -1,0 +1,41 @@
+{
+  "schema": "asana-cli.integration-lifecycle-evidence.v1",
+  "target": "bun-linux-arm64",
+  "platform": "linux",
+  "architecture": "arm64",
+  "subject_sha256": "9ea51a7b72156c64b2f49ab9353ea7bf0369e00d70007d9211cb178757dfe62c",
+  "binary_sha256": "fdd97ca82d401dd29cd426ccd6748543110fe9613888c7f8ef645c2ccb6f39f2",
+  "bundle_sha256": "46e9d17d8f735bdfc5431969fae2b9761369131692c84cb1335dff007436b110",
+  "cases": [
+    {
+      "client": "generic-agent-skills",
+      "scope": "user",
+      "status": "passed"
+    },
+    {
+      "client": "generic-agent-skills",
+      "scope": "project",
+      "status": "passed"
+    },
+    {
+      "client": "codex",
+      "scope": "user",
+      "status": "passed"
+    },
+    {
+      "client": "codex",
+      "scope": "project",
+      "status": "passed"
+    },
+    {
+      "client": "claude-code",
+      "scope": "user",
+      "status": "passed"
+    },
+    {
+      "client": "claude-code",
+      "scope": "project",
+      "status": "passed"
+    }
+  ]
+}
