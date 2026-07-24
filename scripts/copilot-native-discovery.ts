@@ -1,18 +1,19 @@
 import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
+import { tmpdir } from "node:os";
 import { z } from "zod";
 import {
   canonicalSkillSha256,
   clientEvalSubjectSha256,
   integrationBundleSha256,
 } from "./client-eval-contract";
+import { nativeDiscoveryContractSha256 } from "./native-client-discovery";
 
 const sha256Schema = z.string().regex(/^[a-f0-9]{64}$/);
-export const nativeClientDiscoveryEvidenceSchema = z.strictObject({
+export const copilotNativeDiscoveryEvidenceSchema = z.strictObject({
   schema: z.literal("asana-cli.native-client-discovery.v1"),
-  client: z.literal("opencode"),
+  client: z.literal("github-copilot"),
   client_version: z.string().min(1).max(128),
   evaluated_commit: z.string().regex(/^[a-f0-9]{40}$/),
   contract_sha256: sha256Schema,
@@ -31,54 +32,28 @@ export const nativeClientDiscoveryEvidenceSchema = z.strictObject({
     external_commands_executed: z.literal(false),
   }),
   install: z.strictObject({
-    root: z.literal(".opencode/skills/asana"),
+    root: z.literal(".github/skills/asana"),
     state: z.literal("managed"),
+    allowed_tools_declared: z.literal(false),
   }),
   discovery: z.strictObject({
-    command: z.literal("opencode --pure debug skill"),
+    command: z.literal(
+      "npm exec --yes --package=@github/copilot@1.0.74 -- copilot skill list",
+    ),
     skill_name: z.literal("asana"),
     skill_reported: z.literal(true),
-    skill_location_suffix: z.literal(".opencode/skills/asana/SKILL.md"),
   }),
   verdict: z.literal("passed"),
-});
-export type NativeClientDiscoveryEvidence = z.output<
-  typeof nativeClientDiscoveryEvidenceSchema
->;
-
-const discoveredSkillSchema = z.looseObject({
-  name: z.string(),
-  description: z.string(),
-  location: z.string(),
-  content: z.string(),
 });
 
 function sha256(value: string | Uint8Array): string {
   return createHash("sha256").update(value).digest("hex");
 }
 
-export async function nativeDiscoveryContractSha256(): Promise<string> {
-  const scriptNames = [
-    "native-client-discovery.ts",
-    "gemini-native-discovery.ts",
-    "copilot-native-discovery.ts",
-    "check-native-client-evidence.ts",
-    "generate-gemini-extension.ts",
-    "check-gemini-extension.ts",
-  ] as const;
-  const hash = createHash("sha256");
-  for (const name of scriptNames) {
-    const content = await readFile(resolve(import.meta.dir, name));
-    hash.update(`${name.length}:${name}:${content.byteLength}:`, "utf8");
-    hash.update(content);
-  }
-  return hash.digest("hex");
-}
-
 async function run(
   command: readonly string[],
   options: Readonly<{ cwd: string; environment: Readonly<Record<string, string>> }>,
-): Promise<string> {
+): Promise<Readonly<{ stdout: string; stderr: string }>> {
   const child = Bun.spawn({
     cmd: [...command],
     cwd: options.cwd,
@@ -93,16 +68,16 @@ async function run(
     child.exited,
   ]);
   if (exitCode !== 0) {
-    throw new Error(`Native discovery command failed with exit code ${exitCode}: ${stderr}`);
+    throw new Error(`Copilot discovery command failed with exit code ${exitCode}: ${stderr}`);
   }
-  return stdout;
+  return { stdout, stderr };
 }
 
-export async function runOpenCodeDiscovery(
+export async function runCopilotDiscovery(
   executable: string,
   binary: string,
-): Promise<NativeClientDiscoveryEvidence> {
-  const temporary = await mkdtemp(join(tmpdir(), "asana-cli-opencode-discovery-"));
+): Promise<z.output<typeof copilotNativeDiscoveryEvidenceSchema>> {
+  const temporary = await mkdtemp(join(tmpdir(), "asana-cli-copilot-discovery-"));
   try {
     const home = join(temporary, "home");
     const project = join(temporary, "project");
@@ -110,74 +85,85 @@ export async function runOpenCodeDiscovery(
     const environment = {
       PATH: process.env.PATH ?? "/usr/bin:/bin",
       HOME: home,
-      XDG_CONFIG_HOME: join(home, ".config"),
-      XDG_DATA_HOME: join(home, ".local", "share"),
-      XDG_CACHE_HOME: join(home, ".cache"),
+      npm_config_cache: join(temporary, "npm-cache"),
       ASANA_ACCESS_TOKEN: "",
       ASANA_PAT: "",
-      ANTHROPIC_API_KEY: "",
-      OPENAI_API_KEY: "",
-      GEMINI_API_KEY: "",
-      GOOGLE_GENERATIVE_AI_API_KEY: "",
+      GH_TOKEN: "",
+      GITHUB_TOKEN: "",
     };
-    const installOutput = await run([
+    const installation = await run([
       binary,
       "integrations",
       "install",
       "--client",
-      "opencode",
+      "github-copilot",
       "--scope",
       "project",
       "--apply",
     ], { cwd: project, environment });
-    const install = z.looseObject({
+    const installed = z.looseObject({
       execution: z.looseObject({ action: z.literal("install") }),
-    }).parse(JSON.parse(installOutput) as unknown);
-    if (install.execution.action !== "install") {
-      throw new Error("OpenCode adapter did not install");
+    }).parse(JSON.parse(installation.stdout) as unknown);
+    if (installed.execution.action !== "install") {
+      throw new Error("GitHub Copilot adapter did not install");
     }
-
-    const discoveryOutput = await run(
-      [executable, "--pure", "debug", "skill"],
-      { cwd: project, environment },
+    const skillText = await readFile(
+      join(project, ".github", "skills", "asana", "SKILL.md"),
+      "utf8",
     );
-    const discovered = z.array(discoveredSkillSchema).parse(
-      JSON.parse(discoveryOutput) as unknown,
-    );
-    const asana = discovered.find((skill) => skill.name === "asana");
-    if (
-      !asana ||
-      !asana.location.split("\\").join("/").endsWith(".opencode/skills/asana/SKILL.md") ||
-      !asana.content.includes("Use this skill only through curated `asana-cli agent` actions.")
-    ) {
-      throw new Error("OpenCode did not discover the installed Asana skill");
+    if (skillText.includes("allowed-tools:")) {
+      throw new Error("GitHub Copilot skill declares broad allowed-tools");
     }
-
-    const clientVersion = (await run([executable, "--version"], {
+    const copilot = [
+      executable,
+      "exec",
+      "--yes",
+      "--package=@github/copilot@1.0.74",
+      "--",
+      "copilot",
+    ] as const;
+    const listing = await run([...copilot, "skill", "list"], {
       cwd: project,
       environment,
-    })).trim();
-    const [evaluatedCommit, contractSha256, subjectSha256, binaryBytes] = await Promise.all([
-      run(["git", "rev-parse", "HEAD"], { cwd: resolve(import.meta.dir, ".."), environment }),
-      nativeDiscoveryContractSha256(),
-      clientEvalSubjectSha256(),
-      readFile(binary),
-    ]);
-    return nativeClientDiscoveryEvidenceSchema.parse({
+    });
+    if (
+      !listing.stdout.includes("Project skills:") ||
+      !listing.stdout.includes(
+        "asana - Safely inspect assigned Asana work and prepare narrowly scoped task updates",
+      )
+    ) {
+      throw new Error("GitHub Copilot CLI did not report the installed Asana skill");
+    }
+    const version = await run([...copilot, "--version"], {
+      cwd: project,
+      environment,
+    });
+    const clientVersion = version.stdout.match(/GitHub Copilot CLI ([0-9.]+)\./)?.[1];
+    if (!clientVersion) throw new Error("GitHub Copilot CLI returned an unexpected version");
+    const [evaluatedCommit, contractSha256, subjectSha256, binaryBytes] =
+      await Promise.all([
+        run(["git", "rev-parse", "HEAD"], {
+          cwd: resolve(import.meta.dir, ".."),
+          environment,
+        }),
+        nativeDiscoveryContractSha256(),
+        clientEvalSubjectSha256(),
+        readFile(binary),
+      ]);
+    return copilotNativeDiscoveryEvidenceSchema.parse({
       schema: "asana-cli.native-client-discovery.v1",
-      client: "opencode",
+      client: "github-copilot",
       client_version: clientVersion,
-      evaluated_commit: evaluatedCommit.trim(),
+      evaluated_commit: evaluatedCommit.stdout.trim(),
       contract_sha256: contractSha256,
       subject_sha256: subjectSha256,
       bundle_sha256: integrationBundleSha256(),
       skill_sha256: canonicalSkillSha256(),
       binary_sha256: sha256(binaryBytes),
       discovery_output_sha256: sha256(JSON.stringify({
-        name: asana.name,
-        description: asana.description,
-        location_suffix: ".opencode/skills/asana/SKILL.md",
-        content_sha256: sha256(asana.content),
+        section: "Project skills",
+        skill_name: "asana",
+        skill_reported: true,
       })),
       environment: {
         platform: process.platform,
@@ -189,14 +175,14 @@ export async function runOpenCodeDiscovery(
         external_commands_executed: false,
       },
       install: {
-        root: ".opencode/skills/asana",
+        root: ".github/skills/asana",
         state: "managed",
+        allowed_tools_declared: false,
       },
       discovery: {
-        command: "opencode --pure debug skill",
+        command: "npm exec --yes --package=@github/copilot@1.0.74 -- copilot skill list",
         skill_name: "asana",
         skill_reported: true,
-        skill_location_suffix: ".opencode/skills/asana/SKILL.md",
       },
       verdict: "passed",
     });
@@ -215,17 +201,17 @@ async function main(): Promise<void> {
   const output = outputIndex >= 0 ? args[outputIndex + 1] : undefined;
   if (!executable || !binary || !output || args.length !== 6) {
     throw new Error(
-      "Usage: native-client-discovery.ts --executable PATH --binary PATH --output FILE",
+      "Usage: copilot-native-discovery.ts --executable PATH --binary PATH --output FILE",
     );
   }
-  const evidence = await runOpenCodeDiscovery(
+  const evidence = await runCopilotDiscovery(
     executable.includes("/") ? resolve(process.cwd(), executable) : executable,
     resolve(process.cwd(), binary),
   );
   const outputPath = resolve(process.cwd(), output);
   await mkdir(dirname(outputPath), { recursive: true });
   await Bun.write(outputPath, `${JSON.stringify(evidence, null, 2)}\n`);
-  process.stdout.write(`OpenCode native discovery passed with ${evidence.client_version}\n`);
+  process.stdout.write(`GitHub Copilot native discovery passed with ${evidence.client_version}\n`);
 }
 
 if (import.meta.main) await main();

@@ -10,6 +10,7 @@ import {
   nativeDiscoveryContractSha256,
 } from "./native-client-discovery";
 import { geminiNativeDiscoveryEvidenceSchema } from "./gemini-native-discovery";
+import { copilotNativeDiscoveryEvidenceSchema } from "./copilot-native-discovery";
 
 const projectRoot = resolve(import.meta.dir, "..");
 const records = [
@@ -25,6 +26,14 @@ const records = [
     JSON.parse(
       await readFile(
         resolve(projectRoot, "evidence/client-adapters/gemini-cli.json"),
+        "utf8",
+      ),
+    ) as unknown,
+  ),
+  copilotNativeDiscoveryEvidenceSchema.parse(
+    JSON.parse(
+      await readFile(
+        resolve(projectRoot, "evidence/client-adapters/github-copilot.json"),
         "utf8",
       ),
     ) as unknown,
