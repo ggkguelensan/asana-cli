@@ -62,25 +62,16 @@ async function run(
   options: Readonly<{
     cwd: string;
     environment: Readonly<Record<string, string>>;
-    input?: string;
   }>,
 ): Promise<string> {
   const child = Bun.spawn({
     cmd: [...command],
     cwd: options.cwd,
     env: options.environment,
-    stdin: options.input === undefined ? "ignore" : "pipe",
+    stdin: "ignore",
     stdout: "pipe",
     stderr: "pipe",
   });
-  if (
-    options.input !== undefined &&
-    child.stdin !== undefined &&
-    typeof child.stdin !== "number"
-  ) {
-    child.stdin.write(options.input);
-    child.stdin.end();
-  }
   const [stdout, stderr, exitCode] = await Promise.all([
     new Response(child.stdout).text(),
     new Response(child.stderr).text(),
@@ -140,16 +131,24 @@ export async function runGeminiDiscovery(
     if (!validation.includes("successfully validated")) {
       throw new Error("Gemini CLI did not validate the generated extension");
     }
+    const expectScript = `
+set timeout 120
+spawn -noecho ${gemini.join(" ")} extensions install ${GENERATED_GEMINI_EXTENSION_ROOT}
+expect "Do you want to trust this folder and continue with the installation? \\[y/N\\]:"
+send "y\\r"
+expect "Do you want to continue? \\[Y/n\\]:"
+send "y\\r"
+expect "Do you want to continue? \\[Y/n\\]:"
+send "y\\r"
+expect eof
+catch wait result
+exit [lindex $result 3]
+`;
     const installation = await run([
-      ...gemini,
-      "extensions",
-      "install",
-      GENERATED_GEMINI_EXTENSION_ROOT,
-    ], {
-      cwd: project,
-      environment,
-      input: "y\ny\ny\n",
-    });
+      "/usr/bin/expect",
+      "-c",
+      expectScript,
+    ], { cwd: project, environment });
     if (!installation.includes('Extension "asana-cli" installed successfully and enabled.')) {
       throw new Error("Gemini CLI did not install the generated extension");
     }
