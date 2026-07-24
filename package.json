@@ -34,6 +34,7 @@
     "eval:codex": "bun run --no-env-file scripts/run-client-evals.ts --client codex --executable codex --binary dist/asana-cli --output evidence/client-evals/codex.json",
     "eval:claude-code": "bun run --no-env-file scripts/run-client-evals.ts --client claude-code --executable claude --binary dist/asana-cli --output evidence/client-evals/claude-code.json",
     "eval:opencode-discovery": "bun run --no-env-file scripts/native-client-discovery.ts --executable opencode --binary dist/asana-cli --output evidence/client-adapters/opencode.json",
+    "eval:gemini-discovery": "bun run --no-env-file scripts/gemini-native-discovery.ts --executable npx --binary dist/asana-cli --output evidence/client-adapters/gemini-cli.json",
     "test:integration-lifecycle": "bun run --no-env-file scripts/integration-lifecycle-e2e.ts dist/asana-cli",
     "release:preflight": "bun run --no-env-file scripts/release-preflight.ts",
     "check": "bun run typecheck && bun run check:generated-integrations && bun run check:client-compatibility && bun run check:gemini-extension && bun run check:project-plan && bun run check:support-matrix && bun run check:client-evidence && bun run check:native-client-evidence && bun run check:integration-lifecycle-evidence && bun run build && bun run check:package-content && bun test && ./dist/asana-cli --version"

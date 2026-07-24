@@ -15,6 +15,7 @@ export const nativeClientDiscoveryEvidenceSchema = z.strictObject({
   client: z.literal("opencode"),
   client_version: z.string().min(1).max(128),
   evaluated_commit: z.string().regex(/^[a-f0-9]{40}$/),
+  contract_sha256: sha256Schema,
   subject_sha256: sha256Schema,
   bundle_sha256: sha256Schema,
   skill_sha256: sha256Schema,
@@ -54,6 +55,23 @@ const discoveredSkillSchema = z.looseObject({
 
 function sha256(value: string | Uint8Array): string {
   return createHash("sha256").update(value).digest("hex");
+}
+
+export async function nativeDiscoveryContractSha256(): Promise<string> {
+  const scriptNames = [
+    "native-client-discovery.ts",
+    "gemini-native-discovery.ts",
+    "check-native-client-evidence.ts",
+    "generate-gemini-extension.ts",
+    "check-gemini-extension.ts",
+  ] as const;
+  const hash = createHash("sha256");
+  for (const name of scriptNames) {
+    const content = await readFile(resolve(import.meta.dir, name));
+    hash.update(`${name.length}:${name}:${content.byteLength}:`, "utf8");
+    hash.update(content);
+  }
+  return hash.digest("hex");
 }
 
 async function run(
@@ -138,8 +156,9 @@ export async function runOpenCodeDiscovery(
       cwd: project,
       environment,
     })).trim();
-    const [evaluatedCommit, subjectSha256, binaryBytes] = await Promise.all([
+    const [evaluatedCommit, contractSha256, subjectSha256, binaryBytes] = await Promise.all([
       run(["git", "rev-parse", "HEAD"], { cwd: resolve(import.meta.dir, ".."), environment }),
+      nativeDiscoveryContractSha256(),
       clientEvalSubjectSha256(),
       readFile(binary),
     ]);
@@ -148,11 +167,17 @@ export async function runOpenCodeDiscovery(
       client: "opencode",
       client_version: clientVersion,
       evaluated_commit: evaluatedCommit.trim(),
+      contract_sha256: contractSha256,
       subject_sha256: subjectSha256,
       bundle_sha256: integrationBundleSha256(),
       skill_sha256: canonicalSkillSha256(),
       binary_sha256: sha256(binaryBytes),
-      discovery_output_sha256: sha256(discoveryOutput),
+      discovery_output_sha256: sha256(JSON.stringify({
+        name: asana.name,
+        description: asana.description,
+        location_suffix: ".opencode/skills/asana/SKILL.md",
+        content_sha256: sha256(asana.content),
+      })),
       environment: {
         platform: process.platform,
         architecture: process.arch,
