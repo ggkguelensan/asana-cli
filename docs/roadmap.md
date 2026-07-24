@@ -12,6 +12,7 @@ commit [`81c1b7a`](https://github.com/ggkguelensan/asana-cli/commit/81c1b7afa789
 - [Release plan](release-plan.md) — последовательный scope и gate каждого release до `v1.0.0`.
 - [Implementation plan](implementation-plan.md) — порядок ближайших изменений и PR.
 - [Platform support](support-policy.md) — поддерживаемая macOS/Linux release matrix.
+- [Critical v1 workflows](v1-workflows.md) — исполняемые installation/auth/permission/recovery examples.
 - [Curated developer context](developer-context.md) — bounded project/section/membership/custom-field/user reads.
 - [Human local context](local-context.md) — DEV-014 alias/worktree state contract и recovery.
 - [Agent task creation](task-creation.md) — direct/subtask prepare/apply и revisioned repository templates.

@@ -123,8 +123,8 @@ Issue ID следует сохранить в заголовке.
 
 | ID | P | Статус | Задача | Зависит от | Acceptance criteria |
 |---|---|---|---|---|---|
-| V1-001 | P1 | ready | Исполняемые installation/auth/permission/recovery examples | DEV-016, INT-019 | Документированные critical workflows выполняются fixtures и не расходятся с CLI/help/policy |
-| V1-002 | P1 | blocked | Completion и security audit | SEC-002, SEC-003, SEC-007, DEV-016, REL-010, V1-001 | Для каждого критерия roadmap сохранено прямое evidence; critical/high findings отсутствуют |
+| V1-001 | P1 | done | Исполняемые installation/auth/permission/recovery examples | DEV-016, INT-019 | Документированные critical workflows выполняются fixtures и не расходятся с CLI/help/policy |
+| V1-002 | P1 | ready | Completion и security audit | SEC-002, SEC-003, SEC-007, DEV-016, REL-010, V1-001 | Для каждого критерия roadmap сохранено прямое evidence; critical/high findings отсутствуют |
 
 ## Later
 

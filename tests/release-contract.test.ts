@@ -18,6 +18,7 @@ describe("release compatibility contract", () => {
     expect(commands).toContain("bun run check:native-client-evidence");
     expect(commands).toContain("bun run check:integration-lifecycle-evidence");
     expect(commands).toContain(`bun run check:package-content -- ${binary}`);
+    expect(commands).toContain(`bun run --no-env-file scripts/check-v1-examples.ts ${binary}`);
     expect(commands.at(-1)).toContain("tests/agent-protocol.test.ts");
     expect(commands.at(-1)).toContain("tests/agent-v02-compat.test.ts");
     expect(commands.at(-1)).toContain("tests/security.test.ts");

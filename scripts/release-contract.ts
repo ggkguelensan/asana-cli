@@ -25,6 +25,7 @@ export function releaseContractCommands(binaryPath: string): readonly (readonly 
     ["bun", "run", "check:native-client-evidence"],
     ["bun", "run", "check:integration-lifecycle-evidence"],
     ["bun", "run", "check:package-content", "--", binary],
+    ["bun", "run", "--no-env-file", "scripts/check-v1-examples.ts", binary],
     [
       "bun",
       "test",

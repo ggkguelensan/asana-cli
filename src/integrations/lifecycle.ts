@@ -799,7 +799,7 @@ export async function doctorIntegration(
       precedence: ["ASANA_ACCESS_TOKEN", "ASANA_PAT", "os-credential-store"],
       environment: {
         status: inheritedCredentials.length > 0 ? "inherited" : "clear",
-        names: inheritedCredentials,
+        names: [...inheritedCredentials],
       },
       os_credential_store: { status: credentialStoreStatus },
     },

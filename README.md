@@ -460,6 +460,7 @@ bun run check
 - [Backlog](docs/backlog.md) — приоритеты, зависимости и acceptance criteria.
 - [Implementation plan](docs/implementation-plan.md) — текущее состояние и порядок ближайших PR для `v0.5`.
 - [Platform support policy](docs/support-policy.md) — поддерживаемые runtime/artifacts и executable gate.
+- [Critical v1 workflows](docs/v1-workflows.md) — исполняемые installation/auth/permission/recovery examples.
 - [Task dependency operations](docs/task-dependency-operations.md) — exact dependency writes и cycle bounds.
 - [Bounded batch reads](docs/batch-reads.md) — общий budget и machine-readable partial failures.
 - [Human local context](docs/local-context.md) — aliases, worktree scope, CAS, хранение и recovery.
