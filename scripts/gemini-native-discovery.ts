@@ -134,12 +134,12 @@ export async function runGeminiDiscovery(
     const expectScript = `
 set timeout 120
 spawn -noecho ${gemini.join(" ")} extensions install ${GENERATED_GEMINI_EXTENSION_ROOT}
-expect "Do you want to trust this folder and continue with the installation? \\[y/N\\]:"
-send "y\\r"
-expect "Do you want to continue? \\[Y/n\\]:"
-send "y\\r"
-expect "Do you want to continue? \\[Y/n\\]:"
-send "y\\r"
+expect -re {\\[y/N\\]:}
+send -- "y\\r"
+expect -re {\\[Y/n\\]:}
+send -- "y\\r"
+expect -re {\\[Y/n\\]:}
+send -- "y\\r"
 expect eof
 catch wait result
 exit [lindex $result 3]
