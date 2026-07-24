@@ -3,9 +3,9 @@
   "target": "bun-darwin-arm64",
   "platform": "darwin",
   "architecture": "arm64",
-  "subject_sha256": "233d54593a28ef93f883ae249515528ef4388f0407255990031b3b134172ad01",
-  "binary_sha256": "3de65d1a2a392d8782f3306543558e364f8957cbccc82ed4e20da01bc365322a",
-  "bundle_sha256": "3802f7e7f51af459ac868e711853f525db7afdfd339b00b9a6c461ff5abdccf4",
+  "subject_sha256": "7e74975ed055d0251faa26278e5b616942076100dd2f02eb84491787a59e349f",
+  "binary_sha256": "c0fdb3da5c9b7833541da4c1bafbfb00d3ea2ba2fe027840a43c1035b9ce1d4b",
+  "bundle_sha256": "bcffc6347695cccb736af7bac25fac0b16cf58725fe036f88c706b4650ab3986",
   "cases": [
     {
       "client": "generic-agent-skills",
