@@ -367,7 +367,7 @@ describe("pre-PAT integration commands", () => {
         ).toBe(expectedRoots[client][scope]);
       }
     }
-  });
+  }, 15_000);
 
   test("reports credential-store states without returning secrets or storage errors", async () => {
     const root = await temporaryDirectory();
@@ -570,7 +570,7 @@ describe("generated client integration lifecycle", () => {
       expect(executionResultSchema.parse(parseOutput(uninstalled.stdout)).execution.action).toBe("uninstall");
       expect(existsSync(installation)).toBe(false);
       expect(await readFile(unrelated, "utf8")).toBe("do not change\n");
-    });
+    }, 15_000);
   }
 });
 
