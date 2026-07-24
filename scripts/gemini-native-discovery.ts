@@ -43,7 +43,9 @@ export const geminiNativeDiscoveryEvidenceSchema = z.strictObject({
     mcp_declared: z.literal(false),
   }),
   discovery: z.strictObject({
-    command: z.literal("npx -y @google/gemini-cli@0.50.0 extensions list"),
+    command: z.literal(
+      "npm exec --yes --package=@google/gemini-cli@0.50.0 -- gemini extensions list",
+    ),
     extension_name: z.literal("asana-cli"),
     skill_name: z.literal("asana"),
     skill_reported: z.literal(true),
@@ -123,8 +125,11 @@ export async function runGeminiDiscovery(
     };
     const gemini = [
       executable,
-      "-y",
-      "@google/gemini-cli@0.50.0",
+      "exec",
+      "--yes",
+      "--package=@google/gemini-cli@0.50.0",
+      "--",
+      "gemini",
     ] as const;
     const validation = await run([
       ...gemini,
@@ -209,7 +214,7 @@ export async function runGeminiDiscovery(
         mcp_declared: false,
       },
       discovery: {
-        command: "npx -y @google/gemini-cli@0.50.0 extensions list",
+        command: "npm exec --yes --package=@google/gemini-cli@0.50.0 -- gemini extensions list",
         extension_name: "asana-cli",
         skill_name: "asana",
         skill_reported: true,
