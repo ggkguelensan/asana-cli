@@ -3,9 +3,9 @@
   "target": "bun-linux-x64-baseline",
   "platform": "linux",
   "architecture": "x64",
-  "subject_sha256": "233d54593a28ef93f883ae249515528ef4388f0407255990031b3b134172ad01",
-  "binary_sha256": "12c9fbda833d130fbd1b83a02c96cc3f4b2ed596c0ce2a175a096e3eac04203c",
-  "bundle_sha256": "3802f7e7f51af459ac868e711853f525db7afdfd339b00b9a6c461ff5abdccf4",
+  "subject_sha256": "7e74975ed055d0251faa26278e5b616942076100dd2f02eb84491787a59e349f",
+  "binary_sha256": "4f4d7bde709b740e537de1220ecad17fa2bf04835f3726776625a1f31d3b98dc",
+  "bundle_sha256": "bcffc6347695cccb736af7bac25fac0b16cf58725fe036f88c706b4650ab3986",
   "cases": [
     {
       "client": "generic-agent-skills",

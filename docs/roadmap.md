@@ -3,8 +3,9 @@
 Актуально на 2026-07-24. Текущий опубликованный GitHub Release —
 [`v0.4.0`](https://github.com/ggkguelensan/asana-cli/releases/tag/v0.4.0), tag указывает на
 commit [`81c1b7a`](https://github.com/ggkguelensan/asana-cli/commit/81c1b7afa789527cc52faca8ca300f9f66da63f4).
-Запланированная реализация до v1 завершена; текущие исходники объявляют release candidate
-`1.0.0`. Tag и GitHub Release появятся только после merge exact commit в `main` и успешного
+Запланированная реализация до v1 завершена. Immutable tag `v1.0.0` существует, но его failed
+artifact upload не создал GitHub Release; текущие исходники объявляют recovery release candidate
+`1.0.1`. GitHub Release появится только после merge exact commit в `main`, нового tag и успешного
 release workflow.
 
 Связанные документы:

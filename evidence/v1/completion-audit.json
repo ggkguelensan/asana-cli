@@ -40,7 +40,7 @@
       "evidence": [
         {
           "path": "generated/client-compatibility.ts",
-          "sha256": "33a9b398ce8e541ce5711f5e605bed727cabfee1d15743f994ae94026df059cd",
+          "sha256": "9018fead5691c6cde0e35194a7ccdb7f4d4cde3c2577e74b778ede9763591c69",
           "claim": "Evidence-derived support classification."
         },
         {
@@ -55,12 +55,12 @@
         },
         {
           "path": "evidence/client-evals/claude-code.json",
-          "sha256": "be4777f326c3f4457d70795f26d97fcb716fa88bfc7d51a8067e799000f439a4",
+          "sha256": "520ee8297fb17f08a81b42c0229218acf83071eda3e7bb6cdabdcd497386ebba",
           "claim": "Passed strict behavioral/security evidence for a supported client."
         },
         {
           "path": "evidence/client-evals/codex.json",
-          "sha256": "a2b90dbab261e89de2cef61128bb44f2255a4ac48d7c77c90d34e90fd75769b1",
+          "sha256": "94291810b50bd3fb9f2ea3bfeed2e699dbc23f19a377099e8390330e85ef0d3b",
           "claim": "Passed strict behavioral/security evidence for a supported client."
         }
       ]
@@ -73,7 +73,7 @@
       "evidence": [
         {
           "path": ".github/workflows/release.yml",
-          "sha256": "5521691103b2c6a7e618e3a4e55f1a7e3a09a0273b750bd435dac023c0bb07e5",
+          "sha256": "cf59e73e4bbcd0dbb3244a3850542888f89d8e67251e4967e7a893a0fea5098b",
           "claim": "Per-target reproducibility, attestations, verification, and publish gate."
         },
         {
@@ -154,7 +154,7 @@
         },
         {
           "path": "docs/v1-completion-audit.md",
-          "sha256": "c5f498ec9e88106b1d31790a0c9366a776fc74efab46a9a6fa7d35f4d358e973",
+          "sha256": "3a127b4f43b5497f75ff0c2bbd68e69d465bf6053f84613ef9cf4381ecb513f8",
           "claim": "Dated audit method, result, and residual limitations."
         },
         {
@@ -179,7 +179,7 @@
         },
         {
           "path": "evidence/v1/dependency-audit.json",
-          "sha256": "6895d51215b2874e3a2514dae16f88172d967ddc5b7dc84be1d83c0b2d4a1800",
+          "sha256": "491123e0ccc8c3e85a1e125a47f4ae227eefa19d461c396eef0cabfb92aaff47",
           "claim": "Dated production dependency advisory result bound to the lockfile."
         }
       ]
@@ -230,7 +230,7 @@
     ],
     "dependency_audit": {
       "path": "evidence/v1/dependency-audit.json",
-      "sha256": "6895d51215b2874e3a2514dae16f88172d967ddc5b7dc84be1d83c0b2d4a1800",
+      "sha256": "491123e0ccc8c3e85a1e125a47f4ae227eefa19d461c396eef0cabfb92aaff47",
       "claim": "Bun production-dependency audit found no known vulnerabilities on the reviewed date."
     },
     "open_findings": [],

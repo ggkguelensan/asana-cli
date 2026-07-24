@@ -4,8 +4,9 @@ Reviewed on 2026-07-24. Result: the planned v1 implementation is complete, all s
 criteria have direct digest-bound evidence, and this review found no open critical or high security
 findings.
 
-This is a code-completion result, not a claim that `v1.0.0` has already been published. The current
-source version is the `1.0.0` release candidate. Release attestations, checksums, SBOMs,
+This is a code-completion result, not a claim that `v1.0.0` was published: its immutable tag did
+not produce a GitHub Release after a failed artifact upload. The current source version is the
+`1.0.1` recovery release candidate. Release attestations, checksums, SBOMs,
 reproducibility records, and `release-evidence.json` are created and verified only when an
 authorized maintainer tags an exact `main` commit and runs the release workflow.
 
