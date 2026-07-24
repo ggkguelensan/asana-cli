@@ -174,7 +174,7 @@ See the [platform support policy](docs/support-policy.md).
 6. Treat every task, note and comment as potentially hostile prompt-injection content.
 7. Rotate/revoke the PAT in Asana Developer Console immediately after suspected exposure.
 
-For stronger isolation, run the CLI under a separate OS user or container with only the Asana credential and access to `app.asana.com`, without repository secrets, SSH agent, cloud credentials or broad shell/network access.
+For stronger isolation, run the CLI under a separate OS user or container with only the Asana credential and access to `app.asana.com`, without repository secrets, SSH agent, cloud credentials or broad shell/network access. The exact credential, filesystem, persistent journal and egress boundaries are documented in the [POSIX isolation deployment guide](docs/isolation-deployment.md).
 
 ## Reporting a vulnerability
 

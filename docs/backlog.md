@@ -56,7 +56,7 @@ Issue ID следует сохранить в заголовке.
 | SEC-004 | P1 | done | Workspace/project/custom-field/write-field allowlists | AP-008 | Prepare и apply независимо проверяют scope; policy file валидируется Zod и fail-closed |
 | SEC-005 | P1 | done | Metadata-only audit log | AP-009 | Записываются operation ID, target GID, action, timestamps, result и hashes; content/PAT отсутствуют |
 | SEC-006 | P1 | done | Добавить output byte-budget tests | AP-011 | Большие API responses не обходят лимиты через nesting, Unicode или pagination |
-| SEC-007 | P2 | research | Отдельный OS user/container deployment guide | — | Документированы credential, filesystem и network boundaries без ложных гарантий |
+| SEC-007 | P2 | done | Отдельный OS user/container deployment guide | — | Документированы credential, persistent journal/filesystem и egress boundaries, same-user/root/runtime ограничения и POSIX container pattern без ложных гарантий |
 
 ## Skill и integration manager
 
@@ -110,13 +110,13 @@ Issue ID следует сохранить в заголовке.
 |---|---|---|---|---|---|
 | REL-001 | P0 | done | Package-content tests для embedded skill bundle | INT-005 | Каждый release binary содержит ожидаемые manifests, skills, hashes и versions |
 | REL-002 | P1 | done | macOS/Linux integration E2E с temp HOME | INT-010 | Install/status/update/uninstall проходят на supported macOS/Linux targets, не зависят от реального HOME и не трогают пользовательские файлы |
-| REL-003 | P1 | ready | Signed checksums и provenance | REL-001 | Пользователь может проверить artifact и связать его с commit/workflow |
-| REL-004 | P1 | ready | SBOM для release artifacts | REL-001 | SBOM публикуется вместе с release и соответствует lockfile/binary build |
-| REL-005 | P2 | blocked | Homebrew distribution | REL-003 | Formula проверяет checksum и устанавливает один executable |
+| REL-003 | P1 | done | Signed checksums и provenance | REL-001 | Canonical payload checksums получают GitHub Sigstore bundle; SLSA subject связывает каждый binary с exact tag commit и release workflow; online/offline verification документирован |
+| REL-004 | P1 | done | SBOM для release artifacts | REL-001 | Deterministic SPDX 2.3 связывает target binary digest, source commit, Bun, lockfile digest и production closure; отдельный attestation и exact verifier блокируют drift |
+| REL-005 | P2 | done | Homebrew distribution | REL-003 | Release-specific POSIX Formula генерируется из тех же artifact bytes, закрепляет четыре checksum, выбирает один executable и сама входит в signed payload set |
 | REL-006 | P2 | cancelled | Scoop/Windows channel | — | Native Windows исключён из support/release matrix; исторический `v0.4.0` не переписывается |
-| REL-007 | P1 | ready | Release compatibility gate | AP-013, INT-014, REL-001 | Release блокируется при protocol, skill drift, security eval или package-content regression |
+| REL-007 | P1 | done | Release compatibility gate | AP-013, INT-014, REL-001 | Каждый target после build/lifecycle выполняет единый contract для protocol, generated skills, support matrix, client evidence, security и exact package content; workflow drift тестируется |
 | REL-008 | P0 | done | Исполняемая macOS/Linux support matrix | — | Runtime, build script, CI, release workflow, docs и verifier согласованы; native Windows отсутствует в новых release gates |
-| REL-009 | P1 | blocked | Reproducible build verification | REL-003, REL-004 | Повторные builds одного source/lockfile сравниваются; нормализованное evidence публикуется, а различия объясняются |
+| REL-009 | P1 | ready | Reproducible build verification | REL-003, REL-004 | Повторные builds одного source/lockfile сравниваются; нормализованное evidence публикуется, а различия объясняются |
 | REL-010 | P1 | blocked | Machine-readable release evidence manifest | INT-019, REL-002, REL-003, REL-004, REL-007, REL-009 | Manifest связывает commit, protocol, supported targets, artifact digests, SBOM/provenance и client eval evidence |
 
 ## v1.0 stabilization
@@ -134,7 +134,7 @@ Issue ID следует сохранить в заголовке.
 | LTR-002 | P3 | research | OAuth | LTR-001 | Отдельный threat model, secure refresh-token storage и revocation workflow |
 | LTR-003 | P3 | research | Events/watch и read cache | AP-013 | Cache bounded, invalidation documented, content защищён restrictive permissions |
 | LTR-004 | P3 | research | Attachment upload | SEC-004, DEV-010 | Отдельный threat model для path access, MIME, size и data exfiltration |
-| LTR-005 | P3 | blocked | Enterprise managed policies | SEC-004, REL-003 | Policy bundle подписан, валидируется и не может ослабляться project config без явного override |
+| LTR-005 | P3 | ready | Enterprise managed policies | SEC-004, REL-003 | Policy bundle подписан, валидируется и не может ослабляться project config без явного override |
 
 ## Definition of Done для любой задачи
 

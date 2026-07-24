@@ -28,6 +28,10 @@ jobs:
   build:
     needs: preflight
     runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
     strategy:
       fail-fast: false
       matrix:
@@ -65,7 +69,27 @@ jobs:
           bun-version: 1.3.14
           no-cache: true
       - run: bun install --frozen-lockfile
+      - name: Resolve immutable source time
+        id: source
+        shell: bash
+        run: echo "epoch=$(git show -s --format=%ct "$GITHUB_SHA")" >> "$GITHUB_OUTPUT"
       - run: bun run --no-env-file scripts/build.ts ${{ matrix.target }} dist/${{ matrix.output }}
+      - name: Generate target SPDX SBOM
+        run: >-
+          bun run --no-env-file scripts/release-sbom.ts
+          "dist/${{ matrix.output }}"
+          "${{ matrix.target }}"
+          "$GITHUB_SHA"
+          "${{ steps.source.outputs.epoch }}"
+          --output "dist/${{ matrix.output }}.spdx.json"
+      - name: Verify target SPDX SBOM
+        run: >-
+          bun run --no-env-file scripts/check-release-sbom.ts
+          "dist/${{ matrix.output }}"
+          "${{ matrix.target }}"
+          "$GITHUB_SHA"
+          "${{ steps.source.outputs.epoch }}"
+          "dist/${{ matrix.output }}.spdx.json"
       - if: matrix.verify-in-musl-container
         run: docker run --rm --volume "$GITHUB_WORKSPACE:/workspace" --workdir /workspace oven/bun:1.3.14-alpine bun run --no-env-file scripts/check-package-content.ts "dist/${{ matrix.output }}"
       - if: matrix.verify-package-content && !matrix.verify-in-musl-container
@@ -74,12 +98,42 @@ jobs:
         run: docker run --rm --volume "$GITHUB_WORKSPACE:/workspace" --workdir /workspace oven/bun:1.3.14-alpine bun run --no-env-file scripts/integration-lifecycle-e2e.ts "dist/${{ matrix.output }}" "${{ matrix.target }}" --output "dist/${{ matrix.output }}.lifecycle.json"
       - if: "!matrix.verify-in-musl-container"
         run: bun run --no-env-file scripts/integration-lifecycle-e2e.ts "dist/${{ matrix.output }}" "${{ matrix.target }}" --output "dist/${{ matrix.output }}.lifecycle.json"
+      - name: Enforce release compatibility contract in musl
+        if: matrix.verify-in-musl-container
+        run: docker run --rm --volume "$GITHUB_WORKSPACE:/workspace" --workdir /workspace oven/bun:1.3.14-alpine bun run release:contract -- "dist/${{ matrix.output }}"
+      - name: Enforce release compatibility contract
+        if: "!matrix.verify-in-musl-container"
+        run: bun run release:contract -- "dist/${{ matrix.output }}"
+      - name: Calculate target digest
+        id: digest
+        shell: bash
+        run: echo "sha256=$(shasum -a 256 "dist/${{ matrix.output }}" | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+      - name: Attest target build provenance
+        id: provenance
+        uses: actions/attest@v4
+        with:
+          subject-name: ${{ matrix.output }}
+          subject-digest: sha256:${{ steps.digest.outputs.sha256 }}
+      - name: Save target provenance bundle
+        run: cp "${{ steps.provenance.outputs.bundle-path }}" "dist/${{ matrix.output }}.provenance.sigstore.json"
+      - name: Attest target SPDX SBOM
+        id: sbom
+        uses: actions/attest@v4
+        with:
+          subject-name: ${{ matrix.output }}
+          subject-digest: sha256:${{ steps.digest.outputs.sha256 }}
+          sbom-path: dist/${{ matrix.output }}.spdx.json
+      - name: Save target SBOM bundle
+        run: cp "${{ steps.sbom.outputs.bundle-path }}" "dist/${{ matrix.output }}.sbom.sigstore.json"
       - uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.output }}
           path: |
             dist/${{ matrix.output }}
             dist/${{ matrix.output }}.lifecycle.json
+            dist/${{ matrix.output }}.spdx.json
+            dist/${{ matrix.output }}.provenance.sigstore.json
+            dist/${{ matrix.output }}.sbom.sigstore.json
 
   publish:
     if: startsWith(github.ref, 'refs/tags/v')
@@ -88,12 +142,72 @@ jobs:
     timeout-minutes: 30
     permissions:
       contents: write
+      id-token: write
+      attestations: write
     steps:
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+          no-cache: true
+      - run: bun install --frozen-lockfile
+      - name: Resolve immutable source time
+        id: source
+        run: echo "epoch=$(git show -s --format=%ct "$GITHUB_SHA")" >> "$GITHUB_OUTPUT"
       - uses: actions/download-artifact@v8
         with:
           path: dist
           merge-multiple: true
-      - run: cd dist && sha256sum * > SHA256SUMS
+      - name: Generate Homebrew formula
+        run: >-
+          bun run generate:homebrew-formula --
+          dist
+          "$GITHUB_REF_NAME"
+          --output dist/asana-cli.rb
+      - name: Generate canonical checksums
+        run: bun run generate:release-checksums -- dist --output dist/SHA256SUMS
+      - name: Verify merged release assets
+        run: >-
+          bun run check:release-assets --
+          dist
+          "$GITHUB_REF_NAME"
+          "$GITHUB_SHA"
+          "${{ steps.source.outputs.epoch }}"
+      - name: Verify target attestations cryptographically
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          while read -r artifact; do
+            gh attestation verify "dist/$artifact" \
+              --repo "$GITHUB_REPOSITORY" \
+              --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml" \
+              --source-digest "$GITHUB_SHA" \
+              --source-ref "$GITHUB_REF" \
+              --deny-self-hosted-runners
+            gh attestation verify "dist/$artifact" \
+              --repo "$GITHUB_REPOSITORY" \
+              --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml" \
+              --source-digest "$GITHUB_SHA" \
+              --source-ref "$GITHUB_REF" \
+              --deny-self-hosted-runners \
+              --predicate-type https://spdx.dev/Document/v2.3
+          done < <(awk '{print $2}' dist/SHA256SUMS | grep -E '^asana-cli-(darwin|linux)-[a-z0-9-]+$')
+      - name: Sign checksum manifest with GitHub Sigstore
+        id: checksums
+        uses: actions/attest@v4
+        with:
+          subject-path: dist/SHA256SUMS
+      - name: Save and verify checksum signature
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp "${{ steps.checksums.outputs.bundle-path }}" dist/SHA256SUMS.sigstore.json
+          gh attestation verify dist/SHA256SUMS \
+            --repo "$GITHUB_REPOSITORY" \
+            --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml" \
+            --source-digest "$GITHUB_SHA" \
+            --source-ref "$GITHUB_REF" \
+            --deny-self-hosted-runners
       - name: Create draft release
         env:
           GH_TOKEN: ${{ github.token }}

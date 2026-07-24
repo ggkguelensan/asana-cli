@@ -26,6 +26,8 @@
 > **Platform policy после `v0.4.0`:** новые releases поддерживают только native macOS и Linux.
 > Windows x64 artifact в `v0.4.0` остаётся историческим и не означает дальнейшую поддержку.
 > Точная матрица и исполняемый gate описаны в [platform support policy](docs/support-policy.md).
+> Проверка checksum signature, provenance, SBOM и release-specific Homebrew Formula описана в
+> [release verification guide](docs/release-verification.md).
 
 ## Установка
 
@@ -33,7 +35,8 @@
 
 Скачайте macOS или Linux файл для своей архитектуры из
 [GitHub Releases](https://github.com/ggkguelensan/asana-cli/releases), переименуйте его в
-`asana-cli` и добавьте в `PATH`.
+`asana-cli` и добавьте в `PATH`. Для новых releases сначала проверьте signed `SHA256SUMS`,
+SLSA provenance и SPDX attestation по [release verification guide](docs/release-verification.md).
 
 На macOS/Linux:
 
@@ -86,6 +89,10 @@ asana-cli auth status
 Приоритет: `ASANA_ACCESS_TOKEN` → `ASANA_PAT` → credential manager.
 
 CLI никогда не принимает `--token`, `--pat`, `--password` или PAT как позиционный аргумент. Скомпилированный binary не загружает `.env`, `bunfig.toml`, `tsconfig.json` или `package.json` из текущего каталога.
+
+Для запуска под отдельным macOS/Linux user или в container используйте
+[isolation deployment guide](docs/isolation-deployment.md): journal state должен сохраняться между
+prepare/apply, checkout следует монтировать read-only, а network egress ограничивается вне CLI.
 
 ## Основные команды
 
