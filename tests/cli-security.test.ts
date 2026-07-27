@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { z } from "zod";
+import { runSourceCli } from "./support/process";
 
 const humanErrorSchema = z.looseObject({
   error: z.looseObject({ message: z.string() }),
@@ -17,30 +18,10 @@ function decode<S extends z.ZodType>(text: string, schema: S): z.output<S> {
   return schema.parse(value);
 }
 
-async function run(args: string[], options: { stdin?: string; env?: Record<string, string> } = {}) {
-  const child = Bun.spawn([process.execPath, "run", "--no-env-file", "src/index.ts", ...args], {
-    cwd: `${import.meta.dir}/..`,
-    env: { ...process.env, ...options.env },
-    stdin: "pipe",
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-  if (options.stdin !== undefined) {
-    child.stdin.write(options.stdin);
-  }
-  child.stdin.end();
-  const [stdout, stderr, exitCode] = await Promise.all([
-    new Response(child.stdout).text(),
-    new Response(child.stderr).text(),
-    child.exited,
-  ]);
-  return { stdout, stderr, exitCode };
-}
-
 describe("CLI security contract", () => {
   test("never accepts a credential option", async () => {
     const canary = "ARGV_CANARY_SECRET_123456";
-    const result = await run(["me", "--token", canary], {
+    const result = await runSourceCli(["me", "--token", canary], {
       env: { ASANA_ACCESS_TOKEN: "" },
     });
     expect(result.exitCode).toBe(2);
@@ -49,7 +30,7 @@ describe("CLI security contract", () => {
   });
 
   test("agent write is denied by default before auth or network", async () => {
-    const result = await run([
+    const result = await runSourceCli([
       "agent",
       "apply",
       "--operation-id",
@@ -69,7 +50,7 @@ describe("CLI security contract", () => {
       task_gid: "123",
       patch: { notes: `never send ${canary}` },
     });
-    const result = await run(["agent", "prepare-task-update", "--input", "-"], {
+    const result = await runSourceCli(["agent", "prepare-task-update", "--input", "-"], {
       stdin: input,
       env: { ASANA_ACCESS_TOKEN: canary },
     });
@@ -80,7 +61,7 @@ describe("CLI security contract", () => {
   });
 
   test("agent input rejects unknown fields before network I/O", async () => {
-    const result = await run(["agent", "my-tasks", "--input", "-"], {
+    const result = await runSourceCli(["agent", "my-tasks", "--input", "-"], {
       stdin: '{"max_results":10,"unexpected":true}',
       env: { ASANA_ACCESS_TOKEN: "STRICT_AGENT_INPUT_CANARY" },
     });

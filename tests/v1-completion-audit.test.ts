@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import {
   buildV1CompletionAudit,
   renderV1CompletionAudit,
+  verifyAuditedProductionManifest,
   verifyV1CompletionAudit,
   v1CompletionAuditSchema,
 } from "../scripts/v1-completion-audit";
@@ -25,6 +26,39 @@ async function currentInputs() {
 }
 
 describe("v1 completion audit", () => {
+  test("binds the production dependency projection without treating scripts as dependencies", () => {
+    const lock = {
+      lockfileVersion: 1,
+      configVersion: 1,
+      workspaces: {
+        "": {
+          name: "asana-cli",
+          dependencies: { zod: "4.4.3", asana: "3.1.12" },
+        },
+      },
+      packages: {},
+    };
+    const packageValue = {
+      name: "asana-cli",
+      packageManager: "bun@1.3.14",
+      dependencies: { asana: "3.1.12", zod: "4.4.3" },
+      scripts: { check: "a maintainer-only change" },
+    };
+
+    expect(() =>
+      verifyAuditedProductionManifest(packageValue, lock, "1.3.14")
+    ).not.toThrow();
+    expect(() =>
+      verifyAuditedProductionManifest({
+        ...packageValue,
+        dependencies: { ...packageValue.dependencies, extra: "1.0.0" },
+      }, lock, "1.3.14")
+    ).toThrow("production dependencies no longer match bun.lock");
+    expect(() =>
+      verifyAuditedProductionManifest(packageValue, lock, "1.3.15")
+    ).toThrow("Bun version no longer matches packageManager");
+  });
+
   test("is byte-current and verifies every roadmap criterion against direct evidence", async () => {
     const inputs = await currentInputs();
     await verifyV1CompletionAudit(inputs.audit, inputs.roadmap, inputs.backlog);

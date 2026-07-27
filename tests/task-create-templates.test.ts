@@ -1,12 +1,10 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import {
   mkdir,
-  mkdtemp,
   rm,
   symlink,
   writeFile,
 } from "node:fs/promises";
-import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { normalizeError } from "../src/errors";
 import {
@@ -14,8 +12,10 @@ import {
   FixedFileTaskCreateTemplateProvider,
   taskCreateTemplateManifestSchema,
 } from "../src/task-create-templates";
+import { runGit } from "./support/git";
+import { TemporaryDirectories } from "./support/temp";
 
-const directories: string[] = [];
+const directories = new TemporaryDirectories();
 
 function contextManifest(): Record<string, unknown> {
   return {
@@ -44,29 +44,12 @@ function templateManifest(): Record<string, unknown> {
   };
 }
 
-async function temporaryDirectory(): Promise<string> {
-  const directory = await mkdtemp(join(tmpdir(), "asana-task-create-templates-"));
-  directories.push(directory);
-  return directory;
-}
-
 async function git(directory: string, args: readonly string[]): Promise<void> {
-  const child = Bun.spawn({
-    cmd: ["/usr/bin/git", ...args],
-    cwd: directory,
-    stdin: "ignore",
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-  const [stderr, exitCode] = await Promise.all([
-    new Response(child.stderr).text(),
-    child.exited,
-  ]);
-  if (exitCode !== 0) throw new Error(`Git fixture failed: ${stderr}`);
+  await runGit(directory, args);
 }
 
 async function repository(): Promise<string> {
-  const root = await temporaryDirectory();
+  const root = await directories.create("asana-task-create-templates-");
   await git(root, ["init", "-q"]);
   await mkdir(join(root, ".asana-cli"));
   await writeFile(
@@ -94,10 +77,7 @@ async function fromDirectory<Result>(
 }
 
 afterEach(async () => {
-  await Promise.all(directories.splice(0).map((directory) => rm(directory, {
-    recursive: true,
-    force: true,
-  })));
+  await directories.cleanup();
 });
 
 describe("revisioned task-create templates", () => {

@@ -2,33 +2,24 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { randomUUID } from "node:crypto";
 import {
   chmod,
-  mkdtemp,
   readFile,
   rm,
   stat,
   symlink,
   writeFile,
 } from "node:fs/promises";
-import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import {
   FileContextStateStore,
   resolveContextStateDirectory,
 } from "../src/context-state";
 import type { GitStorageIdentity } from "../src/git-context";
+import { TemporaryDirectories } from "./support/temp";
 
-const temporaryDirectories: string[] = [];
-
-async function temporaryDirectory(): Promise<string> {
-  const directory = await mkdtemp(join(tmpdir(), "asana-cli-context-state-"));
-  temporaryDirectories.push(directory);
-  return directory;
-}
+const temporaryDirectories = new TemporaryDirectories();
 
 afterEach(async () => {
-  await Promise.all(temporaryDirectories.splice(0).map((directory) =>
-    rm(directory, { recursive: true, force: true })
-  ));
+  await temporaryDirectories.cleanup();
 });
 
 const repositoryKey = `sha256:${"a".repeat(64)}`;
@@ -72,7 +63,7 @@ async function capturedError(action: () => Promise<unknown>): Promise<Readonly<{
 
 describe("owner-controlled context state", () => {
   test("shares aliases across linked worktrees while isolating active and recent state", async () => {
-    const baseDirectory = await temporaryDirectory();
+    const baseDirectory = await temporaryDirectories.create("asana-cli-context-state-");
     const store = new FileContextStateStore({ baseDirectory });
     const alias = "task:platform/dev-014--local-context";
 
@@ -103,7 +94,9 @@ describe("owner-controlled context state", () => {
   });
 
   test("idempotently binds and safely deactivates one exact worktree task", async () => {
-    const store = new FileContextStateStore({ baseDirectory: await temporaryDirectory() });
+    const store = new FileContextStateStore({
+      baseDirectory: await temporaryDirectories.create("asana-cli-context-state-"),
+    });
     const firstAlias = "task:platform/dev-017--worktree-task";
     const secondAlias = "task:platform/dev-018--other-worktree-task";
 
@@ -148,7 +141,9 @@ describe("owner-controlled context state", () => {
   });
 
   test("requires explicit revision and target CAS for replace and remove", async () => {
-    const store = new FileContextStateStore({ baseDirectory: await temporaryDirectory() });
+    const store = new FileContextStateStore({
+      baseDirectory: await temporaryDirectories.create("asana-cli-context-state-"),
+    });
     const alias = "task:platform/dev-014--cas-alias";
     await store.setAlias(firstIdentity, alias, "1200000000001");
 
@@ -184,7 +179,9 @@ describe("owner-controlled context state", () => {
   });
 
   test("enforces the bounded alias store without changing the last valid snapshot", async () => {
-    const store = new FileContextStateStore({ baseDirectory: await temporaryDirectory() });
+    const store = new FileContextStateStore({
+      baseDirectory: await temporaryDirectories.create("asana-cli-context-state-"),
+    });
     for (let index = 1; index <= 100; index += 1) {
       await store.setAlias(
         firstIdentity,
@@ -209,7 +206,7 @@ describe("owner-controlled context state", () => {
   });
 
   test("bounds recent history, reports removed active aliases as stale, and erases explicitly", async () => {
-    const baseDirectory = await temporaryDirectory();
+    const baseDirectory = await temporaryDirectories.create("asana-cli-context-state-");
     const store = new FileContextStateStore({ baseDirectory });
     const aliases = Array.from({ length: 22 }, (_, index) =>
       `task:platform/dev-${String(index + 1).padStart(3, "0")}--bounded-history`
@@ -259,7 +256,7 @@ describe("owner-controlled context state", () => {
   });
 
   test("serializes concurrent alias updates and refuses stale locks", async () => {
-    const baseDirectory = await temporaryDirectory();
+    const baseDirectory = await temporaryDirectories.create("asana-cli-context-state-");
     const store = new FileContextStateStore({
       baseDirectory,
       lockTimeoutMs: 2000,
@@ -300,7 +297,7 @@ describe("owner-controlled context state", () => {
   });
 
   test("uses restrictive files containing only bounded opaque metadata", async () => {
-    const baseDirectory = await temporaryDirectory();
+    const baseDirectory = await temporaryDirectories.create("asana-cli-context-state-");
     const store = new FileContextStateStore({ baseDirectory });
     const alias = "task:platform/dev-014--no-sensitive-content";
     await store.setAlias(firstIdentity, alias, "1200000000001");
@@ -333,7 +330,7 @@ describe("owner-controlled context state", () => {
   });
 
   test("rejects duplicate JSON keys, identity substitution, and linked state files", async () => {
-    const baseDirectory = await temporaryDirectory();
+    const baseDirectory = await temporaryDirectories.create("asana-cli-context-state-");
     const store = new FileContextStateStore({ baseDirectory });
     await store.setAlias(
       firstIdentity,

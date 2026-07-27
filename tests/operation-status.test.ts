@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { readFile, readdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
 import { runAgentCommand, runLocalAgentCommand } from "../src/agent-cli";
@@ -21,21 +20,14 @@ import type {
   OperationTransition,
 } from "../src/operations/schemas";
 import { createClient, type AsanaClient } from "../src/sdk";
+import { runSourceCli } from "./support/process";
+import { TemporaryDirectories } from "./support/temp";
 
 const operationId = "00000000-0000-4000-8000-000000000401";
-const directories: string[] = [];
-
-async function temporaryDirectory(): Promise<string> {
-  const directory = await mkdtemp(join(tmpdir(), "asana-operation-status-"));
-  directories.push(directory);
-  return directory;
-}
+const directories = new TemporaryDirectories();
 
 afterEach(async () => {
-  await Promise.all(directories.splice(0).map((directory) => rm(directory, {
-    recursive: true,
-    force: true,
-  })));
+  await directories.cleanup();
 });
 
 async function caughtCliError(action: () => Promise<unknown>): Promise<CliError> {
@@ -51,21 +43,7 @@ async function runEntrypoint(
   args: readonly string[],
   environment: Record<string, string | undefined>,
 ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
-  const env = Object.fromEntries(Object.entries({ ...process.env, ...environment }).filter(
-    (entry): entry is [string, string] => entry[1] !== undefined,
-  ));
-  const child = Bun.spawn([process.execPath, "run", "--no-env-file", "src/index.ts", ...args], {
-    cwd: `${import.meta.dir}/..`,
-    env,
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-  const [stdout, stderr, exitCode] = await Promise.all([
-    new Response(child.stdout).text(),
-    new Response(child.stderr).text(),
-    child.exited,
-  ]);
-  return { stdout, stderr, exitCode };
+  return runSourceCli(args, { env: environment });
 }
 
 class InspectCountingRepository implements OperationRepository {
@@ -109,7 +87,7 @@ function clientThatMustStayLocal(): { client: AsanaClient; calls: number[] } {
 
 describe("agent operation status", () => {
   test("projects a persisted expired record locally without payload leakage or journal mutation", async () => {
-    const baseDirectory = await temporaryDirectory();
+    const baseDirectory = await directories.create("asana-operation-status-");
     const repository = new FileOperationRepository({
       baseDirectory,
       clock: () => new Date("2020-01-01T00:00:00.000Z"),
@@ -219,7 +197,7 @@ describe("agent operation status", () => {
   });
 
   test("keeps direct persisted status schema-valid when credentials collide, while still rejecting disabled TLS", async () => {
-    const home = await temporaryDirectory();
+    const home = await directories.create("asana-operation-status-");
     const baseDirectory = resolveOperationJournalDirectory({ HOME: home, XDG_STATE_HOME: undefined });
     const repository = new FileOperationRepository({
       baseDirectory,

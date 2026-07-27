@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import { z } from "zod";
 import { runLocalAgentCommand } from "../src/agent-cli";
 import { parseArgs } from "../src/args";
@@ -9,9 +8,12 @@ import { runCli } from "../src/cli";
 import { CliError, normalizeError } from "../src/errors";
 import { gitContextSchema } from "../src/git-context";
 import { MemoryOperationRepository } from "../src/operations/memory-repository";
-const directories: string[] = [];
+import { runGit } from "./support/git";
+import { runSourceCli } from "./support/process";
+import { TemporaryDirectories } from "./support/temp";
+
+const directories = new TemporaryDirectories();
 const agentRuntime = { operations: new MemoryOperationRepository() };
-const entrypoint = resolve(import.meta.dir, "../src/index.ts");
 
 const gitContextResultSchema = z.looseObject({
   operation: z.literal("git.context.current"),
@@ -36,31 +38,6 @@ const agentErrorSchema = z.looseObject({
   }),
 });
 
-async function temporaryDirectory(): Promise<string> {
-  const directory = await mkdtemp(join(tmpdir(), "asana-git-context-"));
-  directories.push(directory);
-  return directory;
-}
-
-async function git(directory: string, args: readonly string[]): Promise<string> {
-  const child = Bun.spawn({
-    cmd: ["/usr/bin/git", ...args],
-    cwd: directory,
-    stdin: "ignore",
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-  const [stdout, stderr, exitCode] = await Promise.all([
-    new Response(child.stdout).text(),
-    new Response(child.stderr).text(),
-    child.exited,
-  ]);
-  if (exitCode !== 0) {
-    throw new Error(`Git test fixture failed: ${args.join(" ")} (${stderr})`);
-  }
-  return stdout;
-}
-
 type RepositoryOptions = Readonly<{
   branch?: string;
   objectFormat?: "sha256";
@@ -68,13 +45,13 @@ type RepositoryOptions = Readonly<{
 }>;
 
 async function repository(options: RepositoryOptions = {}): Promise<{ directory: string; commit: string }> {
-  const directory = await temporaryDirectory();
+  const directory = await directories.create("asana-git-context-");
   const initArgs = ["init", "--quiet", "--initial-branch", "main"];
   if (options.objectFormat !== undefined) initArgs.push(`--object-format=${options.objectFormat}`);
-  await git(directory, initArgs);
+  await runGit(directory, initArgs);
   await writeFile(join(directory, "fixture.txt"), "git context fixture\n");
-  await git(directory, ["add", "fixture.txt"]);
-  await git(directory, [
+  await runGit(directory, ["add", "fixture.txt"]);
+  await runGit(directory, [
     "-c",
     "user.name=Git Context Test",
     "-c",
@@ -85,35 +62,31 @@ async function repository(options: RepositoryOptions = {}): Promise<{ directory:
     "fixture",
   ]);
   if (options.branch !== undefined) {
-    await git(directory, ["checkout", "--quiet", "-b", options.branch]);
+    await runGit(directory, ["checkout", "--quiet", "-b", options.branch]);
   }
-  await git(directory, ["remote", "add", "origin", options.remote ?? "https://github.example/Acme/widgets.git"]);
-  return { directory, commit: (await git(directory, ["rev-parse", "--verify", "HEAD"])).trim() };
+  await runGit(directory, [
+    "remote",
+    "add",
+    "origin",
+    options.remote ?? "https://github.example/Acme/widgets.git",
+  ]);
+  return {
+    directory,
+    commit: await runGit(directory, ["rev-parse", "--verify", "HEAD"]),
+  };
 }
 
 async function runEntrypoint(
   directory: string,
   args: readonly string[],
 ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
-  const env = Object.fromEntries(Object.entries({
-    ...process.env,
-    ASANA_ACCESS_TOKEN: undefined,
-    ASANA_PAT: undefined,
-  }).filter((entry): entry is [string, string] => entry[1] !== undefined));
-  const child = Bun.spawn({
-    cmd: [process.execPath, "run", "--no-env-file", entrypoint, ...args],
+  return runSourceCli(args, {
     cwd: directory,
-    env,
-    stdin: "ignore",
-    stdout: "pipe",
-    stderr: "pipe",
+    env: {
+      ASANA_ACCESS_TOKEN: undefined,
+      ASANA_PAT: undefined,
+    },
   });
-  const [stdout, stderr, exitCode] = await Promise.all([
-    new Response(child.stdout).text(),
-    new Response(child.stderr).text(),
-    child.exited,
-  ]);
-  return { stdout, stderr, exitCode };
 }
 
 async function caughtCliError(action: () => Promise<unknown>): Promise<CliError> {
@@ -126,10 +99,7 @@ async function caughtCliError(action: () => Promise<unknown>): Promise<CliError>
 }
 
 afterEach(async () => {
-  await Promise.all(directories.splice(0).map((directory) => rm(directory, {
-    recursive: true,
-    force: true,
-  })));
+  await directories.cleanup();
 });
 
 describe("agent context --git-current", () => {
@@ -205,7 +175,7 @@ describe("agent context --git-current", () => {
   });
 
   test("maps a non-Git worktree to the local not-found contract without diagnostic leakage", async () => {
-    const directory = await temporaryDirectory();
+    const directory = await directories.create("asana-git-context-");
     const invocation = await runEntrypoint(directory, ["agent", "context", "--git-current"]);
     const error = agentErrorSchema.parse(JSON.parse(invocation.stderr)).result.error;
 
