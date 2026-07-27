@@ -1,26 +1,16 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdtemp, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
 import { parseArgs } from "../src/args";
 import { runCli } from "../src/cli";
 import { runContextCommand } from "../src/context-cli";
 import { FileContextStateStore } from "../src/context-state";
 import type { GitStorageIdentity } from "../src/git-context";
+import { runSourceCli } from "./support/process";
+import { TemporaryDirectories } from "./support/temp";
 
-const projectRoot = resolve(import.meta.dir, "..");
-const temporaryDirectories: string[] = [];
-
-async function temporaryDirectory(): Promise<string> {
-  const directory = await mkdtemp(join(tmpdir(), "asana-cli-context-cli-"));
-  temporaryDirectories.push(directory);
-  return directory;
-}
+const temporaryDirectories = new TemporaryDirectories();
 
 afterEach(async () => {
-  await Promise.all(temporaryDirectories.splice(0).map((directory) =>
-    rm(directory, { recursive: true, force: true })
-  ));
+  await temporaryDirectories.cleanup();
 });
 
 const identity: GitStorageIdentity = {
@@ -44,7 +34,9 @@ async function capturedError(action: () => Promise<unknown>): Promise<Readonly<{
 
 describe("human local context CLI", () => {
   test("routes the complete alias, activation, history, and erasure lifecycle", async () => {
-    const store = new FileContextStateStore({ baseDirectory: await temporaryDirectory() });
+    const store = new FileContextStateStore({
+      baseDirectory: await temporaryDirectories.create("asana-cli-context-cli-"),
+    });
     const runtime = { store, identity: async () => identity };
     const alias = "task:platform/dev-014--cli-lifecycle";
 
@@ -107,7 +99,9 @@ describe("human local context CLI", () => {
   });
 
   test("validates exact grammar before reading Git identity or local state", async () => {
-    const store = new FileContextStateStore({ baseDirectory: await temporaryDirectory() });
+    const store = new FileContextStateStore({
+      baseDirectory: await temporaryDirectories.create("asana-cli-context-cli-"),
+    });
     let identityReads = 0;
     const runtime = {
       store,
@@ -183,39 +177,23 @@ describe("human local context CLI", () => {
   });
 
   test("executes before PAT resolution in the compiled-style entrypoint", async () => {
-    const stateHome = await temporaryDirectory();
-    const environment: Record<string, string | undefined> = {
-      ...process.env,
-      HOME: stateHome,
-      XDG_STATE_HOME: stateHome,
-    };
-    delete environment.ASANA_ACCESS_TOKEN;
-    delete environment.ASANA_PAT;
-
-    const child = Bun.spawn([
-      process.execPath,
-      "run",
-      "--no-env-file",
-      "src/index.ts",
+    const stateHome = await temporaryDirectories.create("asana-cli-context-cli-");
+    const result = await runSourceCli([
       "context",
       "alias",
       "list",
       "--compact",
     ], {
-      cwd: projectRoot,
-      env: environment,
-      stdin: "ignore",
-      stdout: "pipe",
-      stderr: "pipe",
+      env: {
+        HOME: stateHome,
+        XDG_STATE_HOME: stateHome,
+        ASANA_ACCESS_TOKEN: undefined,
+        ASANA_PAT: undefined,
+      },
     });
-    const [stdout, stderr, exitCode] = await Promise.all([
-      new Response(child.stdout).text(),
-      new Response(child.stderr).text(),
-      child.exited,
-    ]);
-    expect(exitCode).toBe(0);
-    expect(stderr).toBe("");
-    expect(JSON.parse(stdout)).toMatchObject({
+    expect(result.exitCode).toBe(0);
+    expect(result.stderr).toBe("");
+    expect(JSON.parse(result.stdout)).toMatchObject({
       schema: "asana-cli.context-alias-list.v1",
       revision: 0,
       aliases: [],

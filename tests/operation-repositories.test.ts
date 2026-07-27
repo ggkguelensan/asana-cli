@@ -1,13 +1,13 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { chmod, mkdtemp, open, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { chmod, open, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { FileOperationRepository } from "../src/operations/file-repository";
 import { MemoryOperationRepository } from "../src/operations/memory-repository";
 import { operationLockPath, operationRecordPath } from "../src/operations/paths";
+import { TemporaryDirectories } from "./support/temp";
 
 const operationId = "00000000-0000-4000-8000-000000000001";
-const directories: string[] = [];
+const directories = new TemporaryDirectories();
 
 const input = {
   operation: "task.comment" as const,
@@ -20,17 +20,8 @@ const input = {
   ttl_ms: 60_000,
 };
 
-async function temporaryDirectory(): Promise<string> {
-  const directory = await mkdtemp(join(tmpdir(), "asana-operation-journal-"));
-  directories.push(directory);
-  return directory;
-}
-
 afterEach(async () => {
-  await Promise.all(directories.splice(0).map((directory) => rm(directory, {
-    recursive: true,
-    force: true,
-  })));
+  await directories.cleanup();
 });
 
 describe("memory operation repository", () => {
@@ -91,7 +82,11 @@ describe("memory operation repository", () => {
 
 describe("file operation repository", () => {
   test("uses restrictive permissions and leaves only a complete atomic record", async () => {
-    const baseDirectory = join(await temporaryDirectory(), "nested", "operations");
+    const baseDirectory = join(
+      await directories.create("asana-operation-journal-"),
+      "nested",
+      "operations",
+    );
     const repository = new FileOperationRepository({
       baseDirectory,
       clock: () => new Date("2026-07-15T10:00:00.000Z"),
@@ -107,7 +102,7 @@ describe("file operation repository", () => {
   });
 
   test("serializes concurrent CAS across repository instances so only one succeeds", async () => {
-    const baseDirectory = await temporaryDirectory();
+    const baseDirectory = await directories.create("asana-operation-journal-");
     const options = {
       baseDirectory,
       clock: () => new Date("2026-07-15T10:00:00.000Z"),
@@ -133,7 +128,7 @@ describe("file operation repository", () => {
   });
 
   test("rejects an oversized serialized record before a record or temp file appears", async () => {
-    const baseDirectory = await temporaryDirectory();
+    const baseDirectory = await directories.create("asana-operation-journal-");
     const repository = new FileOperationRepository({
       baseDirectory,
       clock: () => new Date("2026-07-15T10:00:00.000Z"),
@@ -159,7 +154,7 @@ describe("file operation repository", () => {
   });
 
   test("removes only its partial lock when lock fsync fails after exclusive creation", async () => {
-    const baseDirectory = await temporaryDirectory();
+    const baseDirectory = await directories.create("asana-operation-journal-");
     const unrelated = join(baseDirectory, "unrelated.lock");
     await writeFile(unrelated, "do not remove", { mode: 0o600 });
     const probe = await open(join(baseDirectory, "probe"), "w");
@@ -190,7 +185,7 @@ describe("file operation repository", () => {
   });
 
   test("rejects a tampered record without returning its payload", async () => {
-    const baseDirectory = await temporaryDirectory();
+    const baseDirectory = await directories.create("asana-operation-journal-");
     const repository = new FileOperationRepository({
       baseDirectory,
       clock: () => new Date("2026-07-15T10:00:00.000Z"),
@@ -205,7 +200,7 @@ describe("file operation repository", () => {
   });
 
   test("rejects an unversioned foreign record", async () => {
-    const baseDirectory = await temporaryDirectory();
+    const baseDirectory = await directories.create("asana-operation-journal-");
     const repository = new FileOperationRepository({ baseDirectory, lockTimeoutMs: 20 });
     await repository.get(operationId);
     const path = operationRecordPath(baseDirectory, operationId);
@@ -216,7 +211,7 @@ describe("file operation repository", () => {
   });
 
   test("leaves a stale or crashed lock in place and fails closed", async () => {
-    const baseDirectory = await temporaryDirectory();
+    const baseDirectory = await directories.create("asana-operation-journal-");
     let now = new Date("2026-07-15T10:00:00.000Z");
     const repository = new FileOperationRepository({
       baseDirectory,

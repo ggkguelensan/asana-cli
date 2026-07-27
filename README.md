@@ -455,7 +455,9 @@ bun run typecheck
 bun test
 bun run test:black-box
 bun run build
+bun run check:fast
 bun run check
+bun run check:release
 ```
 
 `bun run typecheck` запускает строгий TypeScript и отдельный guard, запрещающий явные `any`
@@ -465,8 +467,15 @@ bun run check
 его публичные process/stdin/stdout/stderr/filesystem контракты. Suite не импортирует `src`,
 generated artifacts или тестовые runtime implementations и не обращается к live Asana.
 
+`check:fast` предназначен для локального цикла, `check` воспроизводит обязательный CI gate, а
+`check:release` дополнительно квалифицирует собранный бинарник release-контрактом. Каждый профиль
+показывает именованные этапы и их длительность. Полные правила разработки:
+[CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## Планирование
 
+- [Documentation index](docs/README.md) — актуальные руководства отдельно от исторических записей.
+- [Architecture](docs/architecture.md) — runtime boundaries, состояние, worktree isolation и evidence.
 - [Roadmap](docs/roadmap.md) — целевая архитектура, milestones и критерии выхода.
 - [Release plan](docs/release-plan.md) — последовательный scope `v0.5` → `v1.0.0`.
 - [Backlog](docs/backlog.md) — приоритеты, зависимости и acceptance criteria.
