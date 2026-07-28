@@ -1,9 +1,11 @@
 version: 2
 updates:
-  - package-ecosystem: "npm"
+  - package-ecosystem: "bun"
     directory: "/"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 14
     open-pull-requests-limit: 5
     commit-message:
       prefix: "deps"
@@ -12,6 +14,8 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 14
     open-pull-requests-limit: 5
     commit-message:
       prefix: "ci"

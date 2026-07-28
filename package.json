@@ -39,6 +39,10 @@
     "check:client-evidence": "bun run --no-env-file scripts/check-client-evidence.ts",
     "check:native-client-evidence": "bun run --no-env-file scripts/check-native-client-evidence.ts",
     "check:integration-lifecycle-evidence": "bun run --no-env-file scripts/check-integration-lifecycle-evidence.ts",
+    "check:fallow-score": "fallow health --score --min-score 80",
+    "check:fallow-dupes": "fallow dupes --threshold 5 --summary",
+    "check:fallow-regression": "fallow dead-code --baseline .fallow-dead-code-baseline.json --summary",
+    "check:fallow": "bun run check:fallow-score && bun run check:fallow-dupes && bun run check:fallow-regression",
     "check:release-sbom": "bun run --no-env-file scripts/check-release-sbom.ts",
     "check:release-assets": "bun run --no-env-file scripts/check-release-assets.ts",
     "check:release-workflow": "bun run --no-env-file scripts/check-release-workflow.ts",
@@ -61,8 +65,12 @@
     "asana": "3.1.12",
     "zod": "4.4.3"
   },
+  "overrides": {
+    "brace-expansion": "5.0.8"
+  },
   "devDependencies": {
     "@types/bun": "latest",
+    "fallow": "3.4.2",
     "typescript": "latest"
   },
   "engines": {

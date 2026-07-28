@@ -4,24 +4,24 @@ import { isAbsolute, resolve, sep } from "node:path";
 import { z } from "zod";
 import { GENERATED_CLIENT_COMPATIBILITY } from "../generated/client-compatibility";
 import { parseBacklog } from "./check-project-plan";
+import {
+  bunLockBaseShape,
+  dependencyMapSchema,
+  verifyDependencyManifestProjection,
+} from "./dependency-manifest";
 
 export const V1_AUDIT_SCHEMA = "asana-cli.v1-completion-audit.v1" as const;
 export const V1_DEPENDENCY_AUDIT_SCHEMA = "asana-cli.v1-dependency-audit.v1" as const;
 const projectRoot = resolve(import.meta.dir, "..");
 const sha256Schema = z.string().regex(/^[a-f0-9]{64}$/);
-const dependencyMapSchema = z.record(z.string(), z.string());
 const auditedPackageManifestSchema = z.looseObject({
   name: z.literal("asana-cli"),
   packageManager: z.string().regex(/^bun@\d+\.\d+\.\d+$/),
   dependencies: dependencyMapSchema,
+  overrides: dependencyMapSchema.optional(),
 });
 const auditedLockfileSchema = z.strictObject({
-  lockfileVersion: z.number().int().positive(),
-  configVersion: z.number().int().positive(),
-  workspaces: z.record(z.string(), z.looseObject({
-    name: z.string().min(1),
-    dependencies: dependencyMapSchema.optional(),
-  })),
+  ...bunLockBaseShape,
   packages: z.record(z.string(), z.unknown()),
 });
 const relativePathSchema = z.string().min(1).refine(
@@ -232,14 +232,6 @@ function normalizedMarkdown(value: string): string {
   return value.replace(/\s+/g, " ").trim();
 }
 
-function canonicalDependencyMap(value: Readonly<Record<string, string>>): string {
-  return JSON.stringify(
-    Object.fromEntries(
-      Object.entries(value).sort(([left], [right]) => left.localeCompare(right)),
-    ),
-  );
-}
-
 export function verifyAuditedProductionManifest(
   packageValue: unknown,
   lockValue: unknown,
@@ -250,16 +242,11 @@ export function verifyAuditedProductionManifest(
   if (packageManifest.packageManager !== `bun@${auditToolVersion}`) {
     throw new Error("Dependency audit Bun version no longer matches packageManager");
   }
-  const root = lockfile.workspaces[""];
-  if (!root || root.name !== packageManifest.name) {
-    throw new Error("Dependency audit lockfile root no longer matches package.json");
-  }
-  if (
-    canonicalDependencyMap(root.dependencies ?? {}) !==
-    canonicalDependencyMap(packageManifest.dependencies)
-  ) {
-    throw new Error("Dependency audit production dependencies no longer match bun.lock");
-  }
+  verifyDependencyManifestProjection(packageManifest, lockfile, {
+    root: "Dependency audit lockfile root no longer matches package.json",
+    dependencies: "Dependency audit production dependencies no longer match bun.lock",
+    overrides: "Dependency audit overrides no longer match bun.lock",
+  });
 }
 
 export async function verifyV1CompletionAudit(

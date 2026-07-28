@@ -7,6 +7,11 @@ import {
   supportedBuildTargetSchema,
   type SupportedBuildTarget,
 } from "./check-support-matrix";
+import {
+  bunLockBaseShape,
+  dependencyMapSchema,
+  verifyDependencyManifestProjection,
+} from "./dependency-manifest";
 
 const projectRoot = resolve(import.meta.dir, "..");
 const sha256Schema = z.string().regex(/^[a-f0-9]{64}$/);
@@ -16,7 +21,6 @@ const sourceDateEpochSchema = z.coerce.number().int().nonnegative();
 const semverSchema = z.string().regex(
   /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/,
 );
-const dependencyMapSchema = z.record(z.string(), z.string());
 const lockPackageMetadataSchema = z.looseObject({
   dependencies: dependencyMapSchema.optional(),
   optionalDependencies: dependencyMapSchema.optional(),
@@ -28,12 +32,7 @@ const lockPackageSchema = z.tuple([
   z.string().regex(/^sha512-[A-Za-z0-9+/]+={0,2}$/),
 ]);
 const bunLockSchema = z.strictObject({
-  lockfileVersion: z.number().int().positive(),
-  configVersion: z.number().int().positive(),
-  workspaces: z.record(z.string(), z.looseObject({
-    name: z.string().min(1),
-    dependencies: dependencyMapSchema.optional(),
-  })),
+  ...bunLockBaseShape,
   packages: z.record(z.string(), lockPackageSchema),
 });
 const packageSchema = z.looseObject({
@@ -41,6 +40,7 @@ const packageSchema = z.looseObject({
   version: semverSchema,
   packageManager: z.string().regex(/^bun@\d+\.\d+\.\d+$/),
   dependencies: dependencyMapSchema,
+  overrides: dependencyMapSchema.optional(),
 });
 const checksumSchema = z.strictObject({
   algorithm: z.enum(["SHA256", "SHA512"]),
@@ -191,16 +191,11 @@ export function buildReleaseSbom(input: ReleaseSbomInput): ReleaseSbom {
   const sourceDateEpoch = sourceDateEpochSchema.parse(input.sourceDateEpoch);
   const packageJson = packageSchema.parse(input.packageValue);
   const lock = bunLockSchema.parse(Bun.JSONC.parse(input.lockText) as unknown);
-  const rootWorkspace = lock.workspaces[""];
-  if (!rootWorkspace || rootWorkspace.name !== packageJson.name) {
-    throw new Error("bun.lock root workspace does not match package.json");
-  }
-  if (
-    JSON.stringify(rootWorkspace.dependencies ?? {}) !==
-      JSON.stringify(packageJson.dependencies)
-  ) {
-    throw new Error("package.json production dependencies do not match bun.lock");
-  }
+  verifyDependencyManifestProjection(packageJson, lock, {
+    root: "bun.lock root workspace does not match package.json",
+    dependencies: "package.json production dependencies do not match bun.lock",
+    overrides: "package.json dependency overrides do not match bun.lock",
+  });
 
   const binarySha256 = sha256(input.binaryBytes);
   const lockSha256 = sha256(input.lockText);
