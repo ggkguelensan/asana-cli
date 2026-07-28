@@ -12,7 +12,7 @@
       "evidence": [
         {
           "path": "docs/agent-clients.md",
-          "sha256": "a05d7eeeb25060594fffa03e65185fb868330259f72dd54ea0ee29cdd0eea3c5",
+          "sha256": "722a415b3526ceae8b2dbf54014b4a71438e15fac3afb825f6015a5c65eb49e5",
           "claim": "Published compatibility, migration, and deprecation policy."
         },
         {
@@ -45,7 +45,7 @@
         },
         {
           "path": "scripts/check-client-evidence.ts",
-          "sha256": "51cf6240b0967b19db2a35f23107ae9574ab5da0faa83f9fc7fdbfc8a2938f23",
+          "sha256": "b7e09767eb6639257d87c3a41fc2f246cf2e5928e0d378a710e168446c869d6a",
           "claim": "Strict freshness and scenario verifier for supported clients."
         },
         {
@@ -73,7 +73,7 @@
       "evidence": [
         {
           "path": ".github/workflows/release.yml",
-          "sha256": "cf59e73e4bbcd0dbb3244a3850542888f89d8e67251e4967e7a893a0fea5098b",
+          "sha256": "faa16a6e960199e2cf12b87955952e648a7c128e1cf9d5f817efd179d5caaf2e",
           "claim": "Per-target reproducibility, attestations, verification, and publish gate."
         },
         {
@@ -136,7 +136,7 @@
         },
         {
           "path": "tests/black-box/contract.test.ts",
-          "sha256": "2d69d1eccb6f61e70cd44694b719455795360eca7e0eeee0ee81c48e1b056689",
+          "sha256": "e36f5102d4c8cb891598d8cfdfef792ff89d56ed66dca8e7cd698e2d3a4ca8bd",
           "claim": "Every action advertised by the compiled binary publishes a self-consistent wire schema."
         }
       ]
@@ -194,7 +194,7 @@
         },
         {
           "path": "tests/black-box/integrations.test.ts",
-          "sha256": "40711e8156a1723826db84de90fc3ae0ecc5e0102f800aff74d8787ae18e3981",
+          "sha256": "c8e6986ce18d82f7148ef92fd4e3530753b03dec7e0abce3f8a56d7cd210825f",
           "claim": "Compiled client adapter and managed-file lifecycle tests."
         },
         {
@@ -232,7 +232,7 @@
         },
         {
           "path": "src/help.ts",
-          "sha256": "e5f4b7a2b4295f39279a2934190438105f52989acd6eae24dcc7d8980a0b46fd",
+          "sha256": "70fbe0f62c993ccbe8c9f402968a3f9fc116f71742df7a4a85937cc21e14cf6e",
           "claim": "CLI grammar and auth guidance used by the examples."
         }
       ]

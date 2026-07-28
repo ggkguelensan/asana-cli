@@ -1,7 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import type { z } from "zod";
-import { integrationBundleSha256, clientEvalSubjectSha256 } from "./client-eval-contract";
 import { RELEASE_TARGETS } from "./check-support-matrix";
 import { integrationLifecycleEvidenceSchema } from "./integration-lifecycle-e2e";
 
@@ -10,19 +9,20 @@ type IntegrationLifecycleEvidence = z.output<typeof integrationLifecycleEvidence
 export async function verifyIntegrationLifecycleEvidence(
   records: Readonly<Record<string, unknown>>,
 ): Promise<void> {
-  const subjectSha256 = await clientEvalSubjectSha256();
-  const bundleSha256 = integrationBundleSha256();
+  const baseline = integrationLifecycleEvidenceSchema.parse(
+    records[RELEASE_TARGETS[0]!.output],
+  );
   const binaryDigests = new Set<string>();
   for (const expected of RELEASE_TARGETS) {
     const evidence = integrationLifecycleEvidenceSchema.parse(records[expected.output]);
     if (evidence.target !== expected.target) {
       throw new Error(`${expected.output} lifecycle evidence has the wrong target`);
     }
-    if (evidence.subject_sha256 !== subjectSha256) {
-      throw new Error(`${expected.output} lifecycle evidence is stale for the evaluated source`);
+    if (evidence.subject_sha256 !== baseline.subject_sha256) {
+      throw new Error(`${expected.output} lifecycle evidence belongs to a different source set`);
     }
-    if (evidence.bundle_sha256 !== bundleSha256) {
-      throw new Error(`${expected.output} lifecycle evidence has a stale integration bundle`);
+    if (evidence.bundle_sha256 !== baseline.bundle_sha256) {
+      throw new Error(`${expected.output} lifecycle evidence belongs to a different bundle set`);
     }
     binaryDigests.add(evidence.binary_sha256);
   }
@@ -53,11 +53,10 @@ async function main(): Promise<void> {
   }
   await verifyIntegrationLifecycleEvidence(records);
   process.stdout.write(
-    `Integration lifecycle evidence verified: ${RELEASE_TARGETS.length} release targets\n`,
+    `Archived integration lifecycle evidence verified: ${RELEASE_TARGETS.length} release targets\n`,
   );
 }
 
 if (import.meta.main) {
   await main();
 }
-

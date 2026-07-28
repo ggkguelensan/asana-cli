@@ -39,6 +39,15 @@ export function enforceAgentPolicy(args: ParsedArgs): void {
       "Agent mode cannot inspect or mutate human alias and worktree context state",
     );
   }
+  if (command === "update") {
+    throw new CliError("policy-denied", "Agent mode cannot replace the asana-cli executable");
+  }
+  if (command === "doctor") {
+    throw new CliError(
+      "policy-denied",
+      "Agent mode cannot inspect human installation paths or credential state",
+    );
+  }
   if (
     command === "integrations" &&
     ["install", "update", "uninstall"].includes(action ?? "") &&

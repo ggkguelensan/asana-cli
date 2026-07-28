@@ -32,6 +32,10 @@ import {
 } from "./integrations";
 import { resolveIntegrationPaths } from "./integrations/paths";
 import { CLI_VERSION } from "./version";
+import {
+  INTEGRATION_SKILLS,
+  integrationSkillIdSchema,
+} from "./integration-skills";
 
 const integrationActionSchema = z.enum([
   "list",
@@ -70,7 +74,7 @@ function doctorOptions(args: ParsedArgs): Readonly<{
 }> {
   requireAllowedFlags(
     { ...args, flags: Object.fromEntries(Object.entries(args.flags).filter(([name]) => name !== "auto-allow")) },
-    ["client", "scope", "compact", "skip-credential-store"],
+    ["client", "scope", "skill", "compact", "skip-credential-store"],
   );
   const rawAutoAllow = args.flags["auto-allow"];
   if (
@@ -105,16 +109,29 @@ function integrationScopeOption(value: unknown) {
   return parsed.data;
 }
 
+function integrationSkillOption(value: unknown) {
+  if (value === undefined) return "asana" as const;
+  const parsed = integrationSkillIdSchema.safeParse(value);
+  if (!parsed.success) {
+    throw new CliError(
+      "validation",
+      `--skill must be one of: ${integrationSkillIdSchema.options.join(", ")}`,
+    );
+  }
+  return parsed.data;
+}
+
 function integrationTarget(args: ParsedArgs): IntegrationTargetInput {
   const client = integrationClientOption(stringFlag(args, "client"), "--client");
   const scope = integrationScopeOption(stringFlag(args, "scope"));
+  const skill = integrationSkillOption(stringFlag(args, "skill"));
   return scope === "user"
-    ? { client, scope, home_directory: resolve(homedir()) }
-    : { client, scope, project_directory: resolve(process.cwd()) };
+    ? { client, scope, skill, home_directory: resolve(homedir()) }
+    : { client, scope, skill, project_directory: resolve(process.cwd()) };
 }
 
 function bundleForTarget(target: IntegrationTargetInput) {
-  const bundle = embeddedIntegrationBundle(target.client);
+  const bundle = embeddedIntegrationBundle(target.client, target.skill);
   return {
     target,
     cli_version: CLI_VERSION,
@@ -228,6 +245,7 @@ export async function runIntegrationCommand(args: ParsedArgs): Promise<{ value?:
           architecture: process.arch,
         },
         clients: INTEGRATION_CLIENTS,
+        skills: INTEGRATION_SKILLS,
       },
     };
   }
@@ -238,11 +256,20 @@ export async function runIntegrationCommand(args: ParsedArgs): Promise<{ value?:
     return { text: renderClientPolicyGuidance(integrationClientOption(args.positionals[2], "CLIENT")) };
   }
 
-  requireExactPositionals(args, 2, `asana-cli integrations ${action} --client CLIENT --scope user|project`);
+  requireExactPositionals(
+    args,
+    2,
+    `asana-cli integrations ${action} --client CLIENT --scope user|project [--skill SKILL]`,
+  );
   const mutation = action === "install" || action === "update" || action === "uninstall";
   const doctorInput = action === "doctor" ? doctorOptions(args) : undefined;
   if (action !== "doctor") {
-    requireAllowedFlags(args, mutation ? ["client", "scope", "dry-run", "apply", "compact"] : ["client", "scope", "compact"]);
+    requireAllowedFlags(
+      args,
+      mutation
+        ? ["client", "scope", "skill", "dry-run", "apply", "compact"]
+        : ["client", "scope", "skill", "compact"],
+    );
   }
   const target = integrationTarget(args);
 

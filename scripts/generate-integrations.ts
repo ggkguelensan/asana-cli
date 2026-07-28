@@ -1,6 +1,6 @@
 import { resolve } from "node:path";
 import {
-  CANONICAL_SKILL_PATHS,
+  INTEGRATION_SKILL_PATHS,
   portableSkillBundle,
   renderEmbeddedBundleModule,
   type PortableSkillBundle,
@@ -9,33 +9,47 @@ import {
   INTEGRATION_AGENT_PROTOCOL_VERSION,
   INTEGRATION_BUNDLE_VERSION,
 } from "../integrations/clients";
+import {
+  INTEGRATION_SKILL_IDS,
+  type IntegrationSkillId,
+} from "../src/integration-skills";
 
 const projectRoot = resolve(import.meta.dir, "..");
-const sourceRoot = resolve(projectRoot, "skills/source/asana");
+const sourceRoot = resolve(projectRoot, "skills/source");
 export const GENERATED_INTEGRATION_BUNDLE_PATH = resolve(
   projectRoot,
   "generated/integrations/bundle.ts",
 );
 
-export async function readCanonicalSkillSource(): Promise<PortableSkillBundle> {
-  const files = await Promise.all(CANONICAL_SKILL_PATHS.map(async (path) => {
-    const file = Bun.file(resolve(sourceRoot, path));
+export async function readIntegrationSkillSource(
+  skill: IntegrationSkillId,
+): Promise<PortableSkillBundle> {
+  const files = await Promise.all(INTEGRATION_SKILL_PATHS[skill].map(async (path) => {
+    const file = Bun.file(resolve(sourceRoot, skill, path));
     if (!(await file.exists())) {
-      throw new Error(`Canonical skill source is missing required file: ${path}`);
+      throw new Error(`Embedded skill source is missing required file: ${skill}/${path}`);
     }
     return { path, content: await file.text() };
   }));
 
   return portableSkillBundle({
-    name: "asana",
+    name: skill,
     version: INTEGRATION_BUNDLE_VERSION,
     agent_protocol_version: INTEGRATION_AGENT_PROTOCOL_VERSION,
     files,
   });
 }
 
+export function readCanonicalSkillSource(): Promise<PortableSkillBundle> {
+  return readIntegrationSkillSource("asana");
+}
+
+export async function readIntegrationSkillSources(): Promise<PortableSkillBundle[]> {
+  return Promise.all(INTEGRATION_SKILL_IDS.map(readIntegrationSkillSource));
+}
+
 export async function renderGeneratedIntegrationBundle(): Promise<string> {
-  return renderEmbeddedBundleModule(await readCanonicalSkillSource());
+  return renderEmbeddedBundleModule(await readIntegrationSkillSources());
 }
 
 export async function generateIntegrationBundle(options: { write?: boolean } = {}): Promise<string> {

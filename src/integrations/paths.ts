@@ -1,11 +1,12 @@
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import { CliError } from "../errors";
 import { assertSupportedRuntimePlatform } from "../platform-support";
-import { clientAdapter } from "../client-adapter-specs";
+import { clientAdapter, clientAdapterSkillRoot } from "../client-adapter-specs";
 import {
   INTEGRATION_MANIFEST_FILE,
   integrationTargetInputSchema,
   type IntegrationClient,
+  type IntegrationSkill,
   type IntegrationScope,
   type IntegrationTargetInput,
 } from "./schemas";
@@ -13,6 +14,7 @@ import {
 export type IntegrationPaths = Readonly<{
   client: IntegrationClient;
   scope: IntegrationScope;
+  skill: IntegrationSkill;
   base_directory: string;
   installation_directory: string;
   manifest_path: string;
@@ -34,9 +36,10 @@ export function resolveIntegrationPaths(
   }
 
   const baseDirectory = resolve(configuredBase);
+  const skill = input.skill ?? "asana";
   const installationDirectory = resolve(
     baseDirectory,
-    ...clientAdapter(input.client).roots[input.scope],
+    ...clientAdapterSkillRoot(clientAdapter(input.client), input.scope, skill),
   );
   const pathBelowBase = relative(baseDirectory, installationDirectory);
   if (
@@ -51,6 +54,7 @@ export function resolveIntegrationPaths(
   return {
     client: input.client,
     scope: input.scope,
+    skill,
     base_directory: baseDirectory,
     installation_directory: installationDirectory,
     manifest_path: join(installationDirectory, INTEGRATION_MANIFEST_FILE),

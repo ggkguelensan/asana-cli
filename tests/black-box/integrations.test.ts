@@ -258,4 +258,67 @@ describe.skipIf(!existsSync(binary))("black-box integration adapters", () => {
       await removeFixture(fixture);
     }
   }, 30_000);
+
+  test("onboards an agent and installs the complete embedded skill suite", async () => {
+    const fixture = await createFixture("asana-cli-black-box-agent-setup-");
+    const skills = [
+      "asana",
+      "asana-concepts",
+      "asana-company-discovery",
+      "asana-cli-insights",
+    ];
+    try {
+      const onboardingEnvelope = record(
+        await successfulJson(fixture, ["--agents", "--compact"]),
+        "agent onboarding envelope",
+      );
+      const onboarding = record(onboardingEnvelope.result, "agent onboarding");
+      expect(onboarding).toMatchObject({
+        schema: "asana-cli.agents.v1",
+        first_entrypoint: "asana-cli --agents",
+      });
+      expect((onboarding.skills as Array<{ id: string }>).map(({ id }) => id))
+        .toEqual(skills);
+
+      const previewEnvelope = record(await successfulJson(
+        fixture,
+        [
+          "agent-setup",
+          "--client",
+          "codex",
+          "--scope",
+          "project",
+          "--dry-run",
+          "--compact",
+        ],
+      ), "agent setup preview envelope");
+      expect(record(previewEnvelope.result, "agent setup preview").mode).toBe("dry-run");
+
+      const applyEnvelope = record(await successfulJson(
+        fixture,
+        [
+          "agent-setup",
+          "--client",
+          "codex",
+          "--scope",
+          "project",
+          "--apply",
+          "--compact",
+        ],
+      ), "agent setup apply envelope");
+      expect(record(applyEnvelope.result, "agent setup apply").mode).toBe("apply");
+      for (const skill of skills) {
+        expect(
+          existsSync(`${fixture.project}/.agents/skills/${skill}/SKILL.md`),
+          skill,
+        ).toBeTrue();
+      }
+
+      const manual = await runBinary(fixture, ["man", "agents"]);
+      expect(manual).toMatchObject({ exitCode: 0, stderr: "", timedOut: false });
+      expect(manual.stdout).toContain("asana-cli --agents");
+    } finally {
+      await removeFixture(fixture);
+    }
+  }, 30_000);
 });
