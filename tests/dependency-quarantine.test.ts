@@ -24,6 +24,18 @@ describe("dependency quarantine", () => {
     expect(dependabot.match(/default-days:\s*14/g)).toHaveLength(2);
   });
 
+  test("checks the Asana Node SDK on an exact biweekly cadence", async () => {
+    const workflow = await readFile(
+      resolve(root, ".github", "workflows", "asana-sdk-version.yml"),
+      "utf8",
+    );
+
+    expect(workflow).toContain('cron: "23 6 * * 1"');
+    expect(workflow).toContain("check:asana-sdk-version -- --scheduled");
+    expect(workflow).toContain("workflow_dispatch:");
+    expect(workflow).toContain("permissions:\n  contents: read");
+  });
+
   test("keeps the documented security exception exact and reviewable", async () => {
     const packageManifest = await Bun.file(resolve(root, "package.json")).json();
 
