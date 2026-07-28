@@ -199,7 +199,7 @@
         },
         {
           "path": "evidence/v1/dependency-audit.json",
-          "sha256": "0afdf1e2c897dd05739172de8043c9df4b0e2d7e78a89ba6483f33176cd90071",
+          "sha256": "bf11073d20a0ceac8c826b10303b4449662b8a1873d5d449ab60d8768cb5f143",
           "claim": "Dated production dependency advisory result bound to the lockfile."
         }
       ]
@@ -250,7 +250,7 @@
     ],
     "dependency_audit": {
       "path": "evidence/v1/dependency-audit.json",
-      "sha256": "0afdf1e2c897dd05739172de8043c9df4b0e2d7e78a89ba6483f33176cd90071",
+      "sha256": "bf11073d20a0ceac8c826b10303b4449662b8a1873d5d449ab60d8768cb5f143",
       "claim": "Bun production-dependency audit found no known vulnerabilities on the reviewed date."
     },
     "open_findings": [],

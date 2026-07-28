@@ -43,6 +43,7 @@
     "check:fallow-dupes": "fallow dupes --threshold 5 --summary",
     "check:fallow-regression": "fallow dead-code --baseline .fallow-dead-code-baseline.json --summary",
     "check:fallow": "bun run check:fallow-score && bun run check:fallow-dupes && bun run check:fallow-regression",
+    "check:asana-sdk-version": "bun run --no-env-file scripts/check-asana-sdk-version.ts",
     "check:release-sbom": "bun run --no-env-file scripts/check-release-sbom.ts",
     "check:release-assets": "bun run --no-env-file scripts/check-release-assets.ts",
     "check:release-workflow": "bun run --no-env-file scripts/check-release-workflow.ts",

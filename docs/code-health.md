@@ -29,6 +29,15 @@ gate green. Suppressions require a reason and are reviewed like code.
 Existing versions in `bun.lock` remain reproducible. Dependabot applies the same 14-day cooldown to
 Bun packages and GitHub Actions; GitHub security updates are intentionally not delayed.
 
+The `Asana SDK version` workflow checks the official npm `latest` tag every other Monday. It fails
+only when the exact `asana` version in `package.json` is older than the newest release that has
+completed quarantine. A newer release still inside quarantine is reported without failing. Run the
+same check immediately with:
+
+```sh
+bun run check:asana-sdk-version
+```
+
 An urgent direct security fix may bypass the Bun age gate only in a dedicated pull request:
 
 ```sh
