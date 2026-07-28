@@ -30,6 +30,7 @@ describe("v1 completion audit", () => {
     const lock = {
       lockfileVersion: 1,
       configVersion: 1,
+      overrides: { "brace-expansion": "5.0.8" },
       workspaces: {
         "": {
           name: "asana-cli",
@@ -42,6 +43,7 @@ describe("v1 completion audit", () => {
       name: "asana-cli",
       packageManager: "bun@1.3.14",
       dependencies: { asana: "3.1.12", zod: "4.4.3" },
+      overrides: { "brace-expansion": "5.0.8" },
       scripts: { check: "a maintainer-only change" },
     };
 
@@ -57,6 +59,12 @@ describe("v1 completion audit", () => {
     expect(() =>
       verifyAuditedProductionManifest(packageValue, lock, "1.3.15")
     ).toThrow("Bun version no longer matches packageManager");
+    expect(() =>
+      verifyAuditedProductionManifest({
+        ...packageValue,
+        overrides: { "brace-expansion": "5.0.9" },
+      }, lock, "1.3.14")
+    ).toThrow("overrides no longer match bun.lock");
   });
 
   test("is byte-current and verifies every roadmap criterion against direct evidence", async () => {

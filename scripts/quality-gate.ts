@@ -39,6 +39,10 @@ const supportMatrix: QualityGateStep = {
   name: "support matrix",
   command: ["bun", "run", "check:support-matrix"],
 };
+const fallow: QualityGateStep = {
+  name: "Fallow code health",
+  command: ["bun", "run", "check:fallow"],
+};
 const build: QualityGateStep = {
   name: "build",
   command: ["bun", "run", "build"],
@@ -59,6 +63,7 @@ const fastSteps: readonly QualityGateStep[] = Object.freeze([
   geminiExtension,
   projectPlan,
   supportMatrix,
+  fallow,
   build,
   tests,
   version,
@@ -75,6 +80,7 @@ const ciSteps: readonly QualityGateStep[] = Object.freeze([
     command: ["bun", "run", "check:v1-audit"],
   },
   supportMatrix,
+  fallow,
   {
     name: "release workflow",
     command: ["bun", "run", "check:release-workflow"],

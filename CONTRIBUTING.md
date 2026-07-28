@@ -32,6 +32,11 @@ The project intentionally does not support Windows runtime or release artifacts.
 Use `bun run clean` to remove local `dist/` artifacts. The command validates the exact distribution
 path before deleting it.
 
+Fallow enforces the repository health score, duplication ceiling, structural regression baseline,
+new-only PR findings, and the 14-day dependency quarantine. Run `bun run check:fallow` for the
+repository-wide gates and see [code health](docs/code-health.md) for the accepted indicators and
+exception policy.
+
 ## Test boundaries
 
 - Unit and integration tests may use helpers from `tests/support/`.

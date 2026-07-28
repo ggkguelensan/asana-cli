@@ -83,7 +83,7 @@
         },
         {
           "path": "scripts/release-sbom.ts",
-          "sha256": "6b45163ecff8b4331959552bc193b5ceea2b52bc3115f971656b69fe143c1a1e",
+          "sha256": "f1a40cb0a94a84579cbc16e8157b4594aeb5afdffa63d1b757a82551d368ebe0",
           "claim": "Deterministic binary-linked SPDX 2.3 generator."
         },
         {
@@ -199,7 +199,7 @@
         },
         {
           "path": "evidence/v1/dependency-audit.json",
-          "sha256": "bbfe27159f2de0c638596bfc38484dad8c0fe2bfe07c09c6a2cf0f3bd3a149b4",
+          "sha256": "0afdf1e2c897dd05739172de8043c9df4b0e2d7e78a89ba6483f33176cd90071",
           "claim": "Dated production dependency advisory result bound to the lockfile."
         }
       ]
@@ -250,7 +250,7 @@
     ],
     "dependency_audit": {
       "path": "evidence/v1/dependency-audit.json",
-      "sha256": "bbfe27159f2de0c638596bfc38484dad8c0fe2bfe07c09c6a2cf0f3bd3a149b4",
+      "sha256": "0afdf1e2c897dd05739172de8043c9df4b0e2d7e78a89ba6483f33176cd90071",
       "claim": "Bun production-dependency audit found no known vulnerabilities on the reviewed date."
     },
     "open_findings": [],

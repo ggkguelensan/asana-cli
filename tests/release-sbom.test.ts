@@ -84,6 +84,14 @@ describe("release SPDX SBOM", () => {
       },
     })).toThrow("production dependencies do not match bun.lock");
 
+    expect(() => buildReleaseSbom({
+      ...valid,
+      packageValue: {
+        ...(valid.packageValue as Record<string, unknown>),
+        overrides: { "brace-expansion": "5.0.9" },
+      },
+    })).toThrow("dependency overrides do not match bun.lock");
+
     const lock = Bun.JSONC.parse(valid.lockText) as {
       workspaces: Record<string, { name: string }>;
       packages: Record<string, [string, string, object, string]>;
