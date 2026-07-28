@@ -4,10 +4,22 @@
 
 ## Managed skill installation
 
-`integrations` installs the same static, embedded portable `asana` skill for Generic Agent
-Skills, Codex, Claude Code, Gemini CLI, GitHub Copilot CLI, OpenCode, Cursor, and the
-experimental Pi and Kimi Code adapters. It writes only the declared skill files and an
-`.asana-cli-integration.json` ownership manifest below the fixed discovery root:
+`asana-cli --agents` is the machine-readable onboarding entrypoint. `agent-setup` installs four
+static embedded skills: `asana`, `asana-concepts`, `asana-company-discovery`, and
+`asana-cli-insights`. Each is installed as a sibling directory for Generic Agent Skills, Codex,
+Claude Code, Gemini CLI, GitHub Copilot CLI, OpenCode, Cursor, and the experimental Pi and Kimi
+Code adapters.
+
+Preview and apply the whole suite:
+
+```sh
+asana-cli --agents
+asana-cli agent-setup --client codex --scope project --dry-run
+asana-cli agent-setup --client codex --scope project --apply
+```
+
+Every skill receives its own `.asana-cli-integration.json` ownership manifest. The primary
+`asana` roots are:
 
 - Generic Agent Skills: `.agents/skills/asana`
 - Codex: `.agents/skills/asana`
@@ -23,18 +35,19 @@ The evidence-derived [client compatibility matrix](client-compatibility.md) is a
 the current level. A native adapter is not the same as behavioral qualification.
 
 Select the client and scope explicitly. User scope resolves from the current user's home;
-project scope resolves from the current working directory. First inspect the complete plan:
+project scope resolves from the current working directory. The lower-level `integrations` command
+manages one skill at a time and defaults to `--skill asana`. First inspect the complete plan:
 
 ```sh
 asana-cli integrations list
 asana-cli integrations detect --client codex --scope project
-asana-cli integrations install --client codex --scope project --dry-run
+asana-cli integrations install --client codex --scope project --skill asana --dry-run
 ```
 
 After reviewing every target path and hash in that plan, apply exactly the same target:
 
 ```sh
-asana-cli integrations install --client codex --scope project --apply
+asana-cli integrations install --client codex --scope project --skill asana --apply
 ```
 
 `update` and `uninstall` likewise require exactly one of `--dry-run` or `--apply`.

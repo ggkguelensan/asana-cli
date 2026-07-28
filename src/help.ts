@@ -1,125 +1,64 @@
 import { CLI_VERSION } from "./version";
 
-export const HELP = `asana-cli ${CLI_VERSION} — Asana API from one executable
+export const HELP = `asana-cli ${CLI_VERSION} — Asana из терминала и AI-агентов
 
 USAGE
   asana-cli <command> [arguments] [options]
 
-AUTHENTICATION
-  asana-cli auth                         Safe PAT setup instructions
-  asana-cli auth pat set                 Store PAT in the OS credential manager
-  asana-cli auth pat status              Check PAT source and validity
-  asana-cli auth pat delete              Delete the locally stored PAT
-  asana-cli auth status                  Check whether PAT is available (never prints it)
+AGENT CLIENTS
+  asana-cli --agents                     Первая точка входа для любого агента
+  asana-cli agent-setup ...              Установить навыки глобально или в проект
+  asana-cli agent capabilities           Безопасный машиночитаемый контракт
 
-ACCOUNT
-  asana-cli me                           Current Asana user
-  asana-cli workspaces [--all]           Accessible workspaces
-
-LOCAL DEVELOPER CONTEXT (HUMAN-ONLY, NO PAT)
-  asana-cli context alias list
-  asana-cli context alias set QUALIFIED --task GID
-  asana-cli context alias replace QUALIFIED --task GID --expected-task GID --revision N
-  asana-cli context alias remove QUALIFIED --expected-task GID --revision N
-  asana-cli context bind QUALIFIED --task GID
-  asana-cli context activate QUALIFIED
-  asana-cli context deactivate QUALIFIED
-  asana-cli context quick
-  asana-cli context history
-  asana-cli context clear --revision N
-
-AGENT CLIENTS (DIRECT CLI, NO MCP)
-  asana-cli agent capabilities           Machine-readable safe command contract
-  asana-cli agent schema [ACTION]        JSON Schema for agent actions
-  asana-cli agent status                 Validate auth for Codex/Claude
-  asana-cli agent my-tasks --max-results 20
-  asana-cli agent list-projects --workspace GID
-  asana-cli agent list-sections --project GID
-  asana-cli agent list-project-memberships --project GID [--member GID]
-  asana-cli agent list-custom-fields --workspace GID
-  asana-cli agent get-custom-field --field GID [--include-values]
-  asana-cli agent resolve-user --workspace GID --user GID|me|EMAIL
-  asana-cli agent resolve-task --reference REFERENCE
-  asana-cli agent context --task GID [--include notes|field-values]
-  asana-cli agent batch-tasks --input -
-  asana-cli agent get-task --task GID [--include notes]
-  asana-cli agent list-comments --task GID [--max-content-bytes N]
-  asana-cli agent find-git --query ID [--field GID]
-  asana-cli agent my-tasks --input -     Compatible JSON stdin mode
-  asana-cli agent prepare-task-update --input -
-  asana-cli agent prepare-comment --task GID --text TEXT
-  asana-cli agent prepare-task-create --input -
-  asana-cli agent prepare-subtask-create --input -
-  asana-cli agent prepare-task-from-template --input -
-  asana-cli agent prepare-task-project-add --input -
-  asana-cli agent prepare-task-project-remove --input -
-  asana-cli agent prepare-task-section-move --input -
-  asana-cli agent prepare-task-dependency-add --input -
-  asana-cli agent prepare-task-dependency-remove --input -
-  asana-cli agent apply --operation-id UUID
-  asana-cli agent operation status UUID      Read local operation metadata
-  asana-cli agent context --git-current     Read normalized local Git context
-  asana-cli agent context --worktree-task   Read only this worktree's task binding
-  asana-cli agent context --repository-asana Read trusted local repository-to-Asana mapping
-  asana-cli agent context --repository-context Read untrusted fixed-root repository context (no PAT)
-
-AGENT WRITES
-  Host-scoped policy is required for writes. See docs/agent-clients.md.
-
-INTEGRATIONS (STATIC SKILL BUNDLE, NO MCP)
-  asana-cli integrations list
-  asana-cli integrations detect --client CLIENT --scope user|project
-  asana-cli integrations status --client CLIENT --scope user|project
-  asana-cli integrations doctor --client CLIENT --scope user|project [--auto-allow COMMAND]...
-  asana-cli integrations policy CLIENT
-  asana-cli integrations install --client CLIENT --scope user|project --dry-run|--apply
-  asana-cli integrations update --client CLIENT --scope user|project --dry-run|--apply
-  asana-cli integrations diff --client CLIENT --scope user|project
-  asana-cli integrations uninstall --client CLIENT --scope user|project --dry-run|--apply
-
-  CLIENT is generic-agent-skills, codex, claude-code, gemini-cli, github-copilot,
-  opencode, cursor, pi, or kimi-code. Every install/update/uninstall
-  requires explicit --dry-run or --apply. --apply performs the atomic managed-file plan;
-  it never edits AGENTS.md, CLAUDE.md, settings, hooks, marketplace, or MCP configuration.
+START
+  asana-cli doctor                       Проверить установку, PATH, PAT и журнал
+  asana-cli auth pat set                 Сохранить PAT через скрытый ввод
+  asana-cli me                           Текущий пользователь
+  asana-cli workspaces --all             Доступные workspace
 
 TASKS
-  asana-cli tasks mine [options]         Tasks assigned to me
-  asana-cli task get <gid>               Full task information
-  asana-cli task comments <gid>          Comments on a task
-  asana-cli task update <gid> [options]  Update a task
-  asana-cli task comment <gid> <text>    Add a comment
-  asana-cli task search <text> [options] Search my tasks by text
-  asana-cli task search-git <id>         Find my tasks by issue/PR/commit identifier
+  asana-cli tasks mine [--all]           Мои задачи
+  asana-cli task get GID                 Одна задача
+  asana-cli task comments GID            Комментарии
+  asana-cli task search TEXT             Поиск
+  asana-cli task update GID [options]    Изменить задачу
+  asana-cli task comment GID TEXT        Добавить комментарий
+
+LEARN AND MAINTAIN
+  asana-cli man [TOPIC]                  Глоссарий, примеры и гайдбуки
+  asana-cli insights [--days 30]         Анализ локальной истории CLI
+  asana-cli update --check               Проверить новую версию
+  asana-cli update                       Безопасно обновить CLI
+
+AUTHENTICATION
+  asana-cli auth                         Инструкции
+  asana-cli auth pat status              Проверить источник и валидность PAT
+  asana-cli auth pat delete              Удалить локальную копию
+
+LOCAL DEVELOPER CONTEXT
+  asana-cli context quick                Текущий task/worktree context
+  asana-cli context alias list           Локальные task aliases
+  asana-cli context history              Недавний context
+
+INTEGRATIONS
+  asana-cli integrations list
+  asana-cli integrations status --client CLIENT --scope user|project [--skill SKILL]
+  asana-cli integrations install --client CLIENT --scope user|project --dry-run|--apply
 
 NODE-ASANA PRIMITIVES
-  asana-cli api list [ApiClass]          List every SDK API class or method
-  asana-cli api docs <ApiClass> [method] Print the official node-asana docs URL
+  asana-cli api list [ApiClass]
+  asana-cli api docs <ApiClass> [method]
   asana-cli api call <ApiClass> <method> --args '<JSON array>'
 
-  Arguments use exactly the order shown in node-asana documentation:
-  asana-cli api call TasksApi getTask \\
-    --args '["1200123456789", {"opt_fields":"name,notes"}]'
-
 RAW REST API
-  asana-cli request <GET|POST|PUT|PATCH|DELETE> </path> \\
-    [--query '<JSON object>'] [--data '<JSON value>']
+  asana-cli request <GET|POST|PUT|PATCH|DELETE> </path> [--data '<JSON>']
 
 COMMON OPTIONS
-  --workspace <gid>      Limit a command to one workspace
-  --fields <csv>         Override opt_fields
-  --limit <1..100>       Page size (default: 50)
-  --all                  Follow pagination
-  --max-results <n>      Safety cap when following pages (default: 1000)
-  --compact              Print compact JSON
-  --help, -h             Show help
-  --version, -V          Show version
+  --workspace GID   --fields CSV   --all   --max-results N   --compact
+  --help, -h        --version, -V
 
-JSON AND TEXT INPUT
-  A JSON/text option accepts a literal, @file, or - for stdin:
-  asana-cli task update 123 --data @update.json
-  printf '{"data":{"completed":true}}' | asana-cli request PUT /tasks/123 --data -
-
-Run 'asana-cli auth' before the first authenticated command.`;
+Подробности: asana-cli man
+Перед первой сетевой командой: asana-cli auth`;
 
 export const AUTH_HELP = `Asana PAT setup
 

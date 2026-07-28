@@ -68,6 +68,14 @@ import { publishAgentSchemas } from "./agent-contract";
 import { runIntegrationCommand } from "./integration-cli";
 import { runContextCommand } from "./context-cli";
 import { CLI_VERSION } from "./version";
+import { runUpdateCommand } from "./self-update";
+import { runDoctorCommand } from "./doctor";
+import {
+  agentOnboardingManifest,
+  runAgentSetupCommand,
+} from "./agent-setup";
+import { runInsightsCommand } from "./insights";
+import { runManualCommand } from "./manual";
 
 const completedModeSchema = z.enum(["false", "true", "all"]);
 const cliEnvironmentSchema = z.object({
@@ -461,8 +469,41 @@ export async function runCli(argv: string[]): Promise<CliResult> {
   if (command === "agent") rejectDeprecatedLegacyAgentApply(args.positionals[1]);
   enforceAgentPolicy(args);
   const compact = booleanFlag(args, "compact", false);
+  if (Object.hasOwn(args.flags, "agents")) {
+    if (
+      !booleanFlag(args, "agents") ||
+      command !== undefined ||
+      Object.keys(args.flags).some((name) => !["agents", "compact"].includes(name))
+    ) {
+      throw new CliError("usage", "Usage: asana-cli --agents [--compact]");
+    }
+    return {
+      value: agentOnboardingManifest(),
+      compact,
+      agentMode: true,
+    };
+  }
   if (flag(args, "version") === true || command === "version") return { text: CLI_VERSION };
   if (!command || flag(args, "help") === true || command === "help") return { text: HELP };
+  if (command === "man") {
+    return { text: runManualCommand(args) };
+  }
+  if (command === "agent-setup") {
+    return {
+      value: await runAgentSetupCommand(args),
+      compact,
+      agentMode: true,
+    };
+  }
+  if (command === "insights") {
+    return { value: await runInsightsCommand(args), compact };
+  }
+  if (command === "update") {
+    return { value: await runUpdateCommand(args), compact };
+  }
+  if (command === "doctor") {
+    return { value: await runDoctorCommand(args), compact };
+  }
   if (command === "integrations") {
     const result = await runIntegrationCommand(args);
     return { ...result, compact };

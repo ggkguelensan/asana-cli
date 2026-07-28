@@ -3,6 +3,10 @@ import {
   clientAdapterIdSchema,
   type ClientAdapterId,
 } from "../client-adapter-specs";
+import {
+  integrationSkillIdSchema,
+  type IntegrationSkillId,
+} from "../integration-skills";
 
 export const INTEGRATION_MANIFEST_SCHEMA = "asana-cli.integration-manifest.v1" as const;
 export const INTEGRATION_MANIFEST_FILE = ".asana-cli-integration.json" as const;
@@ -67,6 +71,7 @@ export const integrationManifestSchema = z.strictObject({
   agent_protocol_version: z.number().int().positive(),
   client: integrationClientSchema,
   scope: integrationScopeSchema,
+  skill: integrationSkillIdSchema.default("asana"),
   files: z.record(integrationArtifactPathSchema, sha256Schema).refine(
     (files) => Object.keys(files).length > 0,
     "manifest must own at least one artifact",
@@ -77,10 +82,12 @@ export type IntegrationManifest = z.output<typeof integrationManifestSchema>;
 export const integrationTargetInputSchema = z.strictObject({
   client: integrationClientSchema,
   scope: integrationScopeSchema,
+  skill: integrationSkillIdSchema.optional(),
   home_directory: z.string().min(1).optional(),
   project_directory: z.string().min(1).optional(),
 });
 export type IntegrationTargetInput = z.output<typeof integrationTargetInputSchema>;
+export type IntegrationSkill = IntegrationSkillId;
 
 export const integrationBundleInputSchema = z.strictObject({
   target: integrationTargetInputSchema,

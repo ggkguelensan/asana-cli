@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { IntegrationSkillId } from "./integration-skills";
 
 export const CLIENT_ADAPTER_IDS = [
   "generic-agent-skills",
@@ -161,6 +162,19 @@ export function clientAdapterRoot(
   scope: IntegrationScope,
 ): readonly string[] {
   return adapter.roots[scope];
+}
+
+export function clientAdapterSkillRoot(
+  adapter: ClientAdapter,
+  scope: IntegrationScope,
+  skill: IntegrationSkillId,
+): readonly string[] {
+  const root = [...adapter.roots[scope]];
+  if (root.at(-1) !== "asana") {
+    throw new Error(`Client adapter root must end in asana: ${adapter.id}/${scope}`);
+  }
+  root[root.length - 1] = skill;
+  return root;
 }
 
 export function clientAdapterDetectionProbes(

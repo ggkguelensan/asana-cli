@@ -15,6 +15,7 @@ import {
   integrationManifestSchema,
 } from "../src/integrations";
 import { AGENT_PROTOCOL_VERSION, CLI_VERSION } from "../src/version";
+import { INTEGRATION_SKILLS } from "../src/integration-skills";
 
 const projectRoot = resolve(import.meta.dir, "..");
 const packageJsonPath = join(projectRoot, "package.json");
@@ -39,6 +40,7 @@ const integrationListingSchema = z.strictObject({
     architecture: z.enum(["arm64", "x64"]),
   }),
   clients: z.unknown(),
+  skills: z.unknown(),
 });
 
 function sha256(value: string | Uint8Array): string {
@@ -167,6 +169,15 @@ for (const expected of packaged.clients) {
       throw new Error(`Generated integration bundle has an invalid content hash: ${expected.client}/${file.path}`);
     }
   }
+  for (const skill of expected.skills) {
+    for (const file of skill.files) {
+      if (sha256(file.content) !== file.sha256) {
+        throw new Error(
+          `Generated skill suite has an invalid content hash: ${expected.client}/${skill.skill}/${file.path}`,
+        );
+      }
+    }
+  }
 }
 
 const temporaryDirectory = await mkdtemp(join(tmpdir(), "asana-cli-package-content-"));
@@ -188,6 +199,7 @@ try {
     throw new Error("Artifact does not expose the generated integration bundle metadata");
   }
   assertExactJson(listed.clients, INTEGRATION_CLIENTS, "Artifact integration client registry");
+  assertExactJson(listed.skills, INTEGRATION_SKILLS, "Artifact integration skill registry");
 
   for (const expected of packaged.clients) {
     const clientDirectory = join(temporaryDirectory, expected.client);

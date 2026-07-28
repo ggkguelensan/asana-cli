@@ -176,6 +176,10 @@ jobs:
           dist
           "$GITHUB_REF_NAME"
           --output dist/asana-cli.rb
+      - name: Add the portable installer
+        run: |
+          cp install.sh dist/install.sh
+          chmod 0755 dist/install.sh
       - name: Generate machine-readable release evidence
         run: >-
           bun run generate:release-evidence --

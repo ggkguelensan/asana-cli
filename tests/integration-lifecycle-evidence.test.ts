@@ -17,8 +17,8 @@ async function evidenceRecords(): Promise<Record<string, unknown>> {
   return Object.fromEntries(entries);
 }
 
-describe("saved native integration lifecycle evidence", () => {
-  test("covers every canonical POSIX release target", async () => {
+describe("archived native integration lifecycle evidence", () => {
+  test("keeps one self-consistent set covering every canonical POSIX release target", async () => {
     await expect(verifyIntegrationLifecycleEvidence(await evidenceRecords())).resolves.toBeUndefined();
   });
 
@@ -51,4 +51,3 @@ describe("saved native integration lifecycle evidence", () => {
     }
   });
 });
-

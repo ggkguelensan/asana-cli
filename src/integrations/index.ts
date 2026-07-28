@@ -48,5 +48,6 @@ export {
   type IntegrationDoctorInput,
   type IntegrationManifest,
   type IntegrationScope,
+  type IntegrationSkill,
   type IntegrationTargetInput,
 } from "./schemas";

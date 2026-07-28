@@ -31,6 +31,7 @@ export function createIntegrationManifest(
     agent_protocol_version: agentProtocolVersion,
     client: target.client,
     scope: target.scope,
+    skill: target.skill,
     files: hashes,
   });
 }
@@ -57,7 +58,11 @@ export function parseIntegrationManifest(value: string): IntegrationManifest {
 }
 
 export function assertManifestTarget(manifest: IntegrationManifest, target: IntegrationPaths): void {
-  if (manifest.client !== target.client || manifest.scope !== target.scope) {
+  if (
+    manifest.client !== target.client ||
+    manifest.scope !== target.scope ||
+    manifest.skill !== target.skill
+  ) {
     throw new CliError("conflict", "Integration ownership manifest belongs to a different target");
   }
 }

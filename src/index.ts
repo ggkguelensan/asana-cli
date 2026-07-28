@@ -5,6 +5,8 @@ import { runCli } from "./cli";
 import { protectOutput, secureAgentEnvelope } from "./security";
 import { hardenRuntime } from "./bootstrap";
 import { z } from "zod";
+import { appendInvocationLog } from "./invocation-log";
+import type { CliErrorCode } from "./errors";
 
 const entryEnvironmentSchema = z.object({
   ASANA_CLI_AGENT: z.enum(["0", "1"]).optional().catch(undefined),
@@ -22,6 +24,10 @@ function isOperationStatusInvocation(argv: readonly string[]): boolean {
 
 const argv = process.argv.slice(2);
 const operationStatusInvocation = isOperationStatusInvocation(argv);
+const invocationStartedAt = new Date();
+const invocationStarted = performance.now();
+let invocationExitCode = 0;
+let invocationErrorCode: CliErrorCode | undefined;
 
 try {
   hardenRuntime({ registerSecrets: !operationStatusInvocation });
@@ -39,6 +45,8 @@ try {
 } catch (error) {
   const environment = operationStatusInvocation ? undefined : entryEnvironmentSchema.parse(process.env);
   const normalized = normalizeError(error, environment?.ASANA_PAT ?? environment?.ASANA_ACCESS_TOKEN);
+  invocationExitCode = normalized.exitCode;
+  invocationErrorCode = normalized.code;
   const agentMode = operationStatusInvocation ||
     argv.includes("--agent") ||
     argv[0] === "agent" ||
@@ -48,4 +56,13 @@ try {
     : protectOutput(errorPayload(normalized)).value;
   process.stderr.write(`${JSON.stringify(payload, null, 2)}\n`);
   process.exitCode = normalized.exitCode;
+} finally {
+  await appendInvocationLog({
+    argv,
+    startedAt: invocationStartedAt,
+    completedAt: new Date(),
+    durationMs: performance.now() - invocationStarted,
+    exitCode: invocationExitCode,
+    errorCode: invocationErrorCode,
+  }).catch(() => undefined);
 }

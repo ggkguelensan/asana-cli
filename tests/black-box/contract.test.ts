@@ -25,6 +25,8 @@ describe.skipIf(!existsSync(binary))("black-box public protocol", () => {
       const help = await runBinary(fixture, ["--help"]);
       expect(help).toMatchObject({ exitCode: 0, stderr: "", timedOut: false });
       expect(help.stdout).toContain(`asana-cli ${version}`);
+      expect(help.stdout).toContain("asana-cli --agents");
+      expect(help.stdout).toContain("asana-cli man [TOPIC]");
       for (const section of [
         "AUTHENTICATION",
         "LOCAL DEVELOPER CONTEXT",
@@ -141,6 +143,36 @@ describe.skipIf(!existsSync(binary))("black-box public protocol", () => {
         method: "getTask",
         url: "https://github.com/Asana/node-asana/blob/master/docs/TasksApi.md#getTask",
       });
+    } finally {
+      await removeFixture(fixture);
+    }
+  });
+
+  test("runs the embedded manual, offline doctor, and metadata-only insights", async () => {
+    const fixture = await createFixture("asana-cli-black-box-maintenance-");
+    try {
+      const manual = await runBinary(fixture, ["man", "glossary"]);
+      expect(manual).toMatchObject({ exitCode: 0, stderr: "", timedOut: false });
+      expect(manual.stdout).toContain("Workspace");
+
+      const doctor = record(
+        await successfulJson(fixture, ["doctor", "--offline", "--compact"]),
+        "offline doctor",
+      );
+      expect(doctor).toMatchObject({
+        schema: "asana-cli.doctor.v1",
+        offline: true,
+      });
+
+      const insights = record(
+        await successfulJson(fixture, ["insights", "--days", "30", "--compact"]),
+        "local insights",
+      );
+      expect(insights).toMatchObject({
+        schema: "asana-cli.insights.v1",
+        privacy: { metadata_only: true },
+      });
+      expect(record(insights.summary, "insights summary").invocations).toBe(2);
     } finally {
       await removeFixture(fixture);
     }
