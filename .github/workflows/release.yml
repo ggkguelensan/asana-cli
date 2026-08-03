@@ -121,7 +121,7 @@ jobs:
         run: echo "sha256=$(shasum -a 256 "dist/${{ matrix.output }}" | awk '{print $1}')" >> "$GITHUB_OUTPUT"
       - name: Attest target build provenance
         id: provenance
-        uses: actions/attest@v4
+        uses: actions/attest@v4.2.0
         with:
           subject-name: ${{ matrix.output }}
           subject-digest: sha256:${{ steps.digest.outputs.sha256 }}
@@ -129,7 +129,7 @@ jobs:
         run: cp "${{ steps.provenance.outputs.bundle-path }}" "dist/${{ matrix.output }}.provenance.sigstore.json"
       - name: Attest target SPDX SBOM
         id: sbom
-        uses: actions/attest@v4
+        uses: actions/attest@v4.2.0
         with:
           subject-name: ${{ matrix.output }}
           subject-digest: sha256:${{ steps.digest.outputs.sha256 }}
@@ -218,7 +218,7 @@ jobs:
           done < <(awk '{print $2}' dist/SHA256SUMS | grep -E '^asana-cli-(darwin|linux)-[a-z0-9-]+$')
       - name: Sign checksum manifest with GitHub Sigstore
         id: checksums
-        uses: actions/attest@v4
+        uses: actions/attest@v4.2.0
         with:
           subject-path: dist/SHA256SUMS
       - name: Save and verify checksum signature
