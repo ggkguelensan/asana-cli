@@ -71,7 +71,7 @@
   },
   "devDependencies": {
     "@types/bun": "latest",
-    "fallow": "3.4.2",
+    "fallow": "3.7.1",
     "typescript": "latest"
   },
   "engines": {
