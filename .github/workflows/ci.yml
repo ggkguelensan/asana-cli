@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: fallow-rs/fallow@4789329b984be2a65ab7d3878825738f812d2a49 # v3.4.2
+      - uses: fallow-rs/fallow@4274c9397ca6a46eb0277bee312baeff96b408c4 # v3.13.0
         with:
           command: audit
           version: 3.4.2
