@@ -63,7 +63,7 @@
     "check": "bun run check:black-box-boundary && bun run --no-env-file scripts/quality-gate.ts ci"
   },
   "dependencies": {
-    "asana": "3.1.12",
+    "asana": "3.2.0",
     "zod": "4.4.3"
   },
   "overrides": {

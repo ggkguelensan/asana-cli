@@ -5,7 +5,7 @@
     "": {
       "name": "asana-cli",
       "dependencies": {
-        "asana": "3.1.12",
+        "asana": "3.2.0",
         "zod": "4.4.3",
       },
       "devDependencies": {
@@ -127,7 +127,7 @@
 
     "anymatch": ["anymatch@3.1.3", "", { "dependencies": { "normalize-path": "^3.0.0", "picomatch": "^2.0.4" } }, "sha512-KMReFUr0B4t+D+OBkjR3KYqvocp2XaSzO55UcB6mgQMd3KbcE+mWTyvVV7D/zsdEbNnV6acZUutkiHQXvTr1Rw=="],
 
-    "asana": ["asana@3.1.12", "", { "dependencies": { "@babel/cli": "^7.0.0", "superagent": "^6.1.0" } }, "sha512-Mzg9InIJZZyW6Fb0E+EYersYl3wyIJ4aJYenpZn+ZCYyPi3Pn/YcXP+65NoDn4HhWv4syT6nytFkg5K5GZB+yQ=="],
+    "asana": ["asana@3.2.0", "", { "dependencies": { "@babel/cli": "^7.0.0", "superagent": "^6.1.0" } }, "sha512-1g2USPFHHmyW8rZF++x+Oc8ibNnWdHybfW+XMy2yWwPx9LKzJgrTov1oegQ39LAZzC04Cr646dMLp+/SiIwzSw=="],
 
     "asynckit": ["asynckit@0.4.0", "", {}, "sha512-Oei9OH4tRh0YqU3GxhX79dM/mwVgvbZJaSNaRk+bshkj0S5cfHcgYakreBjrHwatXKbz+IoIdYLxrKim2MjW0Q=="],
 
