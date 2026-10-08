@@ -276,3 +276,25 @@ describe.skipIf(!existsSync(binary))("black-box public protocol", () => {
     }
   });
 });
+
+
+describe.skipIf(!existsSync(binary))("black-box mention contract", () => {
+  test("advertises bounded mention input and rejects invalid recipients through argv and stdin", async () => {
+    const fixture = await createFixture("asana-cli-black-box-mentions-");
+    try {
+      const response = record(await successfulJson(fixture, ["agent", "schema", "prepare-comment", "--compact"]), "schema envelope");
+      const action = record(record(response.result, "schema result").action, "action");
+      const input = record(action.input, "input");
+      const properties = record(input.properties, "properties");
+      expect(properties.mention_user_gids).toMatchObject({ type: "array", minItems: 1, maxItems: 10, uniqueItems: true });
+      for (const invocation of [
+        { args: ["agent", "prepare-comment", "--task", "123", "--text", "Review", "--mention-user", "2001", "--mention-user", "2001"], stdin: undefined },
+        { args: ["agent", "prepare-comment", "--input", "-"], stdin: JSON.stringify({ task_gid: "123", text: "Review", mention_user_gids: ["not-a-gid"] }) },
+      ]) {
+        const result = await runBinary(fixture, invocation.args, { stdin: invocation.stdin, env: { ASANA_ACCESS_TOKEN: "BLACK_BOX_MENTION_PAT_28713" } });
+        expect(result.exitCode).toBe(2);
+        expect(wireError(decodeJson(result.stderr, "mention validation"))).toMatchObject({ code: "validation" });
+      }
+    } finally { await removeFixture(fixture); }
+  });
+});
