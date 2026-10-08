@@ -1,4 +1,7 @@
 import { z } from "zod";
+import { commentPayloadSchema, commentWireContent, renderMentionComment } from "./comment-content";
+import type { CommentPayload, MentionedUser } from "./comment-content";
+import { resolveUserContext } from "./developer-context";
 import {
   expandedTaskCreateFieldsSchema,
   taskCreateInputFieldsSchema,
@@ -169,7 +172,7 @@ const preparedOperationViewSchema = z.discriminatedUnion("operation", [
     operation: z.literal("task.comment"),
     state: z.literal("prepared"),
     target: targetPreviewSchema,
-    preview: z.strictObject({ text: z.string().min(1).max(8_000) }),
+    preview: commentPayloadSchema,
     plan_hash: z.string().regex(/^sha256:[0-9a-f]{64}$/),
     expires_at: z.iso.datetime({ offset: true }),
     approval: approvalSchema,
@@ -613,10 +616,12 @@ export class AgentOperationService {
     const { user, task } = await currentTaskContext(this.#client, input.task_gid);
     assertTaskOwnedByCurrentUser(user.gid, task.assignee?.gid);
     await this.#assertWriteAllowed(task, "task.comment");
+    const payload = await this.#prepareCommentContent(input, task.workspace?.gid);
+    ensureNoRegisteredSecret(payload, "Comment");
     const record = await this.#repository.create({
       operation: "task.comment",
       target: { task_gid: input.task_gid },
-      payload: { text: input.text },
+      payload,
       guards: {
         expected_modified_at: task.modified_at,
         prepared_by_gid: user.gid,
@@ -628,11 +633,41 @@ export class AgentOperationService {
       operation: record.operation,
       state: record.state,
       target: { gid: task.gid, name: task.name, permalink_url: task.permalink_url },
-      preview: { text: input.text },
+      preview: payload,
       plan_hash: record.plan_hash,
       expires_at: record.expires_at,
       approval: { required: true, reason: "This operation posts one Asana comment." },
     });
+  }
+
+  async #prepareCommentContent(
+    input: PrepareCommentInput,
+    workspaceGid: string | undefined,
+  ): Promise<CommentPayload> {
+    const gids = input.mention_user_gids;
+    if (!gids) return { text: input.text };
+    const mentions = await this.#resolveCommentMentions(gids, workspaceGid);
+    const payload = commentPayloadSchema.safeParse({
+      text: input.text, mentions, html_text: renderMentionComment(input.text, gids),
+    });
+    if (!payload.success) throw new CliError("validation", "Invalid mention comment content");
+    return payload.data;
+  }
+
+  async #resolveCommentMentions(
+    gids: readonly string[],
+    workspaceGid: string | undefined,
+  ): Promise<MentionedUser[]> {
+    if (!workspaceGid) throw new CliError("validation", "Mention users require a task workspace");
+    const mentions: MentionedUser[] = [];
+    for (const gid of gids) {
+      const resolved = await resolveUserContext(this.#client, { workspace_gid: workspaceGid, user: gid });
+      if (resolved.user.gid !== gid) {
+        throw new CliError("validation", "Mention user response does not match the requested GID");
+      }
+      mentions.push(resolved.user);
+    }
+    return mentions;
   }
 
   async prepareTaskCreate(input: PrepareTaskCreateInput): Promise<PreparedOperationView> {
@@ -1057,6 +1092,11 @@ export class AgentOperationService {
           record.operation,
           record.operation === "task.update" ? record.payload.changes : undefined,
         );
+        if (record.operation === "task.comment" && "mentions" in record.payload) {
+          await this.#resolveCommentMentions(
+            record.payload.mentions.map((mention) => mention.gid), task.workspace?.gid,
+          );
+        }
       } else if (
         record.operation === "task.project.add" ||
         record.operation === "task.project.remove" ||
@@ -1495,7 +1535,7 @@ export class AgentOperationService {
       await addTaskComment(
         this.#client,
         record.target.task_gid,
-        { text: record.payload.text },
+        commentWireContent(record.payload),
         STORY_FIELDS,
       ),
       storySchema,

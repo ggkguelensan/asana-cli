@@ -324,6 +324,25 @@ task GIDs, constructs one fixed GET-only Asana batch, preserves input order, sha
 budget, and returns bounded per-item failures without raw response bodies. See
 [bounded task batch reads](batch-reads.md).
 
+## Comment mentions
+
+`prepare-comment` accepts repeatable `--mention-user GID` flags, or the optional
+`mention_user_gids` array with `--input -`. Use 1–10 unique numeric user GIDs; names and
+emails are not accepted. Resolve exact users with `agent resolve-user` first.
+
+Mentions are placed in a separate paragraph before the supplied text. The CLI checks each
+user in the task workspace, escapes text as XML, and generates Asana `html_text` using
+`<a data-asana-gid="GID"/>`. Arbitrary HTML input is not accepted. The preview and immutable
+operation include resolved names/GIDs and the exact HTML payload. Apply revalidates user
+access and sends only that stored `html_text`; it never sends `text` alongside it.
+Plain-text commands and existing plain-text operation records remain unchanged.
+
+This action only posts a comment: it does not add followers or change assignment.
+According to [Asana rich-text documentation](https://developers.asana.com/docs/rich-text),
+a mention does not automatically notify a user who is neither assigned nor following
+the task. Ensure the intended recipient follows the task separately when notification
+is required; do not claim notification delivery from a successful comment response.
+
 ## Write workflow
 
 Writes have two phases:
@@ -333,6 +352,8 @@ printf '%s' '{"task_gid":"1201","patch":{"name":"New name","completed":true}}' |
   asana-cli agent prepare-task-update --input -
 
 asana-cli agent prepare-comment --task 1201 --text 'Implemented in PR-418'
+
+asana-cli agent prepare-comment --task 1201 --mention-user 1202 --text 'Ready for QA'
 
 printf '%s' '{"workspace_gid":"1200","project_gid":"1201","task":{"name":"DEV-011 batch reads"}}' |
   asana-cli agent prepare-task-create --input -
