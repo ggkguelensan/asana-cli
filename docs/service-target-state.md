@@ -4,7 +4,8 @@
 Это целевой контракт, а не описание уже доступных команд. Текущая реализация описана в
 [architecture](architecture.md). Плагины и возможности клиентов определены отдельно в
 [client integrations](service-client-integrations.md); порядок разработки — в
-[delivery plan](service-delivery-plan.md).
+[delivery plan](service-delivery-plan.md). Детерминированный процесс без агентов и минимальный
+состав SQLite определены в [workflow and storage](service-workflow-and-storage.md).
 
 ## 1. Результат для пользователя
 
@@ -21,11 +22,15 @@
 1. Пользователь настраивает Asana credential существующим способом.
 2. Запускает `asana-cli service start`, затем `asana-cli board open`.
 3. Выбирает workspace и источники обнаружения задач; видит предварительный список.
-4. Добавляет задачи в отслеживание, связывает их с рабочими сессиями и MR/PR.
-5. Работает из любой подключённой поверхности: CLI, доски, Claude или Codex.
+4. Добавляет задачи в отслеживание, задаёт ожидания и связывает MR/PR при необходимости.
+5. Ведёт процесс через CLI или доску; при желании подключает Claude/Codex и рабочие сессии.
 6. Изменение состояния появляется на других клиентах без ручного обновления страницы.
 7. Закрывает терминал или агента; ядро продолжает синхронизацию.
 8. Останавливает сервис явной командой из CLI или кнопкой доски; данные сохраняются.
+
+Ни один обязательный шаг не требует агента или coordinator session. Доступные действия и guards
+вычисляет ядро. Default Asana access соответствует правам пользователя; дополнительные local
+ограничения включаются явно. Предпросмотр/approval записи и доступность операции — разные понятия.
 
 Мобильный доступ добавляется через отдельный удалённый шлюз или через поддерживаемое платформой
 управление подключённым компьютером. Установка плагина сама по себе не делает localhost доступным
@@ -169,10 +174,10 @@ mutation вместо отсутствующего daemon. Миграция auth
 
 | Данные | Authority | Поведение |
 | --- | --- | --- |
-| Asana task и completion | Asana | Локальный снимок содержит source timestamp и время сверки |
+| Asana task и completion | Asana | Bounded metadata cache в памяти; disk projection только opt-in |
 | Статус работы, ожидание, следующий шаг | Ядро | Не выводятся автоматически из текста Asana |
 | PAT | Существующий credential manager | Нет PAT в браузере, plugin manifest или relay |
-| Разрешение записи | Существующая host policy | Локальный статус и подключение плагина не расширяют права |
+| Разрешение записи | Asana user/credential + явно выбранная local policy | Default user-equivalent; tracking и self-assignment не ограничивают права |
 | Prepare/apply | Существующий operation journal | Не появляется второй независимый журнал операций в SQLite |
 | Активный task/worktree binding | Существующее context state | Доска хранит ссылку/проекцию, не меняет authority binding |
 | Сессия и её capabilities | Ядро + зарегистрированный клиент | Разрыв соединения переводит presence в offline |
@@ -188,7 +193,8 @@ macOS использует Application Support согласно текущей p
 
 ### TaskSnapshot и WorkItem
 
-`TaskSnapshot` содержит `account_id`, `workspace_gid`, `task_gid`, минимальные разрешённые поля,
+`TaskSnapshot` — запрошенная source projection/cache, не обязательная persisted task table.
+Он содержит `account_id`, `workspace_gid`, `task_gid`, минимальные разрешённые поля,
 `source_modified_at`, `fetched_at`, `availability` и `freshness`. Название/notes/comments — внешний
 недоверенный content; notes и comments не скачиваются автоматически ради карточки.
 
@@ -198,8 +204,9 @@ macOS использует Application Support согласно текущей p
 - `kind`: `task` или `review`;
 - `task_ref`: canonical Asana account/workspace/task GID, optional для standalone review;
 - `display_key`: optional внешний Custom ID, не ключ БД;
-- `status`: `work`, `wait_user`, `blocked`, `review`, `wait_others`, `reviewing`, `merged`, `done`;
-- `waiting`: структурная причина, actor category и optional дата ожидания;
+- `phase`: `work`, `review`, `integrated`, `done`; переходы выполняет command handler;
+- typed requests/blockers: причины, target actor category, optional срок и resolution;
+- `status`: вычисляемая display projection, не независимое writable поле;
 - `next`: следующий шаг, вводимый человеком или агентом с явным provenance;
 - `owner`: человек, зарегистрированная сессия либо coordinator role;
 - `revision`: монотонная версия, `created_at` и `updated_at` от сервера;
@@ -209,9 +216,12 @@ macOS использует Application Support согласно текущей p
 Несколько review items могут ссылаться на одну Asana task и разные MR. `task_gid` нельзя делать
 уникальным ключом всех карточек. У review без Asana есть собственный UUID и canonical change ref.
 
-Статусы — семантика организации работы, не произвольные названия секций Asana. `merged` означает
-состояние связанного изменения, а `done` — завершение работы. Merge одного из нескольких MR
-не закрывает автоматически всю задачу. Asana completion показывается отдельным атрибутом.
+Display statuses сохраняют labels `work`, `wait_user`, `blocked`, `review`, `wait_others`,
+`reviewing`, `merged`, `done`. Этап и ожидания разделены по
+[workflow rules](service-workflow-and-storage.md), поэтому request пользователя не теряет этап
+ревью. `merged` отражает local integrated phase; verified merge facts и human attestation видны
+отдельно. Merge одного из нескольких MR не закрывает автоматически всю задачу. Asana completion
+показывается отдельным source атрибутом.
 
 ### SessionBinding и Assignment
 
@@ -243,8 +253,9 @@ approvals, unresolved threads и merged загружаются отдельно�
 на проекцию событий. Внутренние детали SDK, migrations, webhook retries и SQL скрыты.
 
 Примеры query: board snapshot, work item, session presence, sync status, command status.
-Примеры command: track, untrack, patch work state, assign, handoff, request refresh, enqueue
-session command. Каждая команда проходит схему, principal scope, policy и отдельную effect check.
+Примеры command: track/untrack, explicit phase transition, request/resolve input, assign/handoff,
+update local note, request refresh и optional session command. Каждая команда проходит схему,
+principal scope, явно выбранную policy и effect check. Generic patch не обходит workflow guards.
 
 Для каждой mutation сохраняются request ID, authenticated actor, expected revision и server time.
 Повтор одного request ID с тем же semantic payload возвращает исходный результат; другой payload
@@ -457,7 +468,10 @@ Coordinator handoff не запускает агента автоматичес�
 ## 13. Записи Asana и approval
 
 Новый service path переиспользует существующие validated operations, host policy и operation journal.
-Сохранённая доска не становится основанием разрешить mutation без live guards. Журнал операций
+Сохранённая доска не становится основанием разрешить mutation без live guards. Default target
+authorization — права пользователя Asana, без обязательного self-assignment. Текущие более узкие
+agent guards требуют отдельной миграции; см. [permission model](service-workflow-and-storage.md).
+Журнал операций
 не дублируется в БД и не переносится в шлюз как исполняемая копия.
 
 Для текущего direct CLI сохраняется host-enforced approval boundary. Для удалённого MCP и веб-доски
@@ -559,7 +573,7 @@ oldest pending age и last error category. Logs — structured, без PAT, cook
 bootstrap/pairing code, bodies задач и полного agent prompt. Request IDs связывают действия без
 логирования private content. Метрики и telemetry локальны; отправка наружу opt-in.
 
-Для каждой таблицы задан retention: snapshots/archived work, inbox, event replay, session presence,
+Для каждой persisted группы задан retention: local work, optional disk projections, inbox, event replay, session presence,
 command receipts и gateway cache. Конкретные defaults фиксирует contract PR. Resource budgets
 ограничивают рост по count/bytes/time; очистка events обновляет minimum resumable cursor.
 Export/erase объясняют, что SQLite backup и remote cache тоже могут содержать данные.
@@ -582,6 +596,8 @@ Release gates:
 
 Первый законченный vertical slice: service lifecycle, локальная SQLite доска, embedded UI,
 HTTP/WebSocket, ручное tracking, Events API, CLI операции и существующие CLI-based agents.
+Полный human workflow и sync работают при отключённых agent adapters; собственная SQLite
+хранит процесс и recovery state, а source metadata по умолчанию кэшируется только в памяти.
 Следующий slice — webhook ingress и восстановление. MCP bridge и плагины добавляются после
 стабилизации curated interface; gateway/OAuth/mobile — после remote authorization gates.
 

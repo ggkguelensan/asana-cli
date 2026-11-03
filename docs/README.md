@@ -37,6 +37,8 @@ at their stable paths so existing release evidence and external links do not bre
 
 ## Planning
 
+- [Deterministic workflow and local storage](service-workflow-and-storage.md) — human operation
+  without agents, minimal persistence, optional cache, user-equivalent Asana access and agent contracts.
 - [Service target state](service-target-state.md) — proposed core, daemon, web board, sync,
   ownership, security, lifecycle, and recovery; not implemented runtime behavior.
 - [Service client integrations](service-client-integrations.md) — proposed plugin and MCP routes

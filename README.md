@@ -13,6 +13,8 @@
 
 Следующее направление разработки — [общее ядро, фоновый сервис и веб-доска](docs/service-target-state.md)
 с [плагинами для Claude и Codex на desktop, mobile и CLI](docs/service-client-integrations.md).
+Основной [процесс работает без агентов](docs/service-workflow-and-storage.md): Asana хранит task data,
+локальная БД — дополнительное состояние процесса; default Asana access соответствует правам пользователя.
 Это целевой дизайн; runtime ещё не реализован. Этапы и критерии готовности находятся в
 [плане реализации](docs/service-delivery-plan.md).
 

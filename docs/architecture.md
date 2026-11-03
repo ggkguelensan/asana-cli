@@ -4,7 +4,9 @@ This document describes the current implementation. The proposed daemon, shared 
 HTTP/WebSocket, MCP, and remote gateway are specified in
 [service target state](service-target-state.md), with
 [client integrations](service-client-integrations.md) and a
-[delivery plan](service-delivery-plan.md). They are not available runtime features yet.
+[delivery plan](service-delivery-plan.md). [Workflow and storage](service-workflow-and-storage.md)
+specifies deterministic human operation, minimal persistence, and the target permission model.
+They are not available runtime features yet.
 
 `asana-cli` is a standalone Bun-compiled CLI with two public surfaces:
 

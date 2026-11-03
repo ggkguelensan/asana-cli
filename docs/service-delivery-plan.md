@@ -7,6 +7,7 @@ Authoritative design:
 
 - [Целевое ядро, daemon и доска](service-target-state.md).
 - [Плагины, шесть клиентов и удалённый доступ](service-client-integrations.md).
+- [Процесс без агентов, минимальная SQLite и default user-equivalent права](service-workflow-and-storage.md).
 
 Задачи используют стабильные IDs `SVC-*`; GitHub Issues хранят текущее выполнение, ссылки и решения.
 Этот документ владеет scope и acceptance criteria; issues ссылаются на него, не копируют весь дизайн.
@@ -27,17 +28,20 @@ GitHub tracking: [epic #52](https://github.com/ggkguelensan/asana-cli/issues/52)
 | SVC-007 | [#59](https://github.com/ggkguelensan/asana-cli/issues/59) |
 | SVC-008 | [#60](https://github.com/ggkguelensan/asana-cli/issues/60) |
 | SVC-009 | [#61](https://github.com/ggkguelensan/asana-cli/issues/61) |
+| SVC-010 | [#62](https://github.com/ggkguelensan/asana-cli/issues/62) |
 
 ## Зависимости и release slices
 
 ```mermaid
 flowchart TD
     D[SVC-000: target architecture] --> L[SVC-001: daemon lifecycle]
+    D --> AUTH[SVC-010: user-equivalent Asana access]
     L --> B[SVC-002: board core / storage / HTTP / events]
     B --> UI[SVC-003: embedded web board]
     B --> SY[SVC-004: Events API sync]
     SY --> WH[SVC-005: webhook ingress]
     B --> MCP[SVC-006: MCP / local plugin packages]
+    AUTH --> MCP
     UI --> GW[SVC-007: gateway / OAuth / remote UI]
     MCP --> GW
     GW --> Q[SVC-008: six-client qualification]
@@ -50,6 +54,7 @@ flowchart TD
 | Local board | SVC-001–004 | Отдельный daemon, CLI/UI consistency, live board и Events API recovery |
 | Webhook sync | SVC-005 | Безопасный ingress, lifecycle подписок и сверка |
 | Local plugins | SVC-006 | Curated MCP и проверенные local packages, direct CLI сохранён |
+| Permission parity | SVC-010 | Default access равен правам Asana user, optional restrictions явные |
 | Remote access | SVC-007 | Gateway/pairing/OAuth, scoped remote UI и offline semantics |
 | Six clients | SVC-008 | Реальные evidence records для каждой заявленной поверхности |
 | Change requests | SVC-009 | Независимая freshness MR/PR/CI/approve без расширения authority |
@@ -97,7 +102,9 @@ Prepare/apply journal остаётся существующим; network mutatio
 
 Acceptance:
 
-- track/untrack/list/patch/handoff используют canonical IDs и effect scopes;
+- track/untrack/list/typed transitions/handoff используют canonical IDs и effect scopes;
+- phase и requests/blockers разделены, display status вычисляется; available_actions и guards общие для CLI/UI/агентов;
+- полный human workflow работает без MCP, sessions и model credentials; решения transition logic воспроизводимы;
 - task/review с одной Asana task сосуществуют, разные MR не схлопываются;
 - локальная mutation и outbox event атомарны, повтор request ID не создаёт новую операцию;
 - snapshot/cursor/replay исключают gap; expired cursor и slow consumer требуют resync;
@@ -106,6 +113,9 @@ Acceptance:
 - Drizzle schema владеет DB types/constraints, Zod — внешними contracts; raw rows не выдаются клиентам;
 - Drizzle Kit используется только при разработке; reviewed migrations входят в binary и применяются без Kit/source checkout;
 - schema/migration drift, upgrade с сохранением данных и atomic state/outbox transaction проверены;
+- SQLite сохраняет свой workflow/recovery state; source metadata cache по умолчанию in-memory, disk projection opt-in;
+- Asana-owned workflow fields не получают конкурирующий local статус; mapping явно определяет authority;
+- очистка cache не теряет local phase/requests; notes/comments/raw SDK payloads и secrets не сохраняются автоматически;
 - CLI black-box и transport tests обращаются к тому же core, без UI-only правил.
 
 До merge зафиксировать численные budgets в schema/config и генерируемом capabilities contract.
@@ -125,6 +135,7 @@ Acceptance:
 - keyboard/focus, reduced motion, темы, 360 px layout и no external trackers;
 - compiled binary отдаёт assets без source checkout и frontend dev server;
 - browser E2E evidence с fixtures; приватные данные и реальные session IDs не публикуются.
+- полный flow выполняется человеком без агента; «обновить source», local transition и agent-help — разные действия;
 
 ## SVC-004 — Events API и сверка активных задач
 
@@ -140,6 +151,7 @@ Acceptance:
 - потеря доступа не выдаётся за доказанное удаление;
 - stale sync не обозначается как fresh из-за live WebSocket;
 - no-content default и content budgets совпадают с существующим agent contract.
+- source projections не превращаются в persisted Asana mirror; freshness/unknown после restart без cache проверены;
 
 Существующий `LTR-003` — более ранняя research идея; её service scope уточняется этим этапом,
 но research запись не помечается выполненной до реальной реализации.
@@ -160,7 +172,7 @@ Acceptance:
 
 ## SVC-006 — Curated MCP и локальные plugin packages
 
-Зависимость: SVC-002. Общие typed tools, stdio bridge, canonical board workflows и deterministic
+Зависимости: SVC-002, SVC-010. Общие typed tools, stdio bridge, canonical board workflows и deterministic
 native packages для Claude Code, Codex CLI и проверяемых desktop-local routes.
 
 Acceptance:
@@ -172,6 +184,8 @@ Acceptance:
 - generators, ownership/dry-run/update/uninstall, native format validation и package tests;
 - actual native local discovery tests; desktop отсутствие evidence остаётся explicit limitation;
 - существующий managed skill/direct CLI путь остаётся рабочим.
+- agents используют capabilities → exact resolve → state/available_actions → typed action → receipt;
+  conflict/timeout/unknown не вызывают скрытого semantic retry, self-approval или raw fallback;
 
 Изменение source/skills/integrations требует client и lifecycle evidence refresh; нельзя вручную
 переименовать старые записи в новую MCP qualification.
@@ -228,6 +242,23 @@ Acceptance:
 - task с несколькими изменениями не становится done после merge одного;
 - review карточка показывает ожидаемое действие без автоматического approve/merge;
 - fixtures обезличены, реальный self-hosted GitLab credential не попадает в GitHub.
+
+## SVC-010 — Default Asana access по правам пользователя
+
+Зависимость: SVC-000. Отдельная миграция текущего agent authorization/default profile и расширение
+versioned operation catalogue. Целевой default — все поддерживаемые публичным API операции,
+разрешённые пользователю/credential. Подробная модель — в
+[workflow and storage](service-workflow-and-storage.md).
+
+Acceptance:
+
+- нет обязательного self-assignment или board/project filter как Asana authorization;
+- API inventory покрывает доступные resources/writes; unsupported implementation и provider denial различимы;
+- read-only/узкие scopes — явный выбор, approval не скрывает существующие capabilities;
+- policy, action schemas, capability registry, skills, docs/help и evidence меняются согласованно;
+- foreign-assignee/unassigned permitted writes, 403, OAuth scope denial, optional restrictions,
+  exact target, stale inputs и ambiguous remote outcome имеют positive/negative tests;
+- старые default и guards не объявляются снятыми до реальной миграции и qualification.
 
 ## Проверки и PR дисциплина
 

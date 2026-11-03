@@ -6,6 +6,11 @@
 [agent clients](agent-clients.md). Дизайн ядра и scope релизов определены в
 [target state](service-target-state.md) и [delivery plan](service-delivery-plan.md).
 
+[Workflow and storage](service-workflow-and-storage.md) определяет единый процесс без агентов,
+минимальную SQLite, default user-equivalent Asana permissions и обязательный read/act/verify
+workflow для агентов. Плагин не реализует свою state machine и не является обязательным участником
+процесса; отсутствие session/модели не блокирует действия человека.
+
 ## 1. Одинаковый пользовательский результат
 
 Пользователь подключает свой сервис один раз, выбирает account/workspace/device и видит ту же
@@ -258,11 +263,12 @@ Agent capabilities описывают board reads, разрешённые local 
 | `board.list` / `work.get` | read | Pagination, минимальные fields, freshness |
 | `task.resolve` / `task.get` | read | Переиспользует текущую exact resolution и content budgets |
 | `work.track` / `work.untrack` | local tracking write | Меняет desired tracking, не Asana task |
-| `work.patch` / `work.handoff` | local work write | Expected revision, assignment epoch и actor scope |
+| `work.transition` / `work.resolve-request` / `work.handoff` | local work write | Общие guards, expected revision, assignment epoch и actor scope |
 | `sync.refresh` | bounded network read | Debounce/rate budget, без произвольного URL |
 | `session.register` / `session.heartbeat` | presence write | Identity привязана к соединению, минимум metadata |
 | `commands.poll` / `commands.ack` | command receipt | Только своя session, cursor/lease/expiry |
 | `task.prepare-*` | prepare | Существующий immutable operation journal |
+| `asana.operation.*` | declared read/prepare/write effect | Целевой versioned API catalogue, default права пользователя Asana |
 | `operation.get` | read | Ограниченный результат, без payload secrets |
 | `operation.apply` | remote write | Только с действительным approval и policy/live guards |
 | `board.open` | navigation | Safe URL/resource для выбранного клиента, без постоянного secret |
@@ -274,6 +280,11 @@ MCP destructive/read-only annotations — подсказки host, а не ме�
 Read-only connection не получает local write scopes. Track/handoff/presence — реальные эффекты,
 поэтому не маркируются read-only ради удобства model planning. MCP session ID и request ID не
 являются user identity и не заменяют authenticated principal.
+
+Read-only — явный optional connection profile. Целевой default не ограничивает Asana writes
+назначенными на пользователя задачами или board filter. Полнота API catalogue и смена текущего
+agent default требуют отдельной реализации и qualification; наличие строки выше не объявляет
+их доступными в текущем binary. Credentials и provider ACL остаются фактическим пределом прав.
 
 Tool errors имеют bounded categories: `auth_required`, `scope_denied`, `service_not_running`,
 `host_offline`, `version_incompatible`, `revision_conflict`, `approval_required`, `operation_unknown`,
@@ -319,7 +330,8 @@ Remote onboarding:
 
 1. Пользователь открывает local Connections и создаёт одноразовый pairing request.
 2. На gateway входит в свою учётную запись; проверяет выбранный device и workspace.
-3. На local host подтверждает actor и scopes: metadata read, optional content read, local work write.
+3. На local host подтверждает actor и default user-equivalent profile либо явно выбирает более
+   узкие scopes; отдельные content budgets и approval rules видны до подключения.
 4. Устанавливается исходящее daemon connection с device credential, доступным только владельцу.
 5. В AI-клиенте проходит OAuth к gateway; granted scopes пересекаются с local pairing scopes.
 6. Human UI может выдать точечное approval; plugin не выдаёт себе approve scope.

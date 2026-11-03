@@ -154,10 +154,11 @@ Authoritative scope и acceptance criteria: [service delivery plan](service-deli
 | SVC-003 | P1 | blocked | Embedded responsive web board | SVC-002 | См. SVC-003; common operations, browser auth и UI states |
 | SVC-004 | P1 | blocked | Events API и active-task discovery | SVC-002 | См. SVC-004; durable cursors, source freshness и recovery |
 | SVC-005 | P1 | blocked | Webhook ingress и subscription lifecycle | SVC-004 | См. SVC-005; handshake, HMAC, owned hooks и fallback |
-| SVC-006 | P1 | blocked | Curated MCP и local plugin packages | SVC-002 | См. SVC-006; shared tools, deterministic packages и native evidence |
+| SVC-006 | P1 | blocked | Curated MCP и local plugin packages | SVC-002, SVC-010 | См. SVC-006; shared tools, deterministic workflow и native evidence |
 | SVC-007 | P1 | blocked | Gateway, OAuth, pairing и remote UI | SVC-003, SVC-006 | См. SVC-007; tenant/device/effect isolation и human approval |
 | SVC-008 | P1 | blocked | Qualification шести client surfaces | SVC-005, SVC-007 | См. SVC-008; real-client records, explicit mobile modes и limitations |
 | SVC-009 | P2 | blocked | GitLab/GitHub MR/PR source adapters | SVC-002 | См. SVC-009; scoped providers и independent freshness |
+| SVC-010 | P1 | ready | Default Asana access по правам пользователя | SVC-000 | См. SVC-010; API catalogue, no self-assignment restriction, explicit optional scopes и qualification |
 
 ## Definition of Done для любой задачи
 
