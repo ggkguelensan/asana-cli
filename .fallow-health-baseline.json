@@ -1,0 +1,704 @@
+{
+  "finding_counts": {
+    "integrations/renderer.ts": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "scripts/check-asana-sdk-version.ts": {
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "scripts/check-gemini-extension.ts": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "scripts/check-integration-lifecycle-evidence.ts": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "scripts/check-package-content.ts": {
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "scripts/check-project-plan.ts": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 3
+      }
+    },
+    "scripts/check-release-assets.ts": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "scripts/check-release-workflow.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "scripts/check-support-matrix.ts": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_high": {
+        "count": 2
+      }
+    },
+    "scripts/check-v1-examples.ts": {
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "scripts/client-eval-contract.ts": {
+      "complexity_critical": {
+        "count": 2
+      },
+      "crap_critical": {
+        "count": 2
+      },
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 2
+      }
+    },
+    "scripts/copilot-native-discovery.ts": {
+      "crap_high": {
+        "count": 2
+      }
+    },
+    "scripts/dependency-manifest.ts": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "scripts/gemini-native-discovery.ts": {
+      "crap_high": {
+        "count": 2
+      }
+    },
+    "scripts/generate-client-compatibility.ts": {
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 4
+      }
+    },
+    "scripts/integration-lifecycle-e2e.ts": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "scripts/native-client-discovery.ts": {
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "scripts/quality-gate.ts": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "scripts/release-assets.ts": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "scripts/release-evidence-manifest.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "scripts/release-preflight.ts": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "scripts/release-sbom.ts": {
+      "crap_high": {
+        "count": 2
+      }
+    },
+    "scripts/reproducible-build.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "scripts/run-client-evals.ts": {
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "scripts/sigstore-bundle.ts": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "scripts/v1-completion-audit.ts": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/cli/src/agent-cli.ts": {
+      "complexity_critical": {
+        "count": 2
+      },
+      "crap_critical": {
+        "count": 2
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/cli/src/agent-input.ts": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 8
+      }
+    },
+    "apps/cli/src/agent-mode.ts": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/cli/src/agent-operations.ts": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 4
+      },
+      "crap_high": {
+        "count": 2
+      },
+      "crap_moderate": {
+        "count": 10
+      }
+    },
+    "apps/cli/src/agent-projections.ts": {
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 3
+      }
+    },
+    "apps/cli/src/agent-setup.ts": {
+      "crap_high": {
+        "count": 2
+      }
+    },
+    "apps/cli/src/args.ts": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 2
+      }
+    },
+    "apps/cli/src/asana-commands.ts": {
+      "crap_high": {
+        "count": 2
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/cli/src/audit/file-repository.ts": {
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 2
+      }
+    },
+    "apps/cli/src/batch-tasks.ts": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_high": {
+        "count": 4
+      },
+      "crap_moderate": {
+        "count": 2
+      }
+    },
+    "apps/cli/src/cli.ts": {
+      "complexity_critical": {
+        "count": 4
+      },
+      "crap_critical": {
+        "count": 5
+      },
+      "crap_high": {
+        "count": 2
+      },
+      "crap_moderate": {
+        "count": 2
+      }
+    },
+    "apps/cli/src/client-adapter-specs.ts": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/cli/src/client-artifacts.ts": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/cli/src/context-cli.ts": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/cli/src/context-state.ts": {
+      "complexity_high": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_high": {
+        "count": 7
+      },
+      "crap_moderate": {
+        "count": 7
+      }
+    },
+    "apps/cli/src/dependency-safety.ts": {
+      "crap_high": {
+        "count": 2
+      }
+    },
+    "apps/cli/src/developer-context.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/cli/src/doctor.ts": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 2
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/cli/src/errors.ts": {
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 4
+      }
+    },
+    "apps/cli/src/git-context.ts": {
+      "crap_critical": {
+        "count": 2
+      },
+      "crap_moderate": {
+        "count": 3
+      }
+    },
+    "apps/cli/src/git-current-candidates.ts": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 3
+      }
+    },
+    "apps/cli/src/host-write-policy.ts": {
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/cli/src/index.ts": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/cli/src/insights.ts": {
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/cli/src/integration-cli.ts": {
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_high": {
+        "count": 3
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/cli/src/integrations/lifecycle.ts": {
+      "complexity_critical": {
+        "count": 2
+      },
+      "crap_critical": {
+        "count": 6
+      },
+      "crap_high": {
+        "count": 4
+      },
+      "crap_moderate": {
+        "count": 3
+      }
+    },
+    "apps/cli/src/integrations/paths.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/cli/src/integrations/schemas.ts": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/cli/src/invocation-log.ts": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 2
+      },
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/cli/src/io.ts": {
+      "crap_high": {
+        "count": 2
+      },
+      "crap_moderate": {
+        "count": 2
+      }
+    },
+    "apps/cli/src/manual.ts": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/cli/src/operations/file-repository.ts": {
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_high": {
+        "count": 4
+      },
+      "crap_moderate": {
+        "count": 2
+      }
+    },
+    "apps/cli/src/operations/schemas.ts": {
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_high": {
+        "count": 2
+      }
+    },
+    "apps/cli/src/operations/status-projection.ts": {
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/cli/src/pat-store.ts": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/cli/src/raw-request.ts": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/cli/src/repository-asana-mapping.ts": {
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 3
+      }
+    },
+    "apps/cli/src/repository-context.ts": {
+      "complexity_critical": {
+        "count": 2
+      },
+      "crap_critical": {
+        "count": 7
+      },
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 4
+      }
+    },
+    "apps/cli/src/sdk.ts": {
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 2
+      }
+    },
+    "apps/cli/src/security.ts": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 2
+      }
+    },
+    "apps/cli/src/self-update.ts": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 3
+      },
+      "crap_high": {
+        "count": 6
+      },
+      "crap_moderate": {
+        "count": 5
+      }
+    },
+    "apps/cli/src/task-context.ts": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 2
+      }
+    },
+    "apps/cli/src/task-create-templates.ts": {
+      "crap_critical": {
+        "count": 2
+      },
+      "crap_high": {
+        "count": 2
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/cli/src/task-reference.ts": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/cli/src/write-policy.ts": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "tests/agent-operations.test.ts": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "tests/agent-schema.test.ts": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "tests/black-box/harness.ts": {
+      "crap_moderate": {
+        "count": 2
+      }
+    },
+    "tests/client-eval-contract.test.ts": {
+      "complexity_high": {
+        "count": 1
+      },
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "tests/dependency-safety.test.ts": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "tests/developer-context-reads.test.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "tests/git-current-candidates.test.ts": {
+      "crap_moderate": {
+        "count": 2
+      }
+    },
+    "tests/hostile-content.test.ts": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "tests/release-evidence-manifest.test.ts": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "tests/support/process.ts": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "tests/task-context.test.ts": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "tests/wave5-security.test.ts": {
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    }
+  },
+  "runtime_coverage_findings": [],
+  "target_keys": [
+    "apps/cli/src/task-create-templates.ts:dead code",
+    "apps/cli/src/batch-tasks.ts:dead code",
+    "apps/cli/src/invocation-log.ts:complexity",
+    "apps/web/src/state/controller.ts:high impact",
+    "integrations/renderer.ts:dead code",
+    "apps/cli/src/client-artifacts.ts:dead code",
+    "apps/web/src/state/atoms.ts:high impact",
+    "apps/cli/src/cli.ts:complexity",
+    "apps/cli/src/audit/schemas.ts:dead code",
+    "apps/cli/src/agent-deprecations.ts:dead code",
+    "apps/cli/src/agent-cli.ts:complexity",
+    "apps/cli/src/repository-context.ts:high impact",
+    "apps/web/src/api/client.ts:high impact",
+    "apps/cli/src/io.ts:high impact",
+    "apps/cli/src/args.ts:complexity",
+    "apps/cli/src/git-current-candidates.ts:complexity",
+    "apps/cli/src/raw-request.ts:complexity",
+    "apps/cli/src/insights.ts:untested risk",
+    "apps/cli/src/context-cli.ts:complexity",
+    "scripts/check-project-plan.ts:untested risk",
+    "tests/agent-operations.test.ts:complexity"
+  ]
+}

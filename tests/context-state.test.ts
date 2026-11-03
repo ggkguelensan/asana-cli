@@ -12,8 +12,8 @@ import { dirname, join } from "node:path";
 import {
   FileContextStateStore,
   resolveContextStateDirectory,
-} from "../src/context-state";
-import type { GitStorageIdentity } from "../src/git-context";
+} from "../apps/cli/src/context-state";
+import type { GitStorageIdentity } from "../apps/cli/src/git-context";
 import { TemporaryDirectories } from "./support/temp";
 
 const temporaryDirectories = new TemporaryDirectories();

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { rawRequest } from "../src/raw-request";
+import { rawRequest } from "../apps/cli/src/raw-request";
 
 describe("raw request safety", () => {
   test("rejects absolute and protocol-relative URLs", async () => {

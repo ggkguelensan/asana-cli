@@ -1,5 +1,4 @@
 import { createHash } from "node:crypto";
-import { readFile } from "node:fs/promises";
 import { isAbsolute, resolve, sep } from "node:path";
 import { z } from "zod";
 import { GENERATED_CLIENT_COMPATIBILITY } from "../generated/client-compatibility";
@@ -13,6 +12,31 @@ import {
 export const V1_AUDIT_SCHEMA = "asana-cli.v1-completion-audit.v1" as const;
 export const V1_DEPENDENCY_AUDIT_SCHEMA = "asana-cli.v1-dependency-audit.v1" as const;
 const projectRoot = resolve(import.meta.dir, "..");
+// Immutable source anchor for the pre-monorepo v1 audit. This is archival evidence,
+// not a security or compatibility qualification of the current workspace.
+const V1_SOURCE_COMMIT = "c86fdc081319d1c6f250b6dd2b15b5ed28240f94";
+const archiveCache = new Map<string, Promise<Uint8Array>>();
+export function readV1Archive(path: string): Promise<Uint8Array> {
+  relativePathSchema.parse(path);
+  const cached = archiveCache.get(path);
+  if (cached) return cached;
+  const pending = readArchiveBlob(path);
+  archiveCache.set(path, pending);
+  return pending;
+}
+async function readArchiveBlob(path: string): Promise<Uint8Array> {
+  const child = Bun.spawn(["git", "show", `${V1_SOURCE_COMMIT}:${path}`], {
+    cwd: projectRoot, stdout: "pipe", stderr: "pipe",
+  });
+  const [bytes, error, code] = await Promise.all([
+    new Response(child.stdout).bytes(), new Response(child.stderr).text(), child.exited,
+  ]);
+  if (code !== 0) throw new Error(`Cannot verify v1 archive; fetch full Git history: ${error}`);
+  return bytes;
+}
+async function archivedText(path: string): Promise<string> {
+  return new TextDecoder().decode(await readV1Archive(path));
+}
 const sha256Schema = z.string().regex(/^[a-f0-9]{64}$/);
 const auditedPackageManifestSchema = z.looseObject({
   name: z.literal("asana-cli"),
@@ -218,7 +242,7 @@ async function hashProjectFile(path: string): Promise<string> {
   if (normalizedRelative !== path) {
     throw new Error(`Audit evidence path escaped or was not normalized: ${path}`);
   }
-  return sha256(new Uint8Array(await Bun.file(absolute).arrayBuffer()));
+  return sha256(await readV1Archive(path));
 }
 
 async function materializeEvidence(specs: readonly EvidenceSpec[]) {
@@ -304,15 +328,14 @@ export async function verifyV1CompletionAudit(
     throw new Error("Dependency audit evidence digest drifted");
   }
   const dependencyAudit = v1DependencyAuditSchema.parse(
-    JSON.parse(await readFile(resolve(projectRoot, audit.security_review.dependency_audit.path), "utf8")) as unknown,
+    JSON.parse(await archivedText(audit.security_review.dependency_audit.path)) as unknown,
   );
   if (await hashProjectFile(dependencyAudit.lockfile.path) !== dependencyAudit.lockfile.sha256) {
-    throw new Error("Dependency audit is stale for the current lockfile");
+    throw new Error("Archived dependency audit does not match its source lockfile");
   }
   const [packageValue, lockValue] = await Promise.all([
-    Bun.file(resolve(projectRoot, dependencyAudit.package_manifest.path)).json() as Promise<unknown>,
-    Bun.file(resolve(projectRoot, dependencyAudit.lockfile.path))
-      .text()
+    archivedText(dependencyAudit.package_manifest.path).then((text) => JSON.parse(text) as unknown),
+    archivedText(dependencyAudit.lockfile.path)
       .then((text) => Bun.JSONC.parse(text) as unknown),
   ]);
   verifyAuditedProductionManifest(
@@ -343,9 +366,9 @@ export async function verifyV1CompletionAudit(
 
 export async function buildV1CompletionAudit(): Promise<V1CompletionAudit> {
   const [roadmapMarkdown, backlogMarkdown, dependencyAuditBytes] = await Promise.all([
-    readFile(resolve(projectRoot, "docs/roadmap.md"), "utf8"),
-    readFile(resolve(projectRoot, "docs/backlog.md"), "utf8"),
-    new Uint8Array(await Bun.file(resolve(projectRoot, "evidence/v1/dependency-audit.json")).arrayBuffer()),
+    archivedText("docs/roadmap.md"),
+    archivedText("docs/backlog.md"),
+    readV1Archive("evidence/v1/dependency-audit.json"),
   ]);
   const preV1 = parseBacklog(backlogMarkdown).filter((item) => item.beforeLaterBoundary);
   const supportedEvidence = Object.values(GENERATED_CLIENT_COMPATIBILITY.clients)

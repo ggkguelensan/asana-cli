@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { chmod, open, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { FileOperationRepository } from "../src/operations/file-repository";
-import { MemoryOperationRepository } from "../src/operations/memory-repository";
-import { operationLockPath, operationRecordPath } from "../src/operations/paths";
+import { FileOperationRepository } from "../apps/cli/src/operations/file-repository";
+import { MemoryOperationRepository } from "../apps/cli/src/operations/memory-repository";
+import { operationLockPath, operationRecordPath } from "../apps/cli/src/operations/paths";
 import { TemporaryDirectories } from "./support/temp";
 
 const operationId = "00000000-0000-4000-8000-000000000001";

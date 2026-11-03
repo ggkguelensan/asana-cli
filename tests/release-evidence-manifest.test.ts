@@ -22,7 +22,7 @@ import {
   BUILD_PROVENANCE_PREDICATE,
   SPDX_SBOM_PREDICATE,
 } from "../scripts/sigstore-bundle";
-import { CLI_VERSION } from "../src/version";
+import { CLI_VERSION } from "../apps/cli/src/version";
 
 const projectRoot = resolve(import.meta.dir, "..");
 const sourceCommit = "a".repeat(40);

@@ -192,7 +192,7 @@ async function main(arguments_: readonly string[]): Promise<void> {
     return;
   }
   const [packageText, registry] = await Promise.all([
-    readFile(resolve(projectRoot, "package.json"), "utf8"),
+    readFile(resolve(projectRoot, "packages/asana-client/package.json"), "utf8"),
     registryMetadata(),
   ]);
   const result = evaluateAsanaSdkVersion(

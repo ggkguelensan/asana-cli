@@ -18,9 +18,12 @@
 Это целевой дизайн; runtime ещё не реализован. Этапы и критерии готовности находятся в
 [плане реализации](docs/service-delivery-plan.md).
 
-В [web/](web/README.md) уже есть самостоятельная доска на **TypeScript + React + Jotai + Vite**:
+В [apps/web/](apps/web/README.md) уже есть самостоятельная доска на **TypeScript + React + Jotai + Vite**:
 компоненты, HTTP/WebSocket client, responsive UI и явный режим примера. Daemon/API и встраивание
 доски в CLI пока не реализованы; работа с реальной Asana через браузер ещё недоступна.
+
+Структура Bun workspaces, общие пакеты и команды Turbo описаны в
+[монорепозитории](docs/monorepo.md).
 
 ## Скачать
 

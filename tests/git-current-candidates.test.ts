@@ -3,12 +3,12 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { z } from "zod";
-import { runAgentCommand, runLocalAgentCommand } from "../src/agent-cli";
-import { parseArgs } from "../src/args";
-import { findGitCurrentCandidates } from "../src/git-current-candidates";
-import type { GitContext } from "../src/git-context";
-import { MemoryOperationRepository } from "../src/operations/memory-repository";
-import { createClient } from "../src/sdk";
+import { runAgentCommand, runLocalAgentCommand } from "../apps/cli/src/agent-cli";
+import { parseArgs } from "../apps/cli/src/args";
+import { findGitCurrentCandidates } from "../apps/cli/src/git-current-candidates";
+import type { GitContext } from "../apps/cli/src/git-context";
+import { MemoryOperationRepository } from "../apps/cli/src/operations/memory-repository";
+import { createClient } from "../apps/cli/src/sdk";
 
 const directories: string[] = [];
 const agentRuntime = { operations: new MemoryOperationRepository() };
@@ -148,8 +148,7 @@ describe("agent context --git-current-candidates", () => {
       },
     });
     try {
-      const client = createClient("CURRENT_GIT_CANDIDATE_TEST_TOKEN");
-      client.basePath = new URL("/api/1.0", server.url).toString().replace(/\/$/, "");
+      const client = createClient("CURRENT_GIT_CANDIDATE_TEST_TOKEN", { baseUrl: new URL("/api/1.0", server.url).toString().replace(/\/$/, "") });
       const args = parseArgs([
         "agent",
         "context",
@@ -249,8 +248,7 @@ describe("agent context --git-current-candidates", () => {
       },
     });
     try {
-      const client = createClient("CANDIDATE_SELECTION_TEST_TOKEN");
-      client.basePath = new URL("/api/1.0", server.url).toString().replace(/\/$/, "");
+      const client = createClient("CANDIDATE_SELECTION_TEST_TOKEN", { baseUrl: new URL("/api/1.0", server.url).toString().replace(/\/$/, "") });
       const input = { workspace_gid: "1200", all_assignees: true, completed: false };
       const empty = await findGitCurrentCandidates(client, input, context());
       mode = "singleton";
@@ -306,8 +304,7 @@ describe("agent context --git-current-candidates", () => {
       },
     });
     try {
-      const client = createClient("CANDIDATE_TRUNCATION_TEST_TOKEN");
-      client.basePath = new URL("/api/1.0", server.url).toString().replace(/\/$/, "");
+      const client = createClient("CANDIDATE_TRUNCATION_TEST_TOKEN", { baseUrl: new URL("/api/1.0", server.url).toString().replace(/\/$/, "") });
       const saturatedTokens = Array.from({ length: 16 }, (_, index) => ({
         kind: index % 2 === 0 ? "pull-request" as const : "issue" as const,
         number: index + 1,

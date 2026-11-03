@@ -1,25 +1,26 @@
+import { asanaFixture } from "./support/asana-fixture";
 import { afterEach, describe, expect, test } from "bun:test";
 import { readFile, readdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
-import { runAgentCommand, runLocalAgentCommand } from "../src/agent-cli";
-import { parseArgs } from "../src/args";
-import { runCli } from "../src/cli";
-import { CliError, normalizeError } from "../src/errors";
-import { FileOperationRepository } from "../src/operations/file-repository";
-import { MemoryOperationRepository } from "../src/operations/memory-repository";
-import { operationLockPath, operationRecordPath, resolveOperationJournalDirectory } from "../src/operations/paths";
-import { operationStatusProjectionSchema } from "../src/operations/status-projection";
+import { runAgentCommand, runLocalAgentCommand } from "../apps/cli/src/agent-cli";
+import { parseArgs } from "../apps/cli/src/args";
+import { runCli } from "../apps/cli/src/cli";
+import { CliError, normalizeError } from "../apps/cli/src/errors";
+import { FileOperationRepository } from "../apps/cli/src/operations/file-repository";
+import { MemoryOperationRepository } from "../apps/cli/src/operations/memory-repository";
+import { operationLockPath, operationRecordPath, resolveOperationJournalDirectory } from "../apps/cli/src/operations/paths";
+import { operationStatusProjectionSchema } from "../apps/cli/src/operations/status-projection";
 import type {
   OperationCompareAndSetResult,
   OperationRepository,
-} from "../src/operations/repository";
+} from "../apps/cli/src/operations/repository";
 import type {
   CreateOperationInput,
   OperationRecord,
   OperationTransition,
-} from "../src/operations/schemas";
-import { createClient, type AsanaClient } from "../src/sdk";
+} from "../apps/cli/src/operations/schemas";
+import type { AsanaClient } from "../apps/cli/src/sdk";
 import { runSourceCli } from "./support/process";
 import { TemporaryDirectories } from "./support/temp";
 
@@ -73,9 +74,9 @@ class InspectCountingRepository implements OperationRepository {
 }
 
 function clientThatMustStayLocal(): { client: AsanaClient; calls: number[] } {
-  const client = createClient("AP010_LOCAL_ONLY_TOKEN");
+  const { client, sdk } = asanaFixture();
   const calls: number[] = [];
-  Object.defineProperty(client, "callApi", {
+  Object.defineProperty(sdk, "callApi", {
     configurable: true,
     value: async () => {
       calls.push(1);

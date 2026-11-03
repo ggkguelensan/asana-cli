@@ -13,9 +13,9 @@ import {
   INTEGRATION_MANIFEST_FILE,
   INTEGRATION_MANIFEST_SCHEMA,
   integrationManifestSchema,
-} from "../src/integrations";
-import { AGENT_PROTOCOL_VERSION, CLI_VERSION } from "../src/version";
-import { INTEGRATION_SKILLS } from "../src/integration-skills";
+} from "../apps/cli/src/integrations";
+import { AGENT_PROTOCOL_VERSION, CLI_VERSION } from "../apps/cli/src/version";
+import { INTEGRATION_SKILLS } from "../apps/cli/src/integration-skills";
 
 const projectRoot = resolve(import.meta.dir, "..");
 const packageJsonPath = join(projectRoot, "package.json");

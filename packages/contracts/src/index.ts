@@ -7,12 +7,9 @@ const httpsUrl = z.url().max(2048).refine((value) => {
   return url.protocol === 'https:' && !url.username && !url.password;
 });
 
-export const STATUS = {
-  wait_user: 'Ждёт тебя', blocked: 'Блокер', review: 'На ревью', work: 'В работе',
-  wait_others: 'Ждём других', reviewing: 'Ждём автора', merged: 'Смержено', done: 'Готово',
-} as const;
-export type WorkStatus = keyof typeof STATUS;
-const statusSchema = z.enum(Object.keys(STATUS) as [WorkStatus, ...WorkStatus[]]);
+export const workStatuses = ['wait_user', 'blocked', 'review', 'work', 'wait_others', 'reviewing', 'merged', 'done'] as const;
+export type WorkStatus = typeof workStatuses[number];
+const statusSchema = z.enum(workStatuses);
 const actionKindSchema = z.enum(['resolve_request', 'complete_work', 'reopen_work']);
 
 const actionSchema = z.strictObject({
@@ -72,12 +69,3 @@ export const receiptSchema = z.strictObject({
   status: z.enum(['queued', 'accepted', 'completed', 'failed', 'unknown']),
 });
 export type CommandReceipt = z.infer<typeof receiptSchema>;
-
-const order: WorkStatus[] = ['wait_user', 'blocked', 'review', 'work', 'wait_others', 'reviewing', 'merged', 'done'];
-export function isFinished(item: WorkItem): boolean {
-  return item.status === 'done' || item.status === 'merged';
-}
-export function sortItems(items: readonly WorkItem[]): WorkItem[] {
-  return [...items].sort((a, b) => order.indexOf(a.status) - order.indexOf(b.status) ||
-    b.updated_at.localeCompare(a.updated_at) || a.id.localeCompare(b.id));
-}

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { readCurrentGitStorageIdentity } from "../src/git-context";
+import { readCurrentGitStorageIdentity } from "../apps/cli/src/git-context";
 import { runGitSync } from "./support/git";
 import { TemporaryDirectories } from "./support/temp";
 

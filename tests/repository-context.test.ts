@@ -3,10 +3,10 @@ import { chmod, mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { z } from "zod";
-import { runLocalAgentCommand } from "../src/agent-cli";
-import { parseArgs } from "../src/args";
-import { CliError, normalizeError } from "../src/errors";
-import { MemoryOperationRepository } from "../src/operations/memory-repository";
+import { runLocalAgentCommand } from "../apps/cli/src/agent-cli";
+import { parseArgs } from "../apps/cli/src/args";
+import { CliError, normalizeError } from "../apps/cli/src/errors";
+import { MemoryOperationRepository } from "../apps/cli/src/operations/memory-repository";
 import {
   computeRepositoryContextDigest,
   FixedFileRepositoryContextManifestProvider,
@@ -16,10 +16,10 @@ import {
   projectRepositoryContext,
   repositoryContextDataSchema,
   repositoryContextManifestSchema,
-} from "../src/repository-context";
+} from "../apps/cli/src/repository-context";
 
 const directories: string[] = [];
-const entrypoint = resolve(import.meta.dir, "../src/index.ts");
+const entrypoint = resolve(import.meta.dir, "../apps/cli/src/index.ts");
 
 function minimalManifest(): Record<string, unknown> {
   return {

@@ -304,7 +304,7 @@ tag, пока version bump, release-facing metadata и обязательное 
 проверенном commit `main`.
 
 1. **Подготовьте release commit.** Завершите согласованный scope, выберите SemVer, обновите
-   `package.json`, `src/version.ts` и `integrations/clients.ts`, затем перегенерируйте integration
+   `package.json`, `apps/cli/src/version.ts` и `integrations/clients.ts`, затем перегенерируйте integration
    bundle через `bun run generate:integrations`. В том же PR обновите пользовательскую
    документацию, backlog/roadmap и release notes.
 2. **Закройте gate на конкретном commit.** Для commit в `origin/main` сохраните ссылки на успешные
@@ -327,7 +327,7 @@ tag, пока version bump, release-facing metadata и обязательное 
    `git status --short` должен быть пустым. Commit обязан уже принадлежать `origin/main`: workflow
    проверяет это до build.
 4. **Сверьте metadata и повторите обязательную проверку на том же commit.** `package.json`,
-   `src/version.ts`, integration bundle version, generated artifacts, compiled CLI и будущий tag
+   `apps/cli/src/version.ts`, integration bundle version, generated artifacts, compiled CLI и будущий tag
    должны содержать одну выбранную SemVer:
 
    ```sh

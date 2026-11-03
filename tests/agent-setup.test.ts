@@ -3,9 +3,9 @@ import { existsSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { INTEGRATION_SKILL_IDS } from "../src/integration-skills";
+import { INTEGRATION_SKILL_IDS } from "../apps/cli/src/integration-skills";
 
-const entrypoint = resolve(import.meta.dir, "../src/index.ts");
+const entrypoint = resolve(import.meta.dir, "../apps/cli/src/index.ts");
 const temporaryDirectories: string[] = [];
 
 async function fixture() {

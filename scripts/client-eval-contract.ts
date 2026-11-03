@@ -180,7 +180,11 @@ async function digestFiles(paths: readonly string[]): Promise<string> {
 
 export async function clientEvalSubjectSha256(): Promise<string> {
   return digestFiles([
-    resolve(projectRoot, "src"),
+    resolve(projectRoot, "apps/cli/src"),
+    resolve(projectRoot, "packages/asana-client/src"),
+    resolve(projectRoot, "apps/cli/package.json"),
+    resolve(projectRoot, "packages/asana-client/package.json"),
+    resolve(projectRoot, "bun.lock"),
     resolve(projectRoot, "skills/source"),
     resolve(projectRoot, "integrations"),
     resolve(projectRoot, "generated/integrations"),

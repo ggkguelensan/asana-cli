@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { chmod, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { CLI_VERSION } from "../src/version";
+import { CLI_VERSION } from "../apps/cli/src/version";
 import { runCommand } from "./support/process";
 import { TemporaryDirectories } from "./support/temp";
 

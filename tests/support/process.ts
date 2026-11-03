@@ -1,7 +1,7 @@
 import { resolve } from "node:path";
 
 export const projectRoot = resolve(import.meta.dir, "../..");
-export const sourceEntrypoint = resolve(projectRoot, "src/index.ts");
+export const sourceEntrypoint = resolve(projectRoot, "apps/cli/src/index.ts");
 
 export type CommandResult = Readonly<{
   stdout: string;

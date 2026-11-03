@@ -23,11 +23,11 @@ import {
   planUpdateIntegration,
   uninstallIntegration,
   updateIntegration,
-} from "../src/integrations";
-import { AGENT_PROTOCOL_COMPATIBILITY } from "../src/version";
+} from "../apps/cli/src/integrations";
+import { AGENT_PROTOCOL_COMPATIBILITY } from "../apps/cli/src/version";
 
 const projectRoot = resolve(import.meta.dir, "..");
-const entrypoint = resolve(projectRoot, "src/index.ts");
+const entrypoint = resolve(projectRoot, "apps/cli/src/index.ts");
 const temporaryDirectories: string[] = [];
 
 type Scope = "user" | "project";

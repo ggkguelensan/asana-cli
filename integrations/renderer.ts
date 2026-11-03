@@ -1,12 +1,12 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
-import { buildClientArtifactContents } from "../src/client-artifacts";
+import { buildClientArtifactContents } from "../apps/cli/src/client-artifacts";
 import {
   INTEGRATION_SKILL_IDS,
   integrationSkill,
   integrationSkillIdSchema,
   type IntegrationSkillId,
-} from "../src/integration-skills";
+} from "../apps/cli/src/integration-skills";
 import {
   INTEGRATION_AGENT_PROTOCOL_VERSION,
   INTEGRATION_BUNDLE_SCHEMA,

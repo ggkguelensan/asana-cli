@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { z } from "zod";
-import { runCli } from "../src/cli";
+import { runCli } from "../apps/cli/src/cli";
 import {
   AGENT_ERROR_SCHEMA_ID,
   CLI_ERROR_REGISTRY,
@@ -9,10 +9,10 @@ import {
   errorPayload,
   errorPayloadSchema,
   normalizeError,
-} from "../src/errors";
-import { resolvePatWithSource } from "../src/pat-store";
-import { jsonObjectSchema } from "../src/schemas";
-import { secureAgentEnvelope } from "../src/security";
+} from "../apps/cli/src/errors";
+import { resolvePatWithSource } from "../apps/cli/src/pat-store";
+import { jsonObjectSchema } from "../apps/cli/src/schemas";
+import { secureAgentEnvelope } from "../apps/cli/src/security";
 
 async function rejectedCliError(promise: Promise<unknown>): Promise<CliError> {
   try {
@@ -31,7 +31,7 @@ async function runAgentFailure(
   args: string[],
   options: { stdin?: string; env?: Record<string, string> } = {},
 ) {
-  const child = Bun.spawn([process.execPath, "run", "--no-env-file", "src/index.ts", ...args], {
+  const child = Bun.spawn([process.execPath, "run", "--no-env-file", "apps/cli/src/index.ts", ...args], {
     cwd: `${import.meta.dir}/..`,
     env: { ...process.env, ...options.env },
     stdin: "pipe",

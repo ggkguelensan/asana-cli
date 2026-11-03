@@ -8,7 +8,7 @@ HTTP/WebSocket, MCP, and remote gateway are specified in
 specifies deterministic human operation, minimal persistence, and the target permission model.
 They are not available runtime features yet.
 
-The independent [web frontend](../web/README.md) is implemented with TypeScript, React, Jotai,
+The independent [web frontend](../apps/web/README.md) is implemented with TypeScript, React, Jotai,
 and Vite. It has component views, validated HTTP/WebSocket adapters, atom projections and an explicit
 disposable example. The daemon/server integration and embedding assets in the binary remain pending.
 
@@ -20,6 +20,8 @@ disposable example. The daemon/server integration and embedding assets in the bi
 Both surfaces share validated domain services. The agent surface additionally enforces curated
 actions, explicit read/write effects, host policy, durable prepare/apply records, and content
 budgets.
+
+Workspace structure and shared-package boundaries are documented in [monorepo](monorepo.md).
 
 ## Runtime layers
 
@@ -108,7 +110,7 @@ integrations/
 generated/integrations/
 ```
 
-Consequently, structural changes inside `src/` require client and lifecycle evidence
+Consequently, structural changes inside `apps/cli/src/` require client and lifecycle evidence
 requalification even when the public contract is intended to remain unchanged. See
 [evidence maintenance](../evidence/README.md).
 

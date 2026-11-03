@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { booleanFlag, parseArgs, stringFlag } from "../src/args";
+import { booleanFlag, parseArgs, stringFlag } from "../apps/cli/src/args";
 
 describe("argument parsing", () => {
   test("accepts stdin marker as an option value", () => {

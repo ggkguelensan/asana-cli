@@ -33,7 +33,9 @@ const lockPackageSchema = z.tuple([
 ]);
 const bunLockSchema = z.strictObject({
   ...bunLockBaseShape,
-  packages: z.record(z.string(), lockPackageSchema),
+  packages: z.record(z.string(), z.union([
+    lockPackageSchema, z.tuple([z.string().regex(/@workspace:/)]),
+  ])),
 });
 const packageSchema = z.looseObject({
   name: z.literal("asana-cli"),
@@ -171,6 +173,32 @@ function productionClosure(
   return [...visited].sort();
 }
 
+// Workspace source is part of the application source commit. Only registry
+// dependencies in the CLI closure belong in its third-party dependency inventory.
+function cliRegistryDependencies(
+  workspaces: z.output<typeof bunLockSchema>["workspaces"],
+  fallback: Readonly<Record<string, string>>,
+): Readonly<Record<string, string>> {
+  const cli = workspaces["apps/cli"];
+  if (!cli) return fallback; // Historical single-package release fixtures.
+  const byName = new Map(Object.values(workspaces).map((workspace) => [workspace.name, workspace]));
+  const registry: Record<string, string> = {};
+  const visited = new Set<string>();
+  function visit(name: string, range: string): void {
+    if (visited.has(name)) return;
+    visited.add(name);
+    if (!range.startsWith("workspace:")) { registry[name] = range; return; }
+    const workspace = byName.get(name);
+    if (!workspace) throw new Error(`Missing production workspace ${name}`);
+    visitDependencies(workspace.dependencies);
+  }
+  function visitDependencies(dependencies: Record<string, string> = {}): void {
+    for (const [name, range] of Object.entries(dependencies)) visit(name, range);
+  }
+  visitDependencies(cli.dependencies ?? {});
+  return registry;
+}
+
 function stableRelationships(
   relationships: readonly z.output<typeof relationshipSchema>[],
 ): readonly z.output<typeof relationshipSchema>[] {
@@ -200,10 +228,15 @@ export function buildReleaseSbom(input: ReleaseSbomInput): ReleaseSbom {
   const binarySha256 = sha256(input.binaryBytes);
   const lockSha256 = sha256(input.lockText);
   const bunVersion = packageJson.packageManager.slice("bun@".length);
-  const dependencyKeys = productionClosure(packageJson.dependencies, lock.packages);
+  const registryPackages = Object.fromEntries(
+    Object.entries(lock.packages).filter((entry): entry is [string, LockPackage] => entry[1].length === 4),
+  );
+  const dependencyKeys = productionClosure(
+    cliRegistryDependencies(lock.workspaces, packageJson.dependencies), registryPackages,
+  );
   const packageIds = new Map<string, string>();
   const dependencyPackages = dependencyKeys.map((key) => {
-    const tuple = lock.packages[key];
+    const tuple = registryPackages[key];
     if (!tuple) throw new Error(`Missing locked package ${key}`);
     const identity = packageIdentity(tuple);
     const spdxId = packageSpdxId(identity.name, identity.version);
@@ -294,7 +327,7 @@ export function buildReleaseSbom(input: ReleaseSbomInput): ReleaseSbom {
       relationshipType: "CONTAINS",
       relatedSpdxElement: packageId,
     });
-    const tuple = lock.packages[key];
+    const tuple = registryPackages[key];
     if (!tuple) throw new Error(`Missing locked package ${key}`);
     for (const dependency of dependencyNames(tuple)) {
       const dependencyId = packageIds.get(dependency);

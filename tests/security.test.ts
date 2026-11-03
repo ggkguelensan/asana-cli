@@ -5,7 +5,7 @@ import {
   registerSecret,
   protectOutput,
   secureAgentEnvelope,
-} from "../src/security";
+} from "../apps/cli/src/security";
 
 describe("deterministic credential protection", () => {
   test("redacts an exact registered credential at any depth", () => {

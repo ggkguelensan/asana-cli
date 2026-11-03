@@ -13,7 +13,7 @@ import {
   renderGeminiExtensionFiles,
 } from "./generate-gemini-extension";
 import { nativeDiscoveryContractSha256 } from "./native-client-discovery";
-import { CLI_VERSION } from "../src/version";
+import { CLI_VERSION } from "../apps/cli/src/version";
 
 const sha256Schema = z.string().regex(/^[a-f0-9]{64}$/);
 export const geminiNativeDiscoveryEvidenceSchema = z.strictObject({

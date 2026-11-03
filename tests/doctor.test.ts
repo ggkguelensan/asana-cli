@@ -1,10 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { parseArgs } from "../src/args";
+import { parseArgs } from "../apps/cli/src/args";
 import {
   runDoctorCommand,
   type DoctorDependencies,
-} from "../src/doctor";
-import type { LatestRelease } from "../src/self-update";
+} from "../apps/cli/src/doctor";
+import type { LatestRelease } from "../apps/cli/src/self-update";
 
 const latest: LatestRelease = {
   tag: "v9.0.0",

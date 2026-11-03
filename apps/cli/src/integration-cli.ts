@@ -5,12 +5,12 @@ import { z } from "zod";
 import {
   EMBEDDED_INTEGRATION_BUNDLE,
   embeddedIntegrationBundle,
-} from "../generated/integrations/bundle";
+} from "../../../generated/integrations/bundle";
 import {
   INTEGRATION_CLIENTS,
   integrationClientIdSchema,
   integrationScopeSchema,
-} from "../integrations/clients";
+} from "../../../integrations/clients";
 import {
   clientAdapter,
   clientAdapterDetectionProbes,

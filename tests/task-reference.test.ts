@@ -1,15 +1,15 @@
 import { describe, expect, test } from "bun:test";
 import { z } from "zod";
-import { runAgentCommand } from "../src/agent-cli";
-import { parseArgs } from "../src/args";
-import { CliError } from "../src/errors";
-import { MemoryOperationRepository } from "../src/operations/memory-repository";
+import { runAgentCommand } from "../apps/cli/src/agent-cli";
+import { parseArgs } from "../apps/cli/src/args";
+import { CliError } from "../apps/cli/src/errors";
+import { MemoryOperationRepository } from "../apps/cli/src/operations/memory-repository";
 import {
   repositoryContextDataSchema,
   type RepositoryContextManifestProvider,
-} from "../src/repository-context";
-import { createClient } from "../src/sdk";
-import { parseTaskReference } from "../src/task-reference";
+} from "../apps/cli/src/repository-context";
+import { createClient } from "../apps/cli/src/sdk";
+import { parseTaskReference } from "../apps/cli/src/task-reference";
 
 const baseRepositoryContext = repositoryContextDataSchema.parse({
   schema: "asana-cli.repository-context.v1",
@@ -134,8 +134,7 @@ describe("central exact task reference resolver", () => {
     });
 
     try {
-      const client = createClient("TASK_REFERENCE_TOKEN");
-      client.basePath = new URL("/api/1.0", server.url).toString().replace(/\/$/, "");
+      const client = createClient("TASK_REFERENCE_TOKEN", { baseUrl: new URL("/api/1.0", server.url).toString().replace(/\/$/, "") });
       const runtime = {
         operations: new MemoryOperationRepository(),
         repositoryContext: provider(),
@@ -205,8 +204,7 @@ describe("central exact task reference resolver", () => {
       },
     });
     try {
-      const client = createClient("TASK_REFERENCE_FAILURE_TOKEN");
-      client.basePath = new URL("/api/1.0", server.url).toString().replace(/\/$/, "");
+      const client = createClient("TASK_REFERENCE_FAILURE_TOKEN", { baseUrl: new URL("/api/1.0", server.url).toString().replace(/\/$/, "") });
       const operations = new MemoryOperationRepository();
       expect((await cliError(() => runAgentCommand(client, parseArgs([
         "agent", "resolve-task",

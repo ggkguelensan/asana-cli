@@ -12,7 +12,7 @@ import {
 import {
   INTEGRATION_SKILL_IDS,
   type IntegrationSkillId,
-} from "../src/integration-skills";
+} from "../apps/cli/src/integration-skills";
 
 const projectRoot = resolve(import.meta.dir, "..");
 const sourceRoot = resolve(projectRoot, "skills/source");

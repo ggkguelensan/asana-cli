@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import {
+  readV1Archive,
   buildV1CompletionAudit,
   renderV1CompletionAudit,
   verifyAuditedProductionManifest,
@@ -67,13 +68,26 @@ describe("v1 completion audit", () => {
     ).toThrow("overrides no longer match bun.lock");
   });
 
-  test("is byte-current and verifies every roadmap criterion against direct evidence", async () => {
+  test("is byte-current and verifies every roadmap criterion against archived source", async () => {
     const inputs = await currentInputs();
     await verifyV1CompletionAudit(inputs.audit, inputs.roadmap, inputs.backlog);
 
     expect(inputs.auditText).toBe(renderV1CompletionAudit(await buildV1CompletionAudit()));
     expect(inputs.audit.criteria).toHaveLength(6);
     expect(inputs.audit.pre_v1_backlog.active).toEqual([]);
+  });
+
+  test("keeps historical lock evidence separate and rejects tampered evidence hashes", async () => {
+    const historical = new TextDecoder().decode(await readV1Archive("bun.lock"));
+    expect(historical).not.toBe(await Bun.file(resolve(projectRoot, "bun.lock")).text());
+    expect(() => readV1Archive("../bun.lock")).toThrow();
+    const inputs = await currentInputs();
+    const changed = structuredClone(inputs.audit);
+    const evidence = changed.criteria[0]?.evidence[0];
+    if (!evidence) throw new Error("Missing archived evidence fixture");
+    evidence.sha256 = "0".repeat(64);
+    await expect(verifyV1CompletionAudit(changed, inputs.roadmap, inputs.backlog))
+      .rejects.toThrow("evidence digest drifted");
   });
 
   test("rejects open high findings, missing roadmap criteria, and active pre-v1 work", async () => {

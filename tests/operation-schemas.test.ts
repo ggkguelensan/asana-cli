@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { AGENT_PROTOCOL_VERSION } from "../src/version";
+import { AGENT_PROTOCOL_VERSION } from "../apps/cli/src/version";
 import {
   OPERATION_FILE_FORMAT_VERSION,
   cloneOperationRecord,
@@ -8,7 +8,7 @@ import {
   operationRecordFileSchema,
   parseOperationRecord,
   transitionOperationRecord,
-} from "../src/operations/schemas";
+} from "../apps/cli/src/operations/schemas";
 
 const operationId = "00000000-0000-4000-8000-000000000001";
 const createdAt = new Date("2026-07-15T10:00:00.000Z");

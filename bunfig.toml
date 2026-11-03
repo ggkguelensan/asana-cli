@@ -3,5 +3,5 @@
 minimumReleaseAge = 1209600
 
 [test]
-# Each independent package owns its tests/ directory; CLI checks must not collect web tests.
+# Each workspace owns its tests/ directory; Turbo runs package suites explicitly.
 root = "tests"

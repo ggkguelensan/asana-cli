@@ -5,13 +5,13 @@ import { rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { z } from "zod";
-import { runAgentCommand } from "../src/agent-cli";
-import { parseArgs } from "../src/args";
-import { contentBudgetMetadataSchema } from "../src/content-budget";
-import { MemoryOperationRepository } from "../src/operations/memory-repository";
-import { taskSchema, storySchema } from "../src/schemas";
-import { createClient } from "../src/sdk";
-import { agentEnvelopeSchema, secureAgentEnvelope } from "../src/security";
+import { runAgentCommand } from "../apps/cli/src/agent-cli";
+import { parseArgs } from "../apps/cli/src/args";
+import { contentBudgetMetadataSchema } from "../apps/cli/src/content-budget";
+import { MemoryOperationRepository } from "../apps/cli/src/operations/memory-repository";
+import { taskSchema, storySchema } from "../apps/cli/src/schemas";
+import { createClient } from "../apps/cli/src/sdk";
+import { agentEnvelopeSchema, secureAgentEnvelope } from "../apps/cli/src/security";
 import {
   hostileCommentText,
   hostileTaskText,
@@ -96,8 +96,7 @@ function startMockAsana() {
 }
 
 function clientFor(serverUrl: URL, token: string) {
-  const client = createClient(token);
-  client.basePath = new URL("/api/1.0", serverUrl).toString().replace(/\/$/, "");
+  const client = createClient(token, { baseUrl: new URL("/api/1.0", serverUrl).toString().replace(/\/$/, "") });
   return client;
 }
 

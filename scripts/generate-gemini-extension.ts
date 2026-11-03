@@ -1,7 +1,7 @@
 import { mkdir, rm } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { readCanonicalSkillSource } from "./generate-integrations";
-import { CLI_VERSION } from "../src/version";
+import { CLI_VERSION } from "../apps/cli/src/version";
 
 const projectRoot = resolve(import.meta.dir, "..");
 export const GENERATED_GEMINI_EXTENSION_ROOT = resolve(

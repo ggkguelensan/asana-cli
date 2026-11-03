@@ -1,7 +1,8 @@
 # Evidence maintenance
 
 Files in this directory are checked-in qualification records, not logs or disposable build output.
-CI validates their schemas, digests, target matrix, and relationship to the current source.
+CI validates their schemas, digests and target matrix. Archived records qualify their recorded
+source, not the current workspace; new release qualification must bind the new binary explicitly.
 
 ## Contents
 
@@ -19,7 +20,10 @@ command and run the checker named next to that command in `package.json`.
 
 ```text
 client subject digest
-├── src/
+├── apps/cli/src/
+├── packages/asana-client/src/
+├── apps/cli/package.json + packages/asana-client/package.json
+├── bun.lock
 ├── skills/source/
 ├── integrations/
 └── generated/integrations/
@@ -50,3 +54,10 @@ Historical release evidence must never be rewritten or relabeled as evidence for
 Narrowing the subject digest may reduce unrelated evidence churn, but it changes a security gate.
 Do it only in a dedicated change that defines and tests separate runtime, agent-contract,
 client-adapter, and integration-lifecycle dependency sets.
+
+## Immutable v1 archive
+
+The v1 audit remains byte-identical and is verified against Git blobs at
+`c86fdc081319d1c6f250b6dd2b15b5ed28240f94`, including its original manifest and lockfile.
+A full clone is required. This is historical verification, not a clean-dependency claim for today.
+See [monorepo](../docs/monorepo.md) for current checks and release qualification boundaries.

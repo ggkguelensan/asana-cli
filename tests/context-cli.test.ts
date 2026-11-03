@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { parseArgs } from "../src/args";
-import { runCli } from "../src/cli";
-import { runContextCommand } from "../src/context-cli";
-import { FileContextStateStore } from "../src/context-state";
-import type { GitStorageIdentity } from "../src/git-context";
+import { parseArgs } from "../apps/cli/src/args";
+import { runCli } from "../apps/cli/src/cli";
+import { runContextCommand } from "../apps/cli/src/context-cli";
+import { FileContextStateStore } from "../apps/cli/src/context-state";
+import type { GitStorageIdentity } from "../apps/cli/src/git-context";
 import { runSourceCli } from "./support/process";
 import { TemporaryDirectories } from "./support/temp";
 

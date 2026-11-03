@@ -3,9 +3,9 @@ import { z } from "zod";
 import {
   projectComments,
   selectedTaskProjection,
-} from "../src/agent-projections";
-import { ContentBudget } from "../src/content-budget";
-import { taskSchema } from "../src/schemas";
+} from "../apps/cli/src/agent-projections";
+import { ContentBudget } from "../apps/cli/src/content-budget";
+import { taskSchema } from "../apps/cli/src/schemas";
 
 const encoder = new TextEncoder();
 

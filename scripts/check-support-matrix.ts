@@ -1,7 +1,7 @@
 import { readdir, readFile } from "node:fs/promises";
 import { join, relative, resolve } from "node:path";
 import { z } from "zod";
-import { SUPPORTED_RUNTIME_PLATFORMS } from "../src/platform-support";
+import { SUPPORTED_RUNTIME_PLATFORMS } from "../apps/cli/src/platform-support";
 
 const projectRoot = resolve(import.meta.dir, "..");
 
@@ -233,7 +233,8 @@ async function readProductionSources(): Promise<readonly ProductionSource[]> {
       }
     }
   };
-  await visit(resolve(projectRoot, "src"));
+  await visit(resolve(projectRoot, "apps/cli/src"));
+  await visit(resolve(projectRoot, "packages/asana-client/src"));
   await visit(resolve(projectRoot, "assets"));
   return sources;
 }

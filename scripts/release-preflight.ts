@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { CLI_VERSION } from "../src/version";
+import { CLI_VERSION } from "../apps/cli/src/version";
 
 const semverPattern = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
 const gitObjectPattern = /^[0-9a-f]{40,64}$/i;

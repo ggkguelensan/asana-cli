@@ -49,7 +49,7 @@ const build: QualityGateStep = {
 };
 const tests: QualityGateStep = {
   name: "tests",
-  command: ["bun", "test"],
+  command: ["bun", "run", "test"],
 };
 const version: QualityGateStep = {
   name: "compiled version",
@@ -60,6 +60,7 @@ const fastSteps: readonly QualityGateStep[] = Object.freeze([
   typecheck,
   generatedIntegrations,
   clientCompatibility,
+  { name: "workspace boundaries", command: ["bun", "run", "check:workspaces"] },
   geminiExtension,
   projectPlan,
   supportMatrix,
@@ -73,6 +74,7 @@ const ciSteps: readonly QualityGateStep[] = Object.freeze([
   typecheck,
   generatedIntegrations,
   clientCompatibility,
+  { name: "workspace boundaries", command: ["bun", "run", "check:workspaces"] },
   geminiExtension,
   projectPlan,
   {

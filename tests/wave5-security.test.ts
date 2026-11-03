@@ -1,34 +1,35 @@
+import { asanaFixture } from "./support/asana-fixture";
 import { afterEach, describe, expect, test } from "bun:test";
 import { chmod, mkdtemp, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { z } from "zod";
-import { AgentOperationService } from "../src/agent-operations";
-import { FileMetadataAuditStore } from "../src/audit/file-repository";
-import type { MetadataAuditStore } from "../src/audit/repository";
+import { AgentOperationService } from "../apps/cli/src/agent-operations";
+import { FileMetadataAuditStore } from "../apps/cli/src/audit/file-repository";
+import type { MetadataAuditStore } from "../apps/cli/src/audit/repository";
 import {
   createMetadataAuditEvent,
   metadataAuditEventSchema,
   type CreateMetadataAuditEventInput,
   type MetadataAuditEvent,
-} from "../src/audit/schemas";
-import { CliError, normalizeError } from "../src/errors";
+} from "../apps/cli/src/audit/schemas";
+import { CliError, normalizeError } from "../apps/cli/src/errors";
 import {
   FixedFileHostScopedWritePolicyProvider,
   fixedHostScopedWritePolicyPath,
   type HostScopedWritePolicyProvider,
-} from "../src/host-write-policy";
-import { MemoryOperationRepository } from "../src/operations/memory-repository";
+} from "../apps/cli/src/host-write-policy";
+import { MemoryOperationRepository } from "../apps/cli/src/operations/memory-repository";
 import type {
   OperationCompareAndSetResult,
   OperationRepository,
-} from "../src/operations/repository";
+} from "../apps/cli/src/operations/repository";
 import type {
   CreateOperationInput,
   OperationRecord,
   OperationTransition,
-} from "../src/operations/schemas";
-import { createClient, type AsanaClient } from "../src/sdk";
+} from "../apps/cli/src/operations/schemas";
+import type { AsanaClient } from "../apps/cli/src/sdk";
 import {
   describeTaskCommentWrite,
   describeTaskCreateWrite,
@@ -38,7 +39,7 @@ import {
   evaluateScopedWritePolicy,
   type ScopedWritePolicy,
   type ScopedWritePolicyDecision,
-} from "../src/write-policy";
+} from "../apps/cli/src/write-policy";
 
 const operationId = "00000000-0000-4000-8000-000000000501";
 const auditEventId = "00000000-0000-4000-8000-000000000502";
@@ -86,9 +87,9 @@ async function caughtCliError(action: () => Promise<unknown>): Promise<CliError>
 type ApiTrace = Readonly<{ method: string; path: string; body: unknown }>;
 
 function scopedFakeAsana(options: { failRemoteWrite?: boolean } = {}): { client: AsanaClient; traces: ApiTrace[] } {
-  const client = createClient("SEC005_AUDIT_TOKEN_CANARY");
+  const { client, sdk } = asanaFixture();
   const traces: ApiTrace[] = [];
-  Object.defineProperty(client, "callApi", {
+  Object.defineProperty(sdk, "callApi", {
     configurable: true,
     value: async (...argumentsValue: unknown[]) => {
       const path = z.string().parse(argumentsValue[0]);

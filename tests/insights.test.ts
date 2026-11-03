@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
-const entrypoint = resolve(import.meta.dir, "../src/index.ts");
+const entrypoint = resolve(import.meta.dir, "../apps/cli/src/index.ts");
 const temporaryDirectories: string[] = [];
 
 async function fixture() {

@@ -1,25 +1,26 @@
+import { asanaFixture } from "./support/asana-fixture";
 import { afterEach, describe, expect, test } from "bun:test";
 import { z } from "zod";
-import { runAgentCommand } from "../src/agent-cli";
-import { AgentOperationService } from "../src/agent-operations";
-import { parseArgs } from "../src/args";
-import { runCli } from "../src/cli";
-import { CliError, normalizeError } from "../src/errors";
-import type { HostScopedWritePolicyProvider } from "../src/host-write-policy";
-import { MemoryOperationRepository } from "../src/operations/memory-repository";
+import { runAgentCommand } from "../apps/cli/src/agent-cli";
+import { AgentOperationService } from "../apps/cli/src/agent-operations";
+import { parseArgs } from "../apps/cli/src/args";
+import { runCli } from "../apps/cli/src/cli";
+import { CliError, normalizeError } from "../apps/cli/src/errors";
+import type { HostScopedWritePolicyProvider } from "../apps/cli/src/host-write-policy";
+import { MemoryOperationRepository } from "../apps/cli/src/operations/memory-repository";
 import {
   OperationJournalError,
   type OperationCompareAndSetResult,
   type OperationRepository,
-} from "../src/operations/repository";
+} from "../apps/cli/src/operations/repository";
 import type {
   CreateOperationInput,
   OperationRecord,
   OperationTransition,
-} from "../src/operations/schemas";
-import { createClient, type AsanaClient } from "../src/sdk";
-import { registerSecret } from "../src/security";
-import type { ScopedWritePolicy } from "../src/write-policy";
+} from "../apps/cli/src/operations/schemas";
+import type { AsanaClient } from "../apps/cli/src/sdk";
+import { registerSecret } from "../apps/cli/src/security";
+import type { ScopedWritePolicy } from "../apps/cli/src/write-policy";
 
 const firstOperationId = "00000000-0000-4000-8000-000000000101";
 const secondOperationId = "00000000-0000-4000-8000-000000000102";
@@ -90,9 +91,9 @@ function fakeAsana(options: FakeAsanaOptions = {}): {
   client: AsanaClient;
   traces: ApiTrace[];
 } {
-  const client = createClient(`AP008_FAKE_TOKEN_${Math.random().toString(16).slice(2)}`);
+  const { client, sdk } = asanaFixture();
   const traces: ApiTrace[] = [];
-  Object.defineProperty(client, "callApi", {
+  Object.defineProperty(sdk, "callApi", {
     configurable: true,
     value: async (...rawArguments: unknown[]) => {
       const [path, method, pathParams, , , , body] = apiCallArgsSchema.parse(rawArguments);

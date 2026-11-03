@@ -8,7 +8,7 @@ import {
   INVOCATION_LOG_FILE,
   invocationLogEventSchema,
   probeInvocationLog,
-} from "../src/invocation-log";
+} from "../apps/cli/src/invocation-log";
 
 describe("local invocation log", () => {
   test("records bounded metadata without arguments, task content, or credentials", () => {

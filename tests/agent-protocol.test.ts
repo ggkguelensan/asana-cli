@@ -1,18 +1,18 @@
 import { describe, expect, test } from "bun:test";
 import { z } from "zod";
-import { runAgentCommand } from "../src/agent-cli";
-import { AGENT_MANIFEST } from "../src/agent-mode";
-import { parseArgs } from "../src/args";
-import { runCli } from "../src/cli";
-import { MemoryOperationRepository } from "../src/operations/memory-repository";
-import { createClient } from "../src/sdk";
-import { secureAgentEnvelope } from "../src/security";
+import { runAgentCommand } from "../apps/cli/src/agent-cli";
+import { AGENT_MANIFEST } from "../apps/cli/src/agent-mode";
+import { parseArgs } from "../apps/cli/src/args";
+import { runCli } from "../apps/cli/src/cli";
+import { MemoryOperationRepository } from "../apps/cli/src/operations/memory-repository";
+import { createClient } from "../apps/cli/src/sdk";
+import { secureAgentEnvelope } from "../apps/cli/src/security";
 import {
   AGENT_PROTOCOL_COMPATIBILITY,
   AGENT_PROTOCOL_UPGRADE_GUIDANCE,
   AGENT_PROTOCOL_VERSION,
   CLI_VERSION,
-} from "../src/version";
+} from "../apps/cli/src/version";
 
 const agentRuntime = { operations: new MemoryOperationRepository() };
 
@@ -99,8 +99,7 @@ describe("agent protocol compatibility", () => {
       },
     });
     try {
-      const client = createClient("AGENT_STATUS_TEST_TOKEN");
-      client.basePath = new URL("/api/1.0", server.url).toString().replace(/\/$/, "");
+      const client = createClient("AGENT_STATUS_TEST_TOKEN", { baseUrl: new URL("/api/1.0", server.url).toString().replace(/\/$/, "") });
       const result = z.looseObject({
         operation: z.literal("auth.status"),
         data: z.looseObject({

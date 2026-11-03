@@ -4,7 +4,7 @@ import {
   verifyReleaseCommit,
   type GitExecutor,
 } from "../scripts/release-preflight";
-import { CLI_VERSION } from "../src/version";
+import { CLI_VERSION } from "../apps/cli/src/version";
 
 const commit = "a".repeat(40);
 const releaseTag = `v${CLI_VERSION}`;

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { z } from "zod";
-import { runAgentCommand } from "../src/agent-cli";
+import { runAgentCommand } from "../apps/cli/src/agent-cli";
 import {
   readApplyAgentInput,
   readDirectAgentInput,
@@ -11,11 +11,11 @@ import {
   readStdinAgentInput,
   readTaskContextAgentInput,
   readWorktreeTaskAgentInput,
-} from "../src/agent-input";
-import { parseArgs } from "../src/args";
-import { CliError } from "../src/errors";
-import { MemoryOperationRepository } from "../src/operations/memory-repository";
-import { createClient } from "../src/sdk";
+} from "../apps/cli/src/agent-input";
+import { parseArgs } from "../apps/cli/src/args";
+import { CliError } from "../apps/cli/src/errors";
+import { MemoryOperationRepository } from "../apps/cli/src/operations/memory-repository";
+import { createClient } from "../apps/cli/src/sdk";
 
 const agentRuntime = { operations: new MemoryOperationRepository() };
 
@@ -328,8 +328,7 @@ describe("agent direct read input", () => {
   });
 
   test("rejects invalid direct input before any API request can start", async () => {
-    const client = createClient("VALIDATION_BEFORE_NETWORK_TOKEN");
-    client.basePath = "http://127.0.0.1:1/api/1.0";
+    const client = createClient("VALIDATION_BEFORE_NETWORK_TOKEN", { baseUrl: "http://127.0.0.1:1/api/1.0" });
     expect(await errorCode(() => runAgentCommand(client, parseArgs([
       "agent",
       "list-comments",
@@ -469,8 +468,7 @@ describe("agent direct read input", () => {
   });
 
   test("rejects malformed candidate input before reading Git state or starting a request", async () => {
-    const client = createClient("CANDIDATE_VALIDATION_BEFORE_NETWORK_TOKEN");
-    client.basePath = "http://127.0.0.1:1/api/1.0";
+    const client = createClient("CANDIDATE_VALIDATION_BEFORE_NETWORK_TOKEN", { baseUrl: "http://127.0.0.1:1/api/1.0" });
     expect(await errorCode(() => runAgentCommand(client, parseArgs([
       "agent",
       "context",

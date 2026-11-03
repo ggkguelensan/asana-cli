@@ -1,3 +1,4 @@
+import { asanaFixture } from "./support/asana-fixture";
 import { describe, expect, test } from "bun:test";
 import { z } from "zod";
 import {
@@ -7,8 +8,8 @@ import {
   DEPENDENCY_GRAPH_MAX_VISITED_TASKS,
   MAX_COMBINED_DEPENDENCY_RELATIONS,
   readDirectDependencyGids,
-} from "../src/dependency-safety";
-import { createClient, type AsanaClient } from "../src/sdk";
+} from "../apps/cli/src/dependency-safety";
+import type { AsanaClient } from "../apps/cli/src/sdk";
 
 const apiCallSchema = z.tuple([
   z.string(),
@@ -29,8 +30,8 @@ function dependencyClient(
   status?: number,
   dependentGraph: Readonly<Record<string, readonly string[]>> = {},
 ): AsanaClient {
-  const client = createClient(`DEPENDENCY_SAFETY_${Math.random().toString(16).slice(2)}`);
-  Object.defineProperty(client, "callApi", {
+  const { client, sdk } = asanaFixture();
+  Object.defineProperty(sdk, "callApi", {
     configurable: true,
     value: async (...rawArguments: unknown[]) => {
       const [path, method, pathParams] = apiCallSchema.parse(rawArguments);

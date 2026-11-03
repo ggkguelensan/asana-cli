@@ -1,11 +1,12 @@
+import { asanaFixture } from "./support/asana-fixture";
 import { describe, expect, test } from "bun:test";
 import { z } from "zod";
-import { batchTasksInputSchema, MAX_BATCH_TASKS } from "../src/agent-action-schemas";
-import { runAgentCommand } from "../src/agent-cli";
-import { parseArgs } from "../src/args";
-import { batchReadTasks } from "../src/batch-tasks";
-import { MemoryOperationRepository } from "../src/operations/memory-repository";
-import { createClient, type AsanaClient } from "../src/sdk";
+import { batchTasksInputSchema, MAX_BATCH_TASKS } from "../apps/cli/src/agent-action-schemas";
+import { runAgentCommand } from "../apps/cli/src/agent-cli";
+import { parseArgs } from "../apps/cli/src/args";
+import { batchReadTasks } from "../apps/cli/src/batch-tasks";
+import { MemoryOperationRepository } from "../apps/cli/src/operations/memory-repository";
+import type { AsanaClient } from "../apps/cli/src/sdk";
 
 const apiCallSchema = z.tuple([
   z.string(),
@@ -25,9 +26,9 @@ function batchClient(results: readonly unknown[]): {
   client: AsanaClient;
   calls: Array<{ path: string; method: string; body: unknown }>;
 } {
-  const client = createClient(`BATCH_TASKS_${Math.random().toString(16).slice(2)}`);
+  const { client, sdk } = asanaFixture();
   const calls: Array<{ path: string; method: string; body: unknown }> = [];
-  Object.defineProperty(client, "callApi", {
+  Object.defineProperty(sdk, "callApi", {
     configurable: true,
     value: async (...rawArguments: unknown[]) => {
       const [path, method, , , , , body] = apiCallSchema.parse(rawArguments);

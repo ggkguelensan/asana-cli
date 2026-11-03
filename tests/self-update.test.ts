@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { chmod, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { parseArgs } from "../src/args";
+import { parseArgs } from "../apps/cli/src/args";
 import {
   compareSemver,
   detectInstallation,
@@ -16,7 +16,7 @@ import {
   type LatestRelease,
   type UpdateCommandDependencies,
   type VerifiedReleaseArtifact,
-} from "../src/self-update";
+} from "../apps/cli/src/self-update";
 
 function sha256(bytes: Uint8Array): string {
   return createHash("sha256").update(bytes).digest("hex");

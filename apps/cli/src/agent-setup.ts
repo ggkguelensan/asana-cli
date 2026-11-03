@@ -3,13 +3,13 @@ import { resolve } from "node:path";
 import {
   EMBEDDED_INTEGRATION_BUNDLE,
   embeddedIntegrationBundle,
-} from "../generated/integrations/bundle";
+} from "../../../generated/integrations/bundle";
 import {
   INTEGRATION_CLIENTS,
   integrationClientIdSchema,
   integrationScopeSchema,
   type IntegrationClientId,
-} from "../integrations/clients";
+} from "../../../integrations/clients";
 import { booleanFlag, stringFlag, type ParsedArgs } from "./args";
 import { CliError } from "./errors";
 import {

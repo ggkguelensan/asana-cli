@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import { generateIntegrationBundle } from "./generate-integrations";
 import { parseRequestedBuildTarget } from "./check-support-matrix";
 
@@ -14,7 +15,7 @@ const target = parseRequestedBuildTarget(rawTarget);
 const outfile = requestedOutput ?? "dist/asana-cli";
 
 const result = await Bun.build({
-  entrypoints: ["src/index.ts"],
+  entrypoints: [fileURLToPath(new URL("../apps/cli/src/index.ts", import.meta.url))],
   compile: {
     ...(target ? { target } : {}),
     outfile,

@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   assertSupportedRuntimePlatform,
   SUPPORTED_RUNTIME_PLATFORMS,
-} from "../src/platform-support";
+} from "../apps/cli/src/platform-support";
 
 describe("runtime platform support", () => {
   test("accepts only the documented native runtime platforms", () => {

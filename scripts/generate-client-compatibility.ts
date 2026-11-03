@@ -5,7 +5,7 @@ import { z } from "zod";
 import {
   CLIENT_ADAPTERS,
   clientAdapterIdSchema,
-} from "../src/client-adapter-specs";
+} from "../apps/cli/src/client-adapter-specs";
 
 const projectRoot = resolve(import.meta.dir, "..");
 const evidenceDirectory = resolve(projectRoot, "evidence/client-evals");

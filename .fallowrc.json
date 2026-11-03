@@ -1,6 +1,12 @@
 {
   "$schema": "./node_modules/fallow/schema.json",
-  "entry": ["src/index.ts", "tests/**/*.test.ts", "web/tests/**/*.test.ts"],
+  "entry": [
+    "apps/cli/src/index.ts",
+    "tests/**/*.test.ts",
+    "apps/web/tests/**/*.test.ts",
+    "packages/*/tests/**/*.test.ts",
+    "apps/cli/build.ts"
+  ],
   "duplicates": {
     "mode": "mild",
     "minTokens": 50,
@@ -17,15 +23,21 @@
   "ignoreExports": [
     {
       "file": "integrations/clients.ts",
-      "exports": ["*"]
+      "exports": [
+        "*"
+      ]
     },
     {
-      "file": "src/client-adapter-specs.ts",
-      "exports": ["*"]
+      "file": "apps/cli/src/client-adapter-specs.ts",
+      "exports": [
+        "*"
+      ]
     },
     {
-      "file": "src/integrations/schemas.ts",
-      "exports": ["*"]
+      "file": "apps/cli/src/integrations/schemas.ts",
+      "exports": [
+        "*"
+      ]
     }
   ],
   "rules": {
@@ -40,5 +52,10 @@
     "private-type-leaks": "warn",
     "stale-suppressions": "warn",
     "require-suppression-reason": "error"
+  },
+  "audit": {
+    "deadCodeBaseline": ".fallow-dead-code-baseline.json",
+    "healthBaseline": ".fallow-health-baseline.json",
+    "dupesBaseline": ".fallow-dupes-baseline.json"
   }
 }

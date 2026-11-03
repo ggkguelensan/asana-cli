@@ -6,12 +6,12 @@ import {
   writeFile,
 } from "node:fs/promises";
 import { join } from "node:path";
-import { normalizeError } from "../src/errors";
+import { normalizeError } from "../apps/cli/src/errors";
 import {
   computeTaskCreateTemplateDigest,
   FixedFileTaskCreateTemplateProvider,
   taskCreateTemplateManifestSchema,
-} from "../src/task-create-templates";
+} from "../apps/cli/src/task-create-templates";
 import { runGit } from "./support/git";
 import { TemporaryDirectories } from "./support/temp";
 

@@ -1,7 +1,7 @@
 # Целевое состояние: ядро, фоновый сервис и веб-доска
 
 Статус: архитектурное предложение для следующего product scope, 2026-11-03.
-Это целевой контракт, а не описание уже доступных команд. В [web/](../web/README.md) реализован
+Это целевой контракт, а не описание уже доступных команд. В [apps/web/](../apps/web/README.md) реализован
 самостоятельный TypeScript/React/Jotai/Vite frontend; daemon и его API пока отсутствуют.
 Текущая CLI реализация описана в
 [architecture](architecture.md). Плагины и возможности клиентов определены отдельно в
@@ -101,21 +101,26 @@ flowchart TB
 в набор микросервисов. REST, WebSocket, CLI и MCP — adapters общего interface; бизнес-правила
 не зависят от транспорта, HTML, вывода терминала или конкретного поставщика модели.
 
-Предлагаемая структура новых модулей; это будущие пути, а не существующие файлы:
+Текущий репозиторий уже перенесён в [Bun/Turborepo monorepo](monorepo.md).
+CLI находится в `apps/cli`, web — в `apps/web`; `packages/asana-client` адаптирует SDK,
+`packages/contracts` задаёт browser-safe DTO. Следующий шаг расширяет эту структуру:
 
 ```text
-src/
-├── core/                 операции доски, назначения и команды сессиям
-├── service/              lifecycle, discovery, HTTP, auth, WebSocket
-├── sync/                 desired subscriptions, Events API, webhook inbox, reconciliation
-├── board/                Drizzle schema, SQLite migrations, projections, event outbox
-├── mcp/                  curated tools и локальный stdio bridge
-└── gateway/              pairing и удалённый транспорт, отдельный runtime mode
-web/                      frontend и локальные assets
-integrations/             источники metadata для client packages
-skills/source/            существующие skills и будущие workflows доски
-generated/                только воспроизводимые outputs генераторов
+apps/
+├── cli/                   существующее приложение
+├── web/                   существующий React/Jotai/Vite frontend
+└── service/               будущий Bun/Hono composition root, lifecycle, HTTP/WS
+packages/
+├── asana-client/          существующий адаптер node-asana
+├── contracts/             существующие DTO, commands, events и receipts
+└── core/                  будущее детерминированное ядро workflow
+integrations/              metadata клиентских интеграций
+skills/source/             источники skills
+generated/                 воспроизводимые outputs генераторов
 ```
+
+SQLite/Drizzle adapter, sync, MCP и gateway выделяются по фактическим use cases;
+это будущие модули, а не уже реализованные runtime features.
 
 Конкретные filenames определяются в implementation PR. Не нужно заранее создавать пустые
 facades, generic repository framework или отдельный package на каждый каталог.

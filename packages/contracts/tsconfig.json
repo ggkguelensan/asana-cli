@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "include": [
+    "src/**/*.ts",
+    "tests/**/*.ts"
+  ],
+  "compilerOptions": {
+    "types": [],
+    "lib": [
+      "ES2022",
+      "DOM"
+    ]
+  }
+}

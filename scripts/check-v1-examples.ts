@@ -2,9 +2,9 @@ import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";
 import { z } from "zod";
-import { FileOperationRepository } from "../src/operations/file-repository";
-import { resolveOperationJournalDirectory } from "../src/operations/paths";
-import { operationStatusProjectionSchema } from "../src/operations/status-projection";
+import { FileOperationRepository } from "../apps/cli/src/operations/file-repository";
+import { resolveOperationJournalDirectory } from "../apps/cli/src/operations/paths";
+import { operationStatusProjectionSchema } from "../apps/cli/src/operations/status-projection";
 
 const projectRoot = resolve(import.meta.dir, "..");
 const documentationPath = join(projectRoot, "docs", "v1-workflows.md");

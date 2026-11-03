@@ -12,7 +12,7 @@ import {
   AGENT_PROTOCOL_COMPATIBILITY,
   AGENT_PROTOCOL_VERSION,
   CLI_VERSION,
-} from "../src/version";
+} from "../apps/cli/src/version";
 import {
   clientEvalSubjectSha256,
   integrationBundleSha256,

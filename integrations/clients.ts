@@ -6,8 +6,8 @@ import {
   clientAdapter,
   clientAdapterIdSchema,
   parseClientAdapterId,
-} from "../src/client-adapter-specs";
-import { AGENT_PROTOCOL_COMPATIBILITY, AGENT_PROTOCOL_VERSION } from "../src/version";
+} from "../apps/cli/src/client-adapter-specs";
+import { AGENT_PROTOCOL_COMPATIBILITY, AGENT_PROTOCOL_VERSION } from "../apps/cli/src/version";
 
 export const INTEGRATION_BUNDLE_SCHEMA = "asana-cli.integration-bundle.v1" as const;
 export const INTEGRATION_BUNDLE_VERSION = "1.1.0" as const;

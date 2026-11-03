@@ -7,7 +7,7 @@ import {
   createClient,
   invokeApiMethod,
   normalizeSdkResult,
-} from "../src/sdk";
+} from "../apps/cli/src/sdk";
 
 describe("node-asana boundary", () => {
   test("lists generated API classes while hiding WithHttpInfo methods", () => {

@@ -8,19 +8,19 @@ import {
   agentActionDescriptorSchema,
   createAgentActionResult,
   type AgentActionName,
-} from "../src/agent-contract";
-import { taskPatchSchema } from "../src/agent-action-schemas";
-import { AGENT_MANIFEST } from "../src/agent-mode";
-import { runCli } from "../src/cli";
-import { AGENT_ERROR_SCHEMA_ID } from "../src/errors";
-import { jsonObjectSchema } from "../src/schemas";
-import { secureAgentEnvelope } from "../src/security";
+} from "../apps/cli/src/agent-contract";
+import { taskPatchSchema } from "../apps/cli/src/agent-action-schemas";
+import { AGENT_MANIFEST } from "../apps/cli/src/agent-mode";
+import { runCli } from "../apps/cli/src/cli";
+import { AGENT_ERROR_SCHEMA_ID } from "../apps/cli/src/errors";
+import { jsonObjectSchema } from "../apps/cli/src/schemas";
+import { secureAgentEnvelope } from "../apps/cli/src/security";
 import {
   AGENT_PROTOCOL_COMPATIBILITY,
   AGENT_PROTOCOL_UPGRADE_GUIDANCE,
   AGENT_PROTOCOL_VERSION,
   CLI_VERSION,
-} from "../src/version";
+} from "../apps/cli/src/version";
 
 const publishedActionSchema = z.strictObject({
   descriptor: agentActionDescriptorSchema,

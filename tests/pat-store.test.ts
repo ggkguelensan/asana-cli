@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { patFromStdin, resolvePatWithSource, validatePat } from "../src/pat-store";
+import { patFromStdin, resolvePatWithSource, validatePat } from "../apps/cli/src/pat-store";
 
 describe("PAT resolution", () => {
   test("prefers ASANA_ACCESS_TOKEN and preserves opaque characters", async () => {

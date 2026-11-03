@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { z } from "zod";
-import { readJsonInput } from "../src/io";
-import { parseExternalData, taskSchema } from "../src/schemas";
-import { collectPages } from "../src/sdk";
+import { readJsonInput } from "../apps/cli/src/io";
+import { parseExternalData, taskSchema } from "../apps/cli/src/schemas";
+import { collectPages } from "../apps/cli/src/sdk";
 
 describe("Zod I/O boundaries", () => {
   test("infers typed JSON only after schema validation", async () => {

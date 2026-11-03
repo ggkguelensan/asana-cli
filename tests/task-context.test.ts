@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { runAgentCommand } from "../src/agent-cli";
-import { parseArgs } from "../src/args";
-import { MemoryOperationRepository } from "../src/operations/memory-repository";
-import { createClient } from "../src/sdk";
+import { runAgentCommand } from "../apps/cli/src/agent-cli";
+import { parseArgs } from "../apps/cli/src/args";
+import { MemoryOperationRepository } from "../apps/cli/src/operations/memory-repository";
+import { createClient } from "../apps/cli/src/sdk";
 
 describe("compact task context", () => {
   test("links task structure, bounded relations, and attachment metadata without URLs", async () => {
@@ -79,8 +79,7 @@ describe("compact task context", () => {
     });
 
     try {
-      const client = createClient("TASK_CONTEXT_TOKEN");
-      client.basePath = new URL("/api/1.0", server.url).toString().replace(/\/$/, "");
+      const client = createClient("TASK_CONTEXT_TOKEN", { baseUrl: new URL("/api/1.0", server.url).toString().replace(/\/$/, "") });
       const runtime = { operations: new MemoryOperationRepository() };
       const metadata = await runAgentCommand(client, parseArgs([
         "agent",
@@ -179,8 +178,7 @@ describe("compact task context", () => {
       },
     });
     try {
-      const client = createClient("TASK_CONTEXT_BUDGET_TOKEN");
-      client.basePath = new URL("/api/1.0", server.url).toString().replace(/\/$/, "");
+      const client = createClient("TASK_CONTEXT_BUDGET_TOKEN", { baseUrl: new URL("/api/1.0", server.url).toString().replace(/\/$/, "") });
       const result = await runAgentCommand(client, parseArgs([
         "agent",
         "context",
@@ -242,8 +240,7 @@ describe("compact task context", () => {
       },
     });
     try {
-      const client = createClient("TASK_CONTEXT_PARTIAL_TOKEN");
-      client.basePath = new URL("/api/1.0", server.url).toString().replace(/\/$/, "");
+      const client = createClient("TASK_CONTEXT_PARTIAL_TOKEN", { baseUrl: new URL("/api/1.0", server.url).toString().replace(/\/$/, "") });
       const result = await runAgentCommand(client, parseArgs([
         "agent",
         "context",

@@ -13,7 +13,7 @@ bun run test:black-box
 
 That command builds the executable first. The normal `bun run check` builds once and then includes
 the same tests in the complete `bun test` run. `check:black-box-boundary` rejects source imports,
-execution of `src/index.ts`, loss of the standalone script or removal of the compiled process
+execution of `apps/cli/src/index.ts`, loss of the standalone script or removal of the compiled process
 boundary.
 
 ## Coverage matrix

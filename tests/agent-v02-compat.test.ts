@@ -1,12 +1,13 @@
+import { asanaFixture } from "./support/asana-fixture";
 import { describe, expect, test } from "bun:test";
 import { z } from "zod";
-import { runAgentCommand } from "../src/agent-cli";
-import { AGENT_MANIFEST } from "../src/agent-mode";
-import { parseArgs } from "../src/args";
-import { runCli } from "../src/cli";
-import { CliError, normalizeError } from "../src/errors";
-import { MemoryOperationRepository } from "../src/operations/memory-repository";
-import { createClient, type AsanaClient } from "../src/sdk";
+import { runAgentCommand } from "../apps/cli/src/agent-cli";
+import { AGENT_MANIFEST } from "../apps/cli/src/agent-mode";
+import { parseArgs } from "../apps/cli/src/args";
+import { runCli } from "../apps/cli/src/cli";
+import { CliError, normalizeError } from "../apps/cli/src/errors";
+import { MemoryOperationRepository } from "../apps/cli/src/operations/memory-repository";
+import type { AsanaClient } from "../apps/cli/src/sdk";
 
 async function withAgentStdin<Result>(input: unknown, action: () => Promise<Result>): Promise<Result> {
   const runtime = Bun as unknown as { stdin: { text(): Promise<string> } };
@@ -29,8 +30,8 @@ async function caughtCliError(action: () => Promise<unknown>): Promise<CliError>
 }
 
 function v02CompatibleClient(): AsanaClient {
-  const client = createClient("AP013_V02_COMPATIBILITY_TOKEN");
-  Object.defineProperty(client, "callApi", {
+  const { client, sdk } = asanaFixture();
+  Object.defineProperty(sdk, "callApi", {
     configurable: true,
     value: async () => ({
       response: {},

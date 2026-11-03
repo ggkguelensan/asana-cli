@@ -6,14 +6,14 @@
 
 ## Запуск
 
-Из каталога `web/`, Bun 1.3.14:
+Из корня монорепозитория, Bun из корневого `packageManager`:
 
 ```sh
 bun install --frozen-lockfile
 bun run dev
 ```
 
-Открыть `http://127.0.0.1:5173`. Для другого порта: `bun run dev --port 5187`.
+Открыть `http://127.0.0.1:5173`. Для другого порта: `bun run --filter @asana-cli/web dev --port 5187`.
 Режим примера включается только явно: `http://127.0.0.1:5173/?demo=1`.
 Пример хранит синтетические данные в памяти и сбрасывается при перезагрузке; он не обращается
 в Asana и не является реализацией business rules сервиса. Его режим всегда обозначен в UI.
@@ -21,13 +21,13 @@ bun run dev
 Production assets:
 
 ```sh
-bun run build
-bun run preview
+bunx turbo run build --filter=@asana-cli/web
+bun run --filter @asana-cli/web preview
 ```
 
-Сборка находится в `web/dist/`. Vite/Bun нужны при разработке/сборке, но браузер получает обычные
+Сборка находится в `apps/web/dist/`. Vite/Bun нужны при разработке/сборке, но браузер получает обычные
 статические assets. Встраивание assets в CLI binary относится к реализации daemon и пока не
-выполнено. Root CLI build/release, root lockfile и source subject digest не изменены.
+выполнено. Установка и lockfile общие для всего монорепозитория.
 
 Для разработки с локальным backend:
 
@@ -42,11 +42,11 @@ HTTP/WebSocket и session cookies. Нельзя передавать PAT в `VIT
 ## Структура
 
 ```text
-web/
+apps/web/
 ├── src/main.tsx               Jotai Provider и выбор явного service/demo adapter
 ├── src/app/App.tsx            композиция страницы и lifecycle подключения
 ├── src/components/            карточка, секция, сводка, toolbar, dialogs, детали, уведомления
-├── src/model/board.ts          runtime validation DTO, bounded wire schemas и view types
+├── src/model/board.ts          view labels/types; wire schemas в packages/contracts
 ├── src/state/atoms.ts          Jotai atoms + derived поиск/фильтры/секции/счётчики/selection
 ├── src/state/connection.ts     snapshot, invalidation, reconnect, dispose и resync
 ├── src/state/controller.ts     команды, revision, pending, receipt и conflict/unknown handling

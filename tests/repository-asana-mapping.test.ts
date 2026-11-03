@@ -3,11 +3,11 @@ import { chmod, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { z } from "zod";
-import { runLocalAgentCommand } from "../src/agent-cli";
-import { parseArgs } from "../src/args";
-import { runCli } from "../src/cli";
-import { CliError, normalizeError } from "../src/errors";
-import { MemoryOperationRepository } from "../src/operations/memory-repository";
+import { runLocalAgentCommand } from "../apps/cli/src/agent-cli";
+import { parseArgs } from "../apps/cli/src/args";
+import { runCli } from "../apps/cli/src/cli";
+import { CliError, normalizeError } from "../apps/cli/src/errors";
+import { MemoryOperationRepository } from "../apps/cli/src/operations/memory-repository";
 import {
   FixedFileRepositoryAsanaMappingProvider,
   findRepositoryAsanaMapping,
@@ -15,7 +15,7 @@ import {
   parseRepositoryAsanaMappingFile,
   type RepositoryAsanaMapping,
   type RepositoryAsanaMappingFile,
-} from "../src/repository-asana-mapping";
+} from "../apps/cli/src/repository-asana-mapping";
 
 const directories: string[] = [];
 const operations = new MemoryOperationRepository();

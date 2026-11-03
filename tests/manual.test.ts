@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { runCli } from "../src/cli";
+import { runCli } from "../apps/cli/src/cli";
 
 describe("concise help and embedded manual", () => {
   test("advertises --agents as the first agent entrypoint", async () => {

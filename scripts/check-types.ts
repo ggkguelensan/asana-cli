@@ -1,6 +1,6 @@
 export {};
 
-const roots = ["src", "tests", "scripts"];
+const roots = ["apps", "packages", "tests", "scripts"];
 const forbidden = [
   /:\s*any\b/,
   /\bas\s+any\b/,

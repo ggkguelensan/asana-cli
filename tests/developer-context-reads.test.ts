@@ -1,10 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import { z } from "zod";
-import { runAgentCommand } from "../src/agent-cli";
-import { parseArgs } from "../src/args";
-import { CliError } from "../src/errors";
-import { MemoryOperationRepository } from "../src/operations/memory-repository";
-import { createClient } from "../src/sdk";
+import { runAgentCommand } from "../apps/cli/src/agent-cli";
+import { parseArgs } from "../apps/cli/src/args";
+import { CliError } from "../apps/cli/src/errors";
+import { MemoryOperationRepository } from "../apps/cli/src/operations/memory-repository";
+import { createClient } from "../apps/cli/src/sdk";
 
 const agentRuntime = { operations: new MemoryOperationRepository() };
 
@@ -113,8 +113,7 @@ describe("curated developer context reads", () => {
     });
 
     try {
-      const client = createClient("CURATED_DEVELOPER_CONTEXT_TOKEN");
-      client.basePath = new URL("/api/1.0", server.url).toString().replace(/\/$/, "");
+      const client = createClient("CURATED_DEVELOPER_CONTEXT_TOKEN", { baseUrl: new URL("/api/1.0", server.url).toString().replace(/\/$/, "") });
 
       const projects = await runAgentCommand(client, parseArgs([
         "agent", "list-projects",
@@ -288,8 +287,7 @@ describe("curated developer context reads", () => {
       },
     });
     try {
-      const client = createClient("CURATED_SCOPE_MISMATCH_TOKEN");
-      client.basePath = new URL("/api/1.0", server.url).toString().replace(/\/$/, "");
+      const client = createClient("CURATED_SCOPE_MISMATCH_TOKEN", { baseUrl: new URL("/api/1.0", server.url).toString().replace(/\/$/, "") });
       expect(await errorCode(() => runAgentCommand(client, parseArgs([
         "agent", "list-sections", "--project", "2201",
       ]), agentRuntime))).toBe("internal");

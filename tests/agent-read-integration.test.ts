@@ -1,10 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import { z } from "zod";
-import { runAgentCommand } from "../src/agent-cli";
-import { parseArgs } from "../src/args";
-import { MemoryOperationRepository } from "../src/operations/memory-repository";
-import { createClient } from "../src/sdk";
-import { secureAgentEnvelope } from "../src/security";
+import { runAgentCommand } from "../apps/cli/src/agent-cli";
+import { parseArgs } from "../apps/cli/src/args";
+import { MemoryOperationRepository } from "../apps/cli/src/operations/memory-repository";
+import { createClient } from "../apps/cli/src/sdk";
+import { secureAgentEnvelope } from "../apps/cli/src/security";
 
 const agentRuntime = { operations: new MemoryOperationRepository() };
 
@@ -45,8 +45,7 @@ describe("agent read integration", () => {
       },
     });
     try {
-      const client = createClient("TWO_PAGE_CONTENT_BUDGET_TOKEN");
-      client.basePath = new URL("/api/1.0", server.url).toString().replace(/\/$/, "");
+      const client = createClient("TWO_PAGE_CONTENT_BUDGET_TOKEN", { baseUrl: new URL("/api/1.0", server.url).toString().replace(/\/$/, "") });
       const direct = await runAgentCommand(client, parseArgs([
         "agent",
         "list-comments",
@@ -135,8 +134,7 @@ describe("agent read integration", () => {
       },
     });
     try {
-      const client = createClient("READ_EQUIVALENCE_TOKEN");
-      client.basePath = new URL("/api/1.0", server.url).toString().replace(/\/$/, "");
+      const client = createClient("READ_EQUIVALENCE_TOKEN", { baseUrl: new URL("/api/1.0", server.url).toString().replace(/\/$/, "") });
 
       const directTask = await runAgentCommand(client, parseArgs([
         "agent",

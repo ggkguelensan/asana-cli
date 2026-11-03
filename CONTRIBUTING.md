@@ -17,10 +17,11 @@ bun install --frozen-lockfile
 bun run check:fast
 ```
 
-The independent [web application](web/README.md) uses Vite, React, TypeScript, and Jotai. Run
-`bun install --cwd web --frozen-lockfile`, `bun run --cwd web check`, and
-`bun run --cwd web test:e2e` when changing it. Browser checks launch
-their own isolated dev server; no Asana credential or running daemon is required.
+The [monorepo guide](docs/monorepo.md) describes workspace boundaries and Turbo tasks.
+Install once at the repository root. `bun run build`, `bun run typecheck`, and `bun run test`
+coordinate the CLI, [web application](apps/web/README.md), and shared packages.
+Run `bun run test:e2e` when changing the frontend. Browser checks own an isolated dev server;
+no Asana credential or running daemon is required.
 
 The project intentionally does not support Windows runtime or release artifacts. See
 [the support policy](docs/support-policy.md).
@@ -58,7 +59,8 @@ The complete boundary is documented in [black-box testing](docs/black-box-testin
 Do not edit `generated/` or machine evidence by hand. Run the corresponding generator or evaluation
 command and commit the source plus its deterministic output together.
 
-Any change below `src/`, `skills/source/`, `integrations/`, or `generated/integrations/` changes the
+Changes to `apps/cli/src/`, `packages/asana-client/src/`, their manifests, `bun.lock`,
+`skills/source/`, `integrations/`, or `generated/integrations/` change the
 current client-evaluation subject digest. Read [evidence maintenance](evidence/README.md) before
 refactoring those trees.
 

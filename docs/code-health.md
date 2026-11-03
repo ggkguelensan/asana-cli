@@ -35,7 +35,7 @@ Existing versions in `bun.lock` remain reproducible. Dependabot applies the same
 Bun packages and GitHub Actions; GitHub security updates are intentionally not delayed.
 
 The `Asana SDK version` workflow checks the official npm `latest` tag every other Monday. It fails
-only when the exact `asana` version in `package.json` is older than the newest release that has
+only when the exact `asana` version in `packages/asana-client/package.json` is older than the newest release that has
 completed quarantine. A newer release still inside quarantine is reported without failing. Run the
 same check immediately with:
 
@@ -97,3 +97,6 @@ bun run check:fallow-regression
 
 Commit a lower baseline together with the cleanup. Raising a baseline or threshold requires an
 explicit rationale in the pull request.
+
+Monorepo path migration and reproducible historical baselines are documented in
+[monorepo](monorepo.md#release-и-исторические-проверки).

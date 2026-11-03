@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
-import { resolveOperationJournalDirectory } from "../src/operations/paths";
+import { resolveOperationJournalDirectory } from "../apps/cli/src/operations/paths";
 
 describe("operation journal paths", () => {
   test("prefers a validated XDG state directory on Linux", () => {

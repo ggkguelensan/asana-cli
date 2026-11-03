@@ -53,6 +53,10 @@ describe("release SPDX SBOM", () => {
     expect(first.packages.map((entry) => entry.name)).toContain("asana");
     expect(first.packages.map((entry) => entry.name)).toContain("zod");
     expect(first.packages.length).toBeGreaterThan(70);
+    const names = first.packages.map((entry) => entry.name);
+    expect(names).not.toContain("react");
+    expect(names).not.toContain("turbo");
+    expect(names).not.toContain("vite");
     expect(first.relationships).toContainEqual({
       spdxElementId: "SPDXRef-DOCUMENT",
       relationshipType: "DESCRIBES",
