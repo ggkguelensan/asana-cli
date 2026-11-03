@@ -109,8 +109,8 @@ Acceptance:
 ## SVC-003 — Веб-доска из embedded assets
 
 Зависимость: SVC-002. Самостоятельная responsive доска по композиции референса, без зависимости
-от Artifact DB и Claude session ID. Разрешение на перенос HTML проверяется отдельно; отсутствие
-разрешения означает самостоятельную реализацию, а не остановку проектирования.
+от Artifact DB и Claude session ID. Перенос UI предусмотрен запросом пользователя; применимые
+license notices сохраняются, внешние assets проверяются и адаптируются к embedded distribution.
 
 Acceptance:
 
@@ -120,7 +120,7 @@ Acceptance:
 - WebSocket reconnect/resync, service stop из UI, no browser offline mutation queue;
 - keyboard/focus, reduced motion, темы, 360 px layout и no external trackers;
 - compiled binary отдаёт assets без source checkout и frontend dev server;
-- browser E2E evidence с fixtures; приватные данные и исходный внутренний HTML не публикуются.
+- browser E2E evidence с fixtures; приватные данные и реальные session IDs не публикуются.
 
 ## SVC-004 — Events API и сверка активных задач
 
