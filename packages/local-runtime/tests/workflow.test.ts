@@ -62,5 +62,14 @@ test('claim is fenced by revision/token; expired accepted work is interrupted an
     const cancelled = workflow.act(ready.id, { kind: 'cancel', expected_revision: second.revision }, late);
     expect(cancelled.status).toBe('cancelled'); expect(interests.resources()).toEqual([]);
     expect(() => workflow.act(ready.id, { kind: 'complete', expected_revision: second.revision, lease_token: token, summary: 'Stale' }, late)).toThrow('revision_conflict');
+    const anotherInput = input(); const another = workflow.create(anotherInput, task(), late);
+    workflow.observe(task(true), late); const next = workflow.get(another.id); const nextToken = crypto.randomUUID();
+    const accepted = workflow.claim(next.id, { ...claim, expected_revision: next.revision, lease_token: nextToken }, task(true), late);
+    const heartbeat = workflow.act(next.id, { kind: 'heartbeat', expected_revision: accepted.revision, lease_token: nextToken }, '2026-11-03T10:02:30.000Z');
+    expect(heartbeat.run!.expires_at).toBe('2026-11-03T10:04:00.000Z');
+    const finished = workflow.act(next.id, { kind: 'complete', expected_revision: heartbeat.revision, lease_token: nextToken, summary: 'Verified outcome' }, '2026-11-03T10:03:00.000Z');
+    expect(finished.status).toBe('completed'); expect(interests.resources()).toEqual([]);
+    expect(workflow.create(anotherInput, task(true), late).status).toBe('completed');
+
   } finally { store.close(); await rm(root, { recursive: true, force: true }); }
 });
