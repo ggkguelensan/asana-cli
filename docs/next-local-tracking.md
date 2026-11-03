@@ -129,7 +129,7 @@ session; это не изоляция недоверенного кода. По�
 
 ## Что хранится локально и как приходят изменения
 
-SQLite содержит только KV settings: tracking rule, account/workspace binding и признак ручной
+SQLite содержит только KV settings: tracking rule, account binding и признак ручной
 остановки. Schema описана в `packages/local-runtime/src/schema.ts`, SQL сгенерирован Drizzle Kit,
 reviewed migration встроена в executable и применяется в транзакции с version guard.
 Task metadata, candidates, графы, интересы consumers и Events cursors живут в RAM.
