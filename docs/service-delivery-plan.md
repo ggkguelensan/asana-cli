@@ -122,6 +122,11 @@ Acceptance:
 
 ## SVC-003 — Веб-доска из embedded assets
 
+Frontend slice реализован в [web/](../web/README.md): TypeScript, React, Jotai, Vite,
+компоненты доски и validation/client/controller layers. Есть disposable demo и API-fixture
+browser tests. Это не закрывает SVC-003: real daemon/auth/API integration и embedded assets
+в standalone binary ещё не реализованы.
+
 Зависимость: SVC-002. Самостоятельная responsive доска по композиции референса, без зависимости
 от Artifact DB и Claude session ID. Перенос UI предусмотрен запросом пользователя; применимые
 license notices сохраняются, внешние assets проверяются и адаптируются к embedded distribution.

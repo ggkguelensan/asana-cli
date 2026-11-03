@@ -1,0 +1,24 @@
+/* Adapted from Ticketon claude-plugin !4, skills/task-windows/board.html. */
+:root {
+  font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
+  color: var(--ink); background: var(--bg); color-scheme: light;
+  font-synthesis: none; text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased;
+  --bg: #f3f4f7; --panel: #fff; --sunk: #eceef3; --ink: #18202e;
+  --muted: #5d6677; --line: #dde1e8; --accent: #2b5fd9; --accent-bg: #edf2ff;
+  --st-user: #a85300; --st-user-bg: #fff1df; --st-review: #6a3fc4; --st-review-bg: #efe8fd;
+  --st-work: #1f62b8; --st-work-bg: #e3eefc; --st-others: #4b5563; --st-others-bg: #eceef2;
+  --st-merged: #19734a; --st-merged-bg: #e0f4ea; --st-blocked: #b3261e; --st-blocked-bg: #fde4e2;
+  --shadow: 0 1px 2px #18202e04, 0 6px 18px #18202e03;
+  --on-accent: #fff;
+  --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #121620; --panel: #1a202c; --sunk: #222b39; --ink: #e6e9ef;
+  --muted: #a5afbf; --line: #303b4e; --accent: #9bb9ff; --accent-bg: #202f50;
+  --st-user: #ffb066; --st-user-bg: #332718; --st-review: #c3a6ff; --st-review-bg: #2c2340;
+  --st-work: #8fbaff; --st-work-bg: #1c2b45; --st-others: #b6bcc8; --st-others-bg: #262c38;
+  --st-merged: #6fd3a2; --st-merged-bg: #173428; --st-blocked: #ff8a80; --st-blocked-bg: #3d1d1b;
+  --shadow: none;
+  --on-accent: #121620;
+}

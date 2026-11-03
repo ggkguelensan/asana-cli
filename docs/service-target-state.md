@@ -1,7 +1,9 @@
 # Целевое состояние: ядро, фоновый сервис и веб-доска
 
 Статус: архитектурное предложение для следующего product scope, 2026-11-03.
-Это целевой контракт, а не описание уже доступных команд. Текущая реализация описана в
+Это целевой контракт, а не описание уже доступных команд. В [web/](../web/README.md) реализован
+самостоятельный TypeScript/React/Jotai/Vite frontend; daemon и его API пока отсутствуют.
+Текущая CLI реализация описана в
 [architecture](architecture.md). Плагины и возможности клиентов определены отдельно в
 [client integrations](service-client-integrations.md); порядок разработки — в
 [delivery plan](service-delivery-plan.md). Детерминированный процесс без агентов и минимальный
@@ -126,7 +128,8 @@ facades, generic repository framework или отдельный package на к�
 WebSocket и SQLite через `bun:sqlite`. Drizzle ORM использует adapter `drizzle-orm/bun-sqlite`
 для типизированных запросов и persistence schema. Официальный пакет `asana` остаётся outbound SDK.
 Браузер получает заранее
-собранные HTML/CSS/JS; выбор frontend framework не влияет на contract ядра.
+собранные HTML/CSS/JS. Frontend stack зафиксирован: TypeScript + React + Jotai + Vite;
+компоненты и atoms отделены от HTTP/WebSocket adapter и contract ядра.
 
 Причины выбора: существующий Bun executable, отсутствие дополнительного runtime у пользователя,
 встроенное локальное хранилище и небольшой HTTP interface. Поддержка Bun/WebSocket описана
@@ -605,7 +608,7 @@ HTTP/WebSocket, ручное tracking, Events API, CLI операции и су�
 управление приложениями, общий командный tenancy и обещание работы локального host при выключенном
 компьютере. Это отдельные возможности с отдельной authority и эксплуатацией.
 
-Остающиеся решения перед соответствующими implementation PR: UI framework и visual fixtures,
-численные retention budgets, gateway hosting/identity provider, доступность нативных UI resources
+Остающиеся решения перед соответствующими implementation PR: численные retention budgets,
+gateway hosting/identity provider, доступность нативных UI resources
 в клиентах и точный объём адаптации исходного HTML/локальных assets. Они не мешают локальному service
 foundation; production remote rollout блокируется собственной qualification.

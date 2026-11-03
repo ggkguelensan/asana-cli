@@ -8,6 +8,10 @@ HTTP/WebSocket, MCP, and remote gateway are specified in
 specifies deterministic human operation, minimal persistence, and the target permission model.
 They are not available runtime features yet.
 
+The independent [web frontend](../web/README.md) is implemented with TypeScript, React, Jotai,
+and Vite. It has component views, validated HTTP/WebSocket adapters, atom projections and an explicit
+disposable example. The daemon/server integration and embedding assets in the binary remain pending.
+
 `asana-cli` is a standalone Bun-compiled CLI with two public surfaces:
 
 - human commands, which emit ordinary JSON and may request interactive confirmation;

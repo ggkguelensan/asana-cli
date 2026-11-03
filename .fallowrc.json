@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/fallow/schema.json",
-  "entry": ["src/index.ts"],
+  "entry": ["src/index.ts", "tests/**/*.test.ts", "web/tests/**/*.test.ts"],
   "duplicates": {
     "mode": "mild",
     "minTokens": 50,

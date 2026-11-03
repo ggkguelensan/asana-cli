@@ -4,6 +4,11 @@ Fallow 3.4.2 is the repository-wide structural health gate. The version itself h
 project's 14-day dependency quarantine. TypeScript correctness still belongs to `tsc`, tests to Bun,
 and security verification to the project security workflow.
 
+The CLI and independent web package scope Bun discovery to their own `tests/` directories.
+Fallow 3.4.2 does not infer those test entry points when `test.root` is configured, so
+`.fallowrc.json` declares the real test file globs explicitly. This restores test reachability;
+it does not ignore test files or increase the structural baseline or health thresholds.
+
 ## Required indicators
 
 | Indicator | Required value | Enforcement |

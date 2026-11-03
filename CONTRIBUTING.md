@@ -17,6 +17,11 @@ bun install --frozen-lockfile
 bun run check:fast
 ```
 
+The independent [web application](web/README.md) uses Vite, React, TypeScript, and Jotai. Run
+`bun install --cwd web --frozen-lockfile`, `bun run --cwd web check`, and
+`bun run --cwd web test:e2e` when changing it. Browser checks launch
+their own isolated dev server; no Asana credential or running daemon is required.
+
 The project intentionally does not support Windows runtime or release artifacts. See
 [the support policy](docs/support-policy.md).
 
