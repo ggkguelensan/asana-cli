@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@asana-cli/asana-client": "workspace:*",
-    "zod": "4.6.7"
+    "zod": "4.6.7",
+    "@asana-cli/local-runtime": "workspace:*"
   }
 }

@@ -23,8 +23,8 @@ export function BoardToolbar({ controller }: { controller: BoardController }) {
     <div className="toolbar-actions">
       <button className="button button-secondary" disabled={!canRefresh}
         onClick={() => void controller.refreshSources()}><Icon name="refresh" />Обновить</button>
-      <button className="button button-primary" disabled={!canTrack}
-        onClick={() => openTrack(true)}><Icon name="plus" />Отслеживать задачу</button>
+      {(controller.mode === 'demo' || board?.capabilities.track === true) && <button className="button button-primary" disabled={!canTrack}
+        onClick={() => openTrack(true)}><Icon name="plus" />Отслеживать задачу</button>}
     </div>
   </div>;
 }

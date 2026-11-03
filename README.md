@@ -15,19 +15,21 @@
 с [плагинами для Claude и Codex на desktop, mobile и CLI](docs/service-client-integrations.md).
 Основной [процесс работает без агентов](docs/service-workflow-and-storage.md): Asana хранит task data,
 локальная БД — дополнительное состояние процесса; default Asana access соответствует правам пользователя.
-Это целевой дизайн; runtime ещё не реализован. Этапы и критерии готовности находятся в
+Первый [локальный next watcher](docs/next-local-tracking.md) уже реализован: embedded UI, фоновый core,
+детерминированная выборка задач и Events API. Полный product scope остаётся в
 [плане реализации](docs/service-delivery-plan.md).
 
 В [apps/web/](apps/web/README.md) уже есть самостоятельная доска на **TypeScript + React + Jotai + Vite**:
-компоненты, HTTP/WebSocket client, responsive UI и явный режим примера. Daemon/API и встраивание
-доски в CLI пока не реализованы; работа с реальной Asana через браузер ещё недоступна.
+компоненты, HTTP/WebSocket client, responsive UI и явный режим примера. Next binary запускает
+Bun/Hono core, отдаёт встроенную доску и подключает браузер к реальной Asana через локальную session.
 
 [Расширяемые views](docs/service-extensible-views.md) и
 [GitLab integration](docs/service-gitlab-integration.md) задают следующий scope: агент собирает
 HTML/TSX интерфейсы поверх общей основы; SDK/glab и subscriptions остаются на стороне core.
 
 [Аудит запуска и авторизации](docs/service-launch-and-auth-audit.md) определяет целевой PAT setup,
-browser session и единый core для CLI, desktop и plugins. Это план runtime, ещё не готовые команды.
+browser session и единый core для CLI, desktop и plugins. Доступные next команды и ограничения
+отделены от полного плана в [руководстве watcher](docs/next-local-tracking.md).
 
 Структура Bun workspaces, общие пакеты и команды Turbo описаны в
 [монорепозитории](docs/monorepo.md).

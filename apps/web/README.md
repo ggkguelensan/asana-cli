@@ -26,8 +26,10 @@ bun run --filter @asana-cli/web preview
 ```
 
 Сборка находится в `apps/web/dist/`. Vite/Bun нужны при разработке/сборке, но браузер получает обычные
-статические assets. Встраивание assets в CLI binary относится к реализации daemon и пока не
-выполнено. Установка и lockfile общие для всего монорепозитория.
+статические assets. `bun run build` из корня встраивает их в CLI binary вместе с next core.
+Для реального PAT/session flow используйте [next watcher](../../docs/next-local-tracking.md)
+и `asana-cli-next board open`; отдельный Vite origin предназначен для разработки/demo.
+Установка и lockfile общие для всего монорепозитория.
 
 Для разработки с локальным backend:
 

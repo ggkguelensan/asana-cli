@@ -155,3 +155,36 @@ test('system theme follows preference changes until explicitly overridden', asyn
   await page.emulateMedia({ colorScheme: 'light' });
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 });
+
+test('tracking uses friendly source criteria rather than a task GID input', async ({page}) => {
+  const {board}=await service(page);board.capabilities.track=false;
+  const rule:{preset:string;choices:string[]}={preset:'current_work',choices:[]};
+  const writes:unknown[]=[];
+  await page.route('**/api/v1/tracking',async route=>{
+    if(route.request().method()==='PUT'){
+      const next=route.request().postDataJSON();writes.push(next);Object.assign(rule,next);
+      await route.fulfill({json:{saved:true}});return;
+    }
+    await route.fulfill({json:{state:'connected',candidates:20,tracked:2,truncated:false,rule,csrf_token:'fixture-csrf',choices:[{id:'section:111',label:'In Progress',group:'Example project',count:2}],subscriptions:{resources:2,event_responses:3,event_changes:0,synced:2,retrying:0,owners:[]}}});
+  });
+  await page.goto('/');
+  await expect(page.getByRole('heading',{name:'Моя текущая работа'})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Отслеживать задачу',exact:true})).toHaveCount(0);
+  await page.getByText('Настроить реальные секции и поля Asana').click();
+  await page.getByRole('checkbox',{name:'In Progress'}).check();
+  await expect(page.getByRole('checkbox',{name:'In Progress'})).toBeChecked();
+  expect(writes).toContainEqual({preset:'custom',choices:['section:111']});
+});
+
+test('dependency view uses the reusable websocket graph API and renders arrows', async ({page})=>{
+  await page.routeWebSocket('**/api/v1/views/events',socket=>{
+    socket.onMessage(message=>{
+      const request=JSON.parse(String(message));
+      if(request.type==='watch.graph')socket.send(JSON.stringify({type:'graph.snapshot',root:'111',nodes:[{id:'111',title:'First work item',completed:false},{id:'222',title:'Prerequisite',completed:false}],edges:[{from:'111',to:'222'}],truncated:false,resources:['111','222']}));
+    });
+  });
+  await page.goto('/?view=dependencies&task=111');
+  await expect(page.getByRole('heading',{name:'Граф зависимостей'})).toBeVisible();
+  await expect(page.getByRole('img',{name:'Граф: стрелка ведёт от задачи к её зависимости'})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'Prerequisite'})).toBeVisible();
+});

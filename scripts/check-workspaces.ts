@@ -40,7 +40,7 @@ function reachable(name: string, seen = new Set<string>()): Set<string> {
 }
 for (const name of ["@asana-cli/contracts", "@asana-cli/web"]) {
   const dependencies = reachable(name);
-  for (const forbidden of ["asana", "@asana-cli/asana-client", "@asana-cli/cli"]) {
+  for (const forbidden of ["asana", "@asana-cli/asana-client", "@asana-cli/local-runtime", "@asana-cli/cli"]) {
     if (dependencies.has(forbidden)) throw new Error(`${name} must not depend on ${forbidden}`);
   }
 }

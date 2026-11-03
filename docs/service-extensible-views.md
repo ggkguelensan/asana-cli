@@ -1,5 +1,8 @@
 # Views, которые агент собирает по запросу пользователя
 
+Реализованный source-view subset: [next watcher](next-local-tracking.md) предоставляет
+`watchTasks`, `watchDependencyGraph`, session API и lease cleanup; HTML registry/grants остаются планом.
+
 Статус: целевой контракт, 2026-11-03. Сейчас web — React/Jotai/Vite source application;
 registry, view SDK, runtime bridge и установка HTML packages ещё не реализованы. Этот документ
 определяет SVC-011 и уточняет границы из [launch/auth audit](service-launch-and-auth-audit.md).

@@ -18,13 +18,14 @@ export class AsanaTransportError extends Error {
     this.name = "AsanaTransportError";
   }
 }
-export function createAsanaTransport(token: string, options: { baseUrl?: string } = {}): AsanaTransport {
+export function createAsanaTransport(token: string, options: { baseUrl?: string; timeoutMs?: number } = {}): AsanaTransport {
   const client = new AsanaModule.ApiClient();
   if (!client.authentications.token) {
     throw new AsanaTransportError("internal", "node-asana did not expose token authentication");
   }
   client.authentications.token.accessToken = token;
   if (options.baseUrl) client.basePath = options.baseUrl;
+  if (options.timeoutMs) client.timeout = options.timeoutMs;
   return { invoke: (className, methodName, args) => invokeSdkMethod(client, className, methodName, args) };
 }
 export function apiClass(name: string): { name: string } {

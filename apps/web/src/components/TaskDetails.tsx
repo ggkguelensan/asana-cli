@@ -49,6 +49,7 @@ function DetailBody({ item, controller }: { item: WorkItem; controller: BoardCon
     <StatusBadge status={item.status} /><h3>{item.title ?? `Задача ${item.key}`}</h3>
     <DetailMetadata item={item} /><TextSection title="Что ожидается" text={item.waiting} />
     <TextSection title="Следующий шаг" text={item.next} /><DetailChanges item={item} />
+    {controller.mode === 'service' && <a className="button button-secondary" href={`/?view=dependencies&task=${encodeURIComponent(item.id)}`} target="_blank" rel="noopener noreferrer">Граф зависимостей</a>}
     <SessionInfo session={item.session} /><DetailActions item={item} controller={controller} />
     {item.asana_url && <a className="button button-secondary" href={item.asana_url} target="_blank" rel="noopener noreferrer">
       Открыть в Asana<Icon name="external" /></a>}

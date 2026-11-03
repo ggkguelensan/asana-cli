@@ -16,7 +16,9 @@
     "jotai": "3.0.1",
     "react": "19.3.1",
     "react-dom": "19.3.1",
-    "@asana-cli/contracts": "workspace:*"
+    "@asana-cli/contracts": "workspace:*",
+    "@asana-cli/core": "workspace:*",
+    "@asana-cli/service-client": "workspace:*"
   },
   "devDependencies": {
     "@playwright/test": "1.64.1",

@@ -1,3 +1,4 @@
+import { TrackingSettings } from '../components/TrackingSettings';
 import { useEffect } from 'react';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { archiveOpenAtom, boardAtom, connectionAtom, kindAtom, searchAtom, sectionsAtom } from '../state/atoms';
@@ -76,6 +77,7 @@ export function App({ controller }: { controller: BoardController }) {
     <main id="board-main">
       {controller.mode === 'demo' && <div className="demo-banner"><span><b>Данные примера.</b> Изменения действуют до перезагрузки страницы.</span><a href="/">Подключить сервис<Icon name="arrow" /></a></div>}
       <ConnectionMessage controller={controller} /><PageNotice />
+      {controller.mode === 'service' && <TrackingSettings />}
       {board && <><BoardSummary /><BoardToolbar controller={controller} /><BoardContent /></>}
     </main>
     <footer className="page-footer"><span>asana-cli</span><span>Каждому ожиданию — следующий шаг.</span></footer>

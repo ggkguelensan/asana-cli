@@ -100,3 +100,7 @@ explicit rationale in the pull request.
 
 Monorepo path migration and reproducible historical baselines are documented in
 [monorepo](monorepo.md#release-и-исторические-проверки).
+
+Drizzle Kit brings a legacy esbuild loader. `esbuild` is pinned to quarantine-eligible `0.28.2`
+to avoid [GHSA-67mh-4wv8-2f99](https://github.com/advisories/GHSA-67mh-4wv8-2f99).
+Migration generation, Vite builds and the quality gate validate this override; no age gate bypass is used.

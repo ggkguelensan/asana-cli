@@ -41,6 +41,8 @@ LOCAL DEVELOPER CONTEXT
   asana-cli context history              Недавний context
 
 INTEGRATIONS
+  asana-cli service start|status|stop        Experimental local next tracker
+  asana-cli board open|list|sources          My work, real source criteria and live views
   asana-cli integrations list
   asana-cli integrations status --client CLIENT --scope user|project [--skill SKILL]
   asana-cli integrations install --client CLIENT --scope user|project --dry-run|--apply

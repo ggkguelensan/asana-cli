@@ -5,7 +5,11 @@
 в первом локальном выпуске. Авторитетный контракт запуска/auth находится в этом документе;
 остальные service documents ссылаются на него.
 
-## 1. Что аудит обнаружил
+Результат следующего implementation slice: [next watcher](next-local-tracking.md) замыкает
+start → PAT verification → browser session → реальная доска → stop. Ниже сохранён аудит
+исходного baseline и полный целевой контракт, включая пока отсутствующий web PAT setup.
+
+## 1. Что аудит обнаружил в baseline
 
 | Приоритет | Наблюдение в текущем source | Что требуется |
 | --- | --- | --- |
@@ -33,7 +37,7 @@ reviewed migrations и web assets после реализации embedding. П�
 Node, Drizzle Kit, исходники или AI-клиент. Electron — дополнительная поставка того же core.
 
 ```text
-Текущая реализация
+Baseline до next watcher
 terminal → apps/cli → credentials + CLI operations → SDK adapter → Asana
 browser  → apps/web → HTTP/WS contract → [сервер пока не реализован]
 

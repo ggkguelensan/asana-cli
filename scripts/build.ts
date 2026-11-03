@@ -1,3 +1,4 @@
+import { webAssetsPlugin } from "./web-assets";
 import { fileURLToPath } from "node:url";
 import { generateIntegrationBundle } from "./generate-integrations";
 import { parseRequestedBuildTarget } from "./check-support-matrix";
@@ -24,6 +25,7 @@ const result = await Bun.build({
     autoloadTsconfig: false,
     autoloadPackageJson: false,
   },
+  plugins: [await webAssetsPlugin()],
   minify: false,
 });
 

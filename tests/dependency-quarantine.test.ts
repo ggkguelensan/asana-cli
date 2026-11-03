@@ -41,6 +41,7 @@ describe("dependency quarantine", () => {
 
     expect(packageManifest.overrides).toEqual({
       "brace-expansion": "5.0.8",
+      "esbuild": "0.28.2",
     });
   });
 });

@@ -101,13 +101,16 @@ Root `test` запускает package tests через Turbo и затем CLI/
 | SQLite/Drizzle adapter | Workflow metadata, inbox/outbox, queue, migrations | schema/core ports; подключается сервисом |
 | MCP/plugin adapters | Одна модель команд для Claude/Codex clients | contracts и service client; без собственной business logic |
 
-CLI и UI будут клиентами общего сервиса. Наличие Turbo не реализует daemon, persistence,
-webhooks или remote gateway: эти этапы остаются в [delivery plan](service-delivery-plan.md).
+`packages/core`, `packages/local-runtime` и browser-safe `packages/service-client` уже добавлены
+для [next watcher](next-local-tracking.md). CLI service/board и UI используют один Hono runtime;
+SQLite хранит настройки, assets и migration встроены в binary. Полные workflow mutations,
+webhooks и remote gateway остаются в [delivery plan](service-delivery-plan.md).
 Asana остаётся источником task data; SQLite не становится полной локальной копией Asana.
 
 Новые требования [custom views](service-extensible-views.md) добавляют future `ui`/`view-sdk`
 modules и host registry; [GitLab](service-gitlab-integration.md) — `gitlab-client` с SDK/glab
-adapters. Они извлекаются при фактической реализации consumers; runtime packages пока не созданы.
+adapters. Они извлекаются при фактической реализации consumers; shared task/graph lease helpers
+сейчас находятся в `service-client`, source predicates и interest registry — в `core`.
 
 ## Release и исторические проверки
 

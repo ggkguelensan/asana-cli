@@ -3,6 +3,10 @@
 Статус: новый product scope, 2026-11-03. Это план последовательных проверяемых PR, без назначения
 номера релиза до квалификации. Текущие v1 guarantees и historical evidence остаются в силе.
 
+Реализованный [next watcher](next-local-tracking.md) покрывает часть SVC-001–004:
+lifecycle/session, SQLite settings, embedded UI, Events API и view leases. Это не закрывает
+полные workflow, production/release acceptance и остальные этапы.
+
 Authoritative design:
 
 - [Целевое ядро, daemon и доска](service-target-state.md).
@@ -139,8 +143,8 @@ Acceptance:
 
 Frontend slice реализован в [apps/web/](../apps/web/README.md): TypeScript, React, Jotai, Vite,
 компоненты доски и validation/client/controller layers. Есть disposable demo и API-fixture
-browser tests. Это не закрывает SVC-003: real daemon/auth/API integration и embedded assets
-в standalone binary ещё не реализованы.
+browser tests. Next watcher добавляет real daemon/session/API и embedded assets. Полные
+workflow actions и весь qualification scope SVC-003 ещё не закрыты.
 
 Зависимость: SVC-002. Самостоятельная responsive доска по композиции референса, без зависимости
 от Artifact DB и Claude session ID. Перенос UI предусмотрен запросом пользователя; применимые

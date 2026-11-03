@@ -43,6 +43,22 @@
       "passThroughEnv": [
         "ASANA_SERVICE_URL"
       ]
+    },
+    "@asana-cli/cli#build": {
+      "dependsOn": [
+        "^build",
+        "@asana-cli/web#build"
+      ],
+      "outputs": [
+        "dist/**"
+      ],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/scripts/**",
+        "$TURBO_ROOT$/integrations/**",
+        "$TURBO_ROOT$/skills/**",
+        "$TURBO_ROOT$/generated/**"
+      ]
     }
   }
 }

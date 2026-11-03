@@ -1,3 +1,4 @@
+import { runServiceCommand } from "./service-cli";
 import {
   booleanFlag,
   flag,
@@ -485,6 +486,7 @@ export async function runCli(argv: string[]): Promise<CliResult> {
   }
   if (flag(args, "version") === true || command === "version") return { text: CLI_VERSION };
   if (!command || flag(args, "help") === true || command === "help") return { text: HELP };
+  if (command === "service" || command === "board") return { value: await runServiceCommand(args), compact };
   if (command === "man") {
     return { text: runManualCommand(args) };
   }

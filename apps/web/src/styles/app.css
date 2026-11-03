@@ -212,3 +212,7 @@ h1, h2, h3, h4, p { margin: 0; }
   .detail-meta > div { grid-template-columns: 1fr; gap: 3px; }
   .page-footer { font-size: 9px; }
 }
+
+.tracking-settings{padding:24px;margin:20px 0;border:1px solid var(--line);border-radius:16px}.tracking-settings h2{margin:0 0 8px}.tracking-settings p{margin:12px 0}.tracking-settings fieldset{margin:12px 0;padding:12px;display:flex;flex-wrap:wrap;gap:12px}.tracking-choice{display:inline-flex;align-items:center;gap:6px}.dependency-view{padding:32px}.dependency-nodes{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-top:24px}.dependency-node{padding:20px;border:1px solid var(--line);border-radius:16px}.dependency-node h2{font-size:18px}.dependency-node ul{padding-left:20px}
+
+.dependency-diagram{overflow:auto;margin:24px 0;border:1px solid var(--line);border-radius:16px;padding:12px;color:#59667a}

@@ -182,6 +182,12 @@ export async function clientEvalSubjectSha256(): Promise<string> {
   return digestFiles([
     resolve(projectRoot, "apps/cli/src"),
     resolve(projectRoot, "packages/asana-client/src"),
+    resolve(projectRoot, "packages/local-runtime/src"),
+    resolve(projectRoot, "packages/local-runtime/drizzle"),
+    resolve(projectRoot, "packages/core/src"),
+    resolve(projectRoot, "packages/contracts/src"),
+    resolve(projectRoot, "packages/local-runtime/package.json"),
+    resolve(projectRoot, "packages/core/package.json"),
     resolve(projectRoot, "apps/cli/package.json"),
     resolve(projectRoot, "packages/asana-client/package.json"),
     resolve(projectRoot, "bun.lock"),
