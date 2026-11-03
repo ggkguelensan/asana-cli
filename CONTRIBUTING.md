@@ -17,6 +17,10 @@ bun install --frozen-lockfile
 bun run check:fast
 ```
 
+Project JavaScript/JSX/MJS/CJS sources are prohibited: use TypeScript/TSX.
+`check:source-language` is part of typecheck/full CI and includes untracked project files.
+Dependencies and ignored compiled browser output are outside this source policy.
+
 The [monorepo guide](docs/monorepo.md) describes workspace boundaries and Turbo tasks.
 Install once at the repository root. `bun run build`, `bun run typecheck`, and `bun run test`
 coordinate the CLI, [web application](apps/web/README.md), and shared packages.

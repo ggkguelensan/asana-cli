@@ -11,6 +11,10 @@
 workflow для агентов. Плагин не реализует свою state machine и не является обязательным участником
 процесса; отсутствие session/модели не блокирует действия человека.
 
+Поставка binary, launcher, PAT/browser auth и точная матрица владельцев запуска определены в
+[launch/auth audit](service-launch-and-auth-audit.md). Клиентский package не становится отдельным
+владельцем core. Attach-only — default; opt-in auto-ensure требует явной настройки и уважает stop.
+
 ## 1. Одинаковый пользовательский результат
 
 Пользователь подключает свой сервис один раз, выбирает account/workspace/device и видит ту же
@@ -73,7 +77,9 @@ daemon; local MCP bridge — процесс транспорта, который
 
 Если daemon отсутствует, возвращается structured `service_not_running` и инструкция для человека.
 Установка плагина, tools/list или read tool не запускают service, не устанавливают executable
-и не меняют credentials. Explicit human onboarding может отдельно выполнить start.
+и не меняют credentials. Explicit human onboarding может отдельно выполнить start или включить
+`mcp serve --ensure-service`. Это разрешение на запуск bridge проверяет при инициализации;
+сами tool handlers не запускают core, не снимают manual-stop latch и не наследуют PAT из shell.
 
 ### B. Remote MCP / browser
 
@@ -104,6 +110,10 @@ Codex mobile ─ platform remote connection ─ Codex на connected host
 для доступа host tools к local daemon. Оно не делает нашу веб-доску доступной mobile browser:
 для неё нужен отдельный remote URL. Не смешиваем platform pairing и pairing нашего сервиса.
 
+Аналогичный host-mediated путь Claude Cowork документирован для определённых
+[desktop-originated sessions](https://support.claude.com/en/articles/15520349-use-claude-cowork-on-web-desktop-and-mobile).
+Требуется открытое desktop приложение и отдельная qualification; это не native execution на телефоне.
+
 ## 4. Матрица целевых способов подключения
 
 Все новые строки имеют статус `planned / qualification required`. Существующее evidence для
@@ -129,11 +139,14 @@ direct Codex/Claude Code CLI не распространяется на MCP, nat
 
 Local mode:
 
-1. Пользователь устанавливает CLI обычным поддерживаемым способом и запускает daemon.
+1. Пользователь устанавливает CLI обычным поддерживаемым способом и проходит local setup.
+   Для MCPB возможен bundled binary после отдельной target/install qualification.
 2. Устанавливает desktop extension после просмотра requested capabilities.
-3. Extension запускает только MCP bridge с фиксированными args, без bundled PAT и shell wrapper.
+3. Extension запускает MCP bridge с фиксированными args, без bundled PAT и shell wrapper.
+   Явно включённый ensure использует общий launcher и переиспользует существующий core.
 4. Bridge находит owner-controlled daemon, проверяет versions и выдаёт scoped tool list.
-5. «Открыть доску» возвращает local URL, полученный от ядра, без постоянного token.
+5. «Открыть доску» открывает browser через host launcher; одноразовый bootstrap secret
+   не возвращается в agent-visible tool output. Обычный local URL без session не авторизует браузер.
 6. Закрытие Desktop завершает bridge; задачи и daemon продолжают жить.
 
 Установка desktop extension через GUI/managed policy не имитируется записью неподтверждённых
@@ -416,3 +429,7 @@ mode и выполненные сценарии. Artifact validation или docu
 
 Приоритет — корректная общая доска и одинаковые операции. Шесть различных наборов бизнес-правил,
 шесть credential stores или шесть механизмов синхронизации Asana не создаются.
+
+Local MCP registration и публикация в OpenAI directory — разные пути.
+[Публичные desktop-only/local MCP submissions](https://developers.openai.com/plugins/deploy/desktop-only)
+имеют отдельные partner/approval ограничения; наличие local plugin manifest их не снимает.

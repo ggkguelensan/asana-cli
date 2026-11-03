@@ -1,16 +1,24 @@
 {
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "target": "ES2022",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "jsx": "react-jsx",
-    "strict": true,
-    "noEmit": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "skipLibCheck": true,
-    "types": ["vite/client", "bun"]
+    "types": [
+      "vite/client",
+      "bun"
+    ]
   },
-  "include": ["src", "tests", "e2e", "vite.config.ts", "playwright.config.ts"]
+  "include": [
+    "src",
+    "tests",
+    "e2e",
+    "vite.config.ts",
+    "playwright.config.ts"
+  ]
 }

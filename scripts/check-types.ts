@@ -1,4 +1,4 @@
-export {};
+import { projectFiles } from "./source-files";
 
 const roots = ["apps", "packages", "tests", "scripts"];
 const forbidden = [
@@ -10,16 +10,14 @@ const forbidden = [
 ];
 
 const violations: string[] = [];
-for (const root of roots) {
-  const glob = new Bun.Glob("**/*.ts");
-  for await (const relativePath of glob.scan({ cwd: root })) {
-    const path = `${root}/${relativePath}`;
-    if (path === "scripts/check-types.ts") continue;
-    const lines = (await Bun.file(path).text()).split("\n");
-    for (const [index, line] of lines.entries()) {
-      if (forbidden.some((pattern) => pattern.test(line))) {
-        violations.push(`${path}:${index + 1}: ${line.trim()}`);
-      }
+const sources = (await projectFiles()).filter((path) =>
+  roots.some((root) => path.startsWith(`${root}/`)) && /\.tsx?$/.test(path));
+for (const path of sources) {
+  if (path === "scripts/check-types.ts") continue;
+  const lines = (await Bun.file(path).text()).split("\n");
+  for (const [index, line] of lines.entries()) {
+    if (forbidden.some((pattern) => pattern.test(line))) {
+      violations.push(`${path}:${index + 1}: ${line.trim()}`);
     }
   }
 }

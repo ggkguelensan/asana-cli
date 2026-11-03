@@ -9,6 +9,10 @@
 [delivery plan](service-delivery-plan.md). Детерминированный процесс без агентов и минимальный
 состав SQLite определены в [workflow and storage](service-workflow-and-storage.md).
 
+Контракт поставки, запуска и PAT/browser onboarding уточнён в
+[аудите топологии](service-launch-and-auth-audit.md); при различии деталей запуска/auth
+используется этот контракт. Он отделяет текущий source от будущего runtime.
+
 ## 1. Результат для пользователя
 
 `asana-cli` становится локальным центром ведения задач. Пользователь может работать из терминала,
@@ -109,11 +113,14 @@ CLI находится в `apps/cli`, web — в `apps/web`; `packages/asana-cli
 apps/
 ├── cli/                   существующее приложение
 ├── web/                   существующий React/Jotai/Vite frontend
-└── service/               будущий Bun/Hono composition root, lifecycle, HTTP/WS
+└── desktop/               будущая Electron оболочка, использует compiled sidecar
 packages/
 ├── asana-client/          существующий адаптер node-asana
 ├── contracts/             существующие DTO, commands, events и receipts
-└── core/                  будущее детерминированное ядро workflow
+├── core/                  будущее детерминированное ядро workflow
+├── local-runtime/         будущий Bun/Hono composition root и общий launcher
+├── credentials/           общий PAT module CLI/runtime при extraction
+└── service-client/        общий browser-safe HTTP/WS client
 integrations/              metadata клиентских интеграций
 skills/source/             источники skills
 generated/                 воспроизводимые outputs генераторов
@@ -184,7 +191,7 @@ mutation вместо отсутствующего daemon. Миграция auth
 | --- | --- | --- |
 | Asana task и completion | Asana | Bounded metadata cache в памяти; disk projection только opt-in |
 | Статус работы, ожидание, следующий шаг | Ядро | Не выводятся автоматически из текста Asana |
-| PAT | Существующий credential manager | Нет PAT в браузере, plugin manifest или relay |
+| PAT | OS credential manager на core host | Только transient ввод в owner-only local setup; нет PAT в board state, plugin manifest или relay |
 | Разрешение записи | Asana user/credential + явно выбранная local policy | Default user-equivalent; tracking и self-assignment не ограничивают права |
 | Prepare/apply | Существующий operation journal | Не появляется второй независимый журнал операций в SQLite |
 | Активный task/worktree binding | Существующее context state | Доска хранит ссылку/проекцию, не меняет authority binding |
@@ -327,8 +334,16 @@ Stop не удаляет задачи, credentials, pairing или БД. CLI м�
 force-stop при зависшем процессе только после проверки identity; обычная кнопка UI этого не делает.
 Закрытие вкладки, MCP bridge или последней сессии не вызывает stop.
 
+Общий launcher и правила для CLI/plugin/Electron/source описаны в
+[launch/auth audit](service-launch-and-auth-audit.md). Explicit stop также блокирует opt-in
+auto-ensure из bridge; новые read/tool-discovery запросы этот запрет не снимают.
+
 Автозапуск через launchd/systemd — отдельная opt-in установка. Явный stop должен подавлять restart
 supervisor до явного start. Установленный service unit не активирует автозапуск молча.
+
+[PAT setup и browser bootstrap](service-launch-and-auth-audit.md#4-три-независимые-авторизации)
+работают до загрузки board: отсутствие PAT не мешает readiness локального UI. Asana connection
+status и service session auth имеют разные ошибки и recovery.
 
 ## 9. HTTP и WebSocket
 

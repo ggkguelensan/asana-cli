@@ -12,7 +12,7 @@
     "clean": "bun run --no-env-file scripts/clean.ts",
     "test": "turbo run test && bun test tests",
     "test:black-box": "bun run build && bun test tests/black-box",
-    "lint:types": "bun run scripts/check-types.ts",
+    "lint:types": "bun run check:source-language && bun run scripts/check-types.ts",
     "typecheck": "turbo run typecheck && tsc --noEmit && bun run lint:types",
     "build": "turbo run build && bun run --no-env-file scripts/stage-cli.ts",
     "build:darwin-arm64": "bun run --no-env-file scripts/build.ts bun-darwin-arm64 dist/asana-cli-darwin-arm64",
@@ -63,7 +63,8 @@
     "check": "bun run check:black-box-boundary && bun run --no-env-file scripts/quality-gate.ts ci",
     "test:e2e": "turbo run test:e2e --filter=@asana-cli/web",
     "check:workspaces": "bun run --no-env-file scripts/check-workspaces.ts",
-    "generate:fallow-migration": "bun run --no-env-file scripts/migrate-fallow-baselines.ts"
+    "generate:fallow-migration": "bun run --no-env-file scripts/migrate-fallow-baselines.ts",
+    "check:source-language": "bun run --no-env-file scripts/check-source-language.ts"
   },
   "dependencies": {
     "zod": "4.6.7"

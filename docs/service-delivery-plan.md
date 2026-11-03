@@ -63,6 +63,10 @@ Remote release не объявляется готовым по local E2E. Пер
 marketplace publication или embedded widgets. Package publishing, hosting deployment и новый
 release выполняются отдельными явно назначенными действиями после review/qualification.
 
+[Launch/auth audit](service-launch-and-auth-audit.md) фиксирует общий Bun runtime в binary,
+local PAT onboarding и owner-authorized browser bootstrap. Первый runtime deliverable должен
+замкнуть human start → connect → board → stop до plugin/Electron/remote packaging.
+
 ## SVC-000 — Архитектурный контракт
 
 Deliverables: два связанных design documents, актуальная навигация и этот implementation plan.
@@ -92,6 +96,13 @@ Acceptance:
 - read/agent commands не стартуют service и не получают lifecycle scope;
 - временный HOME/state root, cleanup tests и no-secret error fixtures;
 - новый source digest имеет обновлённое qualification evidence по правилам репозитория.
+
+Дополнительные acceptance SVC-001 по аудиту:
+
+- один Bun composition root в `packages/local-runtime`, executable mode `asana-cli service run`;
+- credential module общий с CLI; startup без PAT/сети открывает setup-required UI;
+- concurrent CLI/plugin/Electron ensure создаёт один instance; manual stop блокирует auto-ensure;
+- detached child переживает exit родителя; bridge не наследует PAT неявно; версии проверяются handshake.
 
 ## SVC-002 — Ядро доски, SQLite/Drizzle и транспорт
 
@@ -136,6 +147,9 @@ Acceptance:
 - onboarding, четыре зоны, detail view, ownership, freshness, connection и stopped states;
 - действия CLI и UI дают одинаковые revisions/receipts; конфликт сохраняет пользовательский ввод;
 - bootstrap/session auth, Host/Origin/CSRF, logout/revocation и XSS fixtures;
+- owner-only local PAT setup, общий OS store CLI/runtime, account verification и отсутствие PAT readback;
+- service unauthorized, Asana credential missing/revoked, network failure и locked store различаются;
+- failed setup не затирает рабочий PAT; secret не попадает в board state, logs/WS/storage и agent output;
 - WebSocket reconnect/resync, service stop из UI, no browser offline mutation queue;
 - keyboard/focus, reduced motion, темы, 360 px layout и no external trackers;
 - compiled binary отдаёт assets без source checkout и frontend dev server;
@@ -184,6 +198,7 @@ Acceptance:
 
 - tools не экспортируют raw API, auth, arbitrary file/shell и daemon kill;
 - stdio stdout содержит только MCP; закрытие bridge не останавливает daemon;
+- default attach-only, opt-in ensure через общий launcher и persistent manual-stop latch;
 - capability/effect scopes, typed errors, bounded tool output и no-PAT bridge;
 - immutable prepare/apply сохраняет существующий external approval для local clients;
 - generators, ownership/dry-run/update/uninstall, native format validation и package tests;

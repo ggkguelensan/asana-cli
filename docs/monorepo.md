@@ -89,12 +89,15 @@ Root `test` запускает package tests через Turbo и затем CLI/
 
 ## Следующие границы
 
-Это направления из service delivery plan, не созданные пустые пакеты:
+Это направления из service delivery plan, не созданные пустые пакеты.
+[Аудит топологии](service-launch-and-auth-audit.md) уточняет единую поставку runtime, PAT setup
+и запуск из desktop/CLI/plugin. Он заменяет прежний план независимо поставляемого `apps/service`.
 
 | Будущий модуль | Ответственность | Разрешённые зависимости |
 | --- | --- | --- |
-| `apps/service` | Bun/Hono lifecycle, HTTP/WS, composition root, static assets | core, contracts, asana-client |
+| `packages/local-runtime` | Bun/Hono composition root и общий launcher; режим `asana-cli service run` | core, contracts, asana-client, credentials |
 | `packages/core` | Детерминированные use cases, transitions, revision/idempotency | contracts и transport ports |
+| `apps/desktop` | Electron shell; запускает compiled sidecar, не импортирует Bun-only modules | service client / executable launcher |
 | SQLite/Drizzle adapter | Workflow metadata, inbox/outbox, queue, migrations | schema/core ports; подключается сервисом |
 | MCP/plugin adapters | Одна модель команд для Claude/Codex clients | contracts и service client; без собственной business logic |
 

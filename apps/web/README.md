@@ -66,6 +66,13 @@ apps/web/
 native modal dialogs с Escape и отдельное подтверждение остановки. Текст источников отображается
 как React text; `dangerouslySetInnerHTML`, remote fonts и trackers не используются.
 
+## Вход и подключение Asana
+
+Авторизация сервиса и подключение Asana по PAT пока не реализованы. Текущий frontend
+ожидает session cookie от будущего same-origin backend. Режим `?demo=1` не проверяет login.
+Целевой [PAT/browser flow](../../docs/service-launch-and-auth-audit.md) использует owner-only
+local setup и общий OS credential store с CLI; отдельный OAuth flow нужен для «Войти через Asana».
+
 ## Контракт подключения и текущая граница
 
 Daemon/HTTP API ещё не реализован. По умолчанию приложение пытается подключиться к сервису;

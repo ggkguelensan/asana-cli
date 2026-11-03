@@ -37,6 +37,9 @@ at their stable paths so existing release evidence and external links do not bre
 
 ## Planning
 
+- [Topology, launch and authentication audit](service-launch-and-auth-audit.md) — PAT/web setup,
+  one core runtime, distribution matrix, Electron sidecar and immediate architecture corrections.
+
 - [Deterministic workflow and local storage](service-workflow-and-storage.md) — human operation
   without agents, minimal persistence, optional cache, user-equivalent Asana access and agent contracts.
 - [Service target state](service-target-state.md) — proposed core, daemon, web board, sync,
