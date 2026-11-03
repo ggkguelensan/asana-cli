@@ -141,6 +141,8 @@ Issue ID следует сохранить в заголовке.
 ## Service / board / plugins — следующий scope
 
 Authoritative scope и acceptance criteria: [service delivery plan](service-delivery-plan.md).
+Текущее выполнение: [GitHub epic #52](https://github.com/ggkguelensan/asana-cli/issues/52)
+и связанные issues; их карта находится в delivery plan.
 `done` у SVC-000 означает только готовый design, не runtime. Остальные задачи не реализованы.
 Исходный research LTR-003 уточняется SVC-004/SVC-005 и не считается выполненным.
 

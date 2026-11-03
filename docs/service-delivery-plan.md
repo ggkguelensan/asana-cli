@@ -13,6 +13,21 @@ Authoritative design:
 Статусы в [backlog](backlog.md) обновляются только по фактическому результату. Ниже этапы, а не
 утверждение о наличии runtime implementation.
 
+GitHub tracking: [epic #52](https://github.com/ggkguelensan/asana-cli/issues/52),
+[architecture PR #51](https://github.com/ggkguelensan/asana-cli/pull/51).
+
+| Workstream | GitHub Issue |
+| --- | --- |
+| SVC-001 | [#53](https://github.com/ggkguelensan/asana-cli/issues/53) |
+| SVC-002 | [#54](https://github.com/ggkguelensan/asana-cli/issues/54) |
+| SVC-003 | [#55](https://github.com/ggkguelensan/asana-cli/issues/55) |
+| SVC-004 | [#56](https://github.com/ggkguelensan/asana-cli/issues/56) |
+| SVC-005 | [#57](https://github.com/ggkguelensan/asana-cli/issues/57) |
+| SVC-006 | [#58](https://github.com/ggkguelensan/asana-cli/issues/58) |
+| SVC-007 | [#59](https://github.com/ggkguelensan/asana-cli/issues/59) |
+| SVC-008 | [#60](https://github.com/ggkguelensan/asana-cli/issues/60) |
+| SVC-009 | [#61](https://github.com/ggkguelensan/asana-cli/issues/61) |
+
 ## Зависимости и release slices
 
 ```mermaid
