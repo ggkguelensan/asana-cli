@@ -150,7 +150,7 @@ Authoritative scope и acceptance criteria: [service delivery plan](service-deli
 |---|---|---|---|---|---|
 | SVC-000 | P1 | done | Target architecture и client routes | — | Design, current/target distinction и delivery criteria в связанных service documents |
 | SVC-001 | P1 | ready | Daemon lifecycle и authenticated discovery | SVC-000 | См. SVC-001 в delivery plan; compiled-binary lifecycle и single-instance guarantees |
-| SVC-002 | P1 | blocked | Board core, SQLite, HTTP и events | SVC-001 | См. SVC-002; CAS, ownership, atomic outbox и replay/resync |
+| SVC-002 | P1 | blocked | Board core, SQLite/Drizzle, HTTP и events | SVC-001 | См. SVC-002; generated migrations, CAS, ownership, atomic outbox и replay/resync |
 | SVC-003 | P1 | blocked | Embedded responsive web board | SVC-002 | См. SVC-003; common operations, browser auth и UI states |
 | SVC-004 | P1 | blocked | Events API и active-task discovery | SVC-002 | См. SVC-004; durable cursors, source freshness и recovery |
 | SVC-005 | P1 | blocked | Webhook ingress и subscription lifecycle | SVC-004 | См. SVC-005; handshake, HMAC, owned hooks и fallback |

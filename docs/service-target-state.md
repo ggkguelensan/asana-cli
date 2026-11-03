@@ -101,7 +101,7 @@ src/
 ├── core/                 операции доски, назначения и команды сессиям
 ├── service/              lifecycle, discovery, HTTP, auth, WebSocket
 ├── sync/                 desired subscriptions, Events API, webhook inbox, reconciliation
-├── board/                SQLite schema, migrations, projections, event outbox
+├── board/                Drizzle schema, SQLite migrations, projections, event outbox
 ├── mcp/                  curated tools и локальный stdio bridge
 └── gateway/              pairing и удалённый транспорт, отдельный runtime mode
 web/                      frontend и локальные assets
@@ -115,18 +115,46 @@ facades, generic repository framework или отдельный package на к�
 
 ## 4. Решения по runtime
 
+Зафиксированный стек: **Bun + Hono + SQLite + Drizzle ORM**.
+
 Целевой runtime сохраняет Bun. Hono используется для routing и middleware, Bun — для HTTP,
-WebSocket и SQLite. Официальный пакет `asana` остаётся outbound SDK. Браузер получает заранее
+WebSocket и SQLite через `bun:sqlite`. Drizzle ORM использует adapter `drizzle-orm/bun-sqlite`
+для типизированных запросов и persistence schema. Официальный пакет `asana` остаётся outbound SDK.
+Браузер получает заранее
 собранные HTML/CSS/JS; выбор frontend framework не влияет на contract ядра.
 
 Причины выбора: существующий Bun executable, отсутствие дополнительного runtime у пользователя,
 встроенное локальное хранилище и небольшой HTTP interface. Поддержка Bun/WebSocket описана
 в [Hono](https://hono.dev/docs/helpers/websocket), SQLite — в
-[Bun](https://bun.sh/docs/runtime/sqlite). Версии фиксируются и проходят существующую dependency
+[Bun](https://bun.sh/docs/runtime/sqlite), интеграция Drizzle — в
+[официальном Bun/SQLite guide](https://orm.drizzle.team/docs/get-started/bun-sqlite-new).
+Версии фиксируются и проходят существующую dependency
 quarantine при добавлении dependencies; предложение не означает автоматического обновления SDK.
 
 Fastify остаётся допустимым вариантом при подтверждённой проблеме Hono/Bun. Переписывать текущий
 CLI под Node только ради запуска HTTP listener не требуется.
+
+### Drizzle: схемы, запросы и миграции
+
+Drizzle schema в модуле board — authoritative source структуры локальной БД: tables, columns,
+relations, indexes и constraints. TypeScript row types выводятся из неё. Zod остаётся runtime
+source of truth для внешних CLI/HTTP/MCP contracts; DB row не становится публичным DTO автоматически.
+Ядро использует persistence interface, не передаёт Drizzle query builders в transport или frontend.
+
+`drizzle-orm` — runtime dependency, `drizzle-kit` — development/build tooling. Kit генерирует
+SQL migrations из schema; SQL и migration metadata хранятся в Git, проверяются review и drift
+checks. Генерируемые миграции не редактируются независимо от источника. У пользователя Kit,
+Node и source checkout не требуются: binary содержит reviewed migrations и применяет их runtime
+migrator до ready, под single-instance lock. Production DB не изменяется через `drizzle-kit push`.
+
+SQLite остаётся реальным механизмом транзакций. Изменение work state и outbox event выполняются
+одной короткой транзакцией; HTTP/SDK calls и ожидание WebSocket delivery идут за её пределами.
+CAS реализуется условным update по revision/epoch с проверкой результата, а не read-then-write
+без защиты. ORM не заменяет uniqueness, foreign keys, authorization и recovery semantics.
+
+Перед добавлением dependencies фиксируются совместимые версии Bun/Drizzle/Kit. Проверки включают
+создание пустой БД, обновление старой schema с сохранением данных, отказ от несовместимого downgrade,
+rollback при ошибке и применение embedded migrations из compiled binary без папки проекта.
 
 ## 5. Владение данными и область экземпляра
 

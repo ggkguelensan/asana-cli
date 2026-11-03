@@ -88,9 +88,10 @@ Acceptance:
 - временный HOME/state root, cleanup tests и no-secret error fixtures;
 - новый source digest имеет обновлённое qualification evidence по правилам репозитория.
 
-## SVC-002 — Ядро доски, SQLite и транспорт
+## SVC-002 — Ядро доски, SQLite/Drizzle и транспорт
 
-Зависимость: SVC-001. Реализовать schema/migrations и core operations для work items, ownership,
+Зависимость: SVC-001. Persistence stack: SQLite через `bun:sqlite` + Drizzle ORM.
+Реализовать Drizzle schema, generated SQL migrations и core operations для work items, ownership,
 sessions, command receipts, revision CAS, outbox. HTTP/WebSocket — adapters этого interface.
 Prepare/apply journal остаётся существующим; network mutation не дублируется в новом store.
 
@@ -102,6 +103,9 @@ Acceptance:
 - snapshot/cursor/replay исключают gap; expired cursor и slow consumer требуют resync;
 - ownership epoch защищает от старой сессии после handoff;
 - storage permissions, migrations/downgrade и bounded retention проверены;
+- Drizzle schema владеет DB types/constraints, Zod — внешними contracts; raw rows не выдаются клиентам;
+- Drizzle Kit используется только при разработке; reviewed migrations входят в binary и применяются без Kit/source checkout;
+- schema/migration drift, upgrade с сохранением данных и atomic state/outbox transaction проверены;
 - CLI black-box и transport tests обращаются к тому же core, без UI-only правил.
 
 До merge зафиксировать численные budgets в schema/config и генерируемом capabilities contract.
