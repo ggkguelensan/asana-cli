@@ -1,5 +1,15 @@
 # Implementation plan
 
+## Новое направление: локальный сервис и общая доска
+
+С 2026-11-03 следующий product scope описан в [service delivery plan](service-delivery-plan.md):
+daemon lifecycle → core/store/transport → web board и Events API → webhooks/local plugins →
+gateway/OAuth → отдельная qualification desktop/mobile/CLI. Подробное
+[целевое состояние](service-target-state.md) отделено от текущей реализации; плагины и реальные
+границы шести клиентов описаны в [integration design](service-client-integrations.md).
+Номера release и сроки не назначены. Ни один запланированный endpoint или plugin не объявляется
+доступным. Дальнейшие разделы сохраняют историю выполнения v1 и его validation guarantees.
+
 Этот документ переводит [roadmap](roadmap.md) и [backlog](backlog.md) в ближайшие небольшие,
 проверяемые изменения. Календарные даты намеренно не зафиксированы: порядок определяется
 зависимостями, а не неизвестной скоростью команды.
@@ -29,7 +39,8 @@
   считается опубликованной до отдельного release.
 
 Следующий шаг — квалифицировать DEV-017/DEV-018 на exact commit и отдельно решить публикацию `v1.1.0`.
-Другие product ideas остаются в `Later` backlog. Следующий release повторяет
+Новый service scope ведётся отдельно в [service delivery plan](service-delivery-plan.md).
+Остальные product ideas остаются в `Later` backlog. Следующий release повторяет
 version/bundle/evidence gate и maintainer procedure на новом exact commit. Исторические `v0.4.0`,
 failed tag `v1.0.0` и опубликованный `v1.0.1` не получают задним числом новые возможности.
 

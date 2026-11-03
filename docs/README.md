@@ -37,6 +37,12 @@ at their stable paths so existing release evidence and external links do not bre
 
 ## Planning
 
+- [Service target state](service-target-state.md) — proposed core, daemon, web board, sync,
+  ownership, security, lifecycle, and recovery; not implemented runtime behavior.
+- [Service client integrations](service-client-integrations.md) — proposed plugin and MCP routes
+  for Claude Desktop/Mobile/Code and Codex Desktop/Mobile/CLI, with qualification boundaries.
+- [Service delivery plan](service-delivery-plan.md) — dependency-ordered implementation PRs and
+  acceptance criteria for the new service scope.
 - [Roadmap](roadmap.md)
 - [Backlog](backlog.md)
 - [Current implementation plan](implementation-plan.md)

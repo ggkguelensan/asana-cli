@@ -1,5 +1,11 @@
 # Architecture
 
+This document describes the current implementation. The proposed daemon, shared board core,
+HTTP/WebSocket, MCP, and remote gateway are specified in
+[service target state](service-target-state.md), with
+[client integrations](service-client-integrations.md) and a
+[delivery plan](service-delivery-plan.md). They are not available runtime features yet.
+
 `asana-cli` is a standalone Bun-compiled CLI with two public surfaces:
 
 - human commands, which emit ordinary JSON and may request interactive confirmation;

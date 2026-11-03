@@ -1,5 +1,14 @@
 # Roadmap asana-cli
 
+## Следующее направление, 2026-11-03
+
+[Service target state](service-target-state.md) задаёт общее ядро, локальный daemon, веб-доску,
+синхронизацию активных задач и восстановление. [Client integrations](service-client-integrations.md)
+описывает plugin/MCP маршруты для Claude Desktop, Mobile, Code CLI и Codex Desktop, Mobile, CLI.
+[Delivery plan](service-delivery-plan.md) определяет `SVC-*` workstreams и независимые local/remote
+release gates. Это предложение следующего scope; текущая реализация и evidence не получают
+новые claims. Ниже сохранён снимок v1 roadmap и его исходные гарантии.
+
 Актуально на 2026-07-24. Текущий опубликованный GitHub Release —
 [`v1.0.1`](https://github.com/ggkguelensan/asana-cli/releases/tag/v1.0.1), tag указывает на
 commit [`da67cf3`](https://github.com/ggkguelensan/asana-cli/commit/da67cf3f06062b2d0a3678fe3936e1563d4937bb).

@@ -11,6 +11,11 @@
 - видеть локальную историю команд и получать практические insights;
 - устанавливать и обновлять один standalone binary — Bun/Node для него не нужны.
 
+Следующее направление разработки — [общее ядро, фоновый сервис и веб-доска](docs/service-target-state.md)
+с [плагинами для Claude и Codex на desktop, mobile и CLI](docs/service-client-integrations.md).
+Это целевой дизайн; runtime ещё не реализован. Этапы и критерии готовности находятся в
+[плане реализации](docs/service-delivery-plan.md).
+
 ## Скачать
 
 Готовый binary с проверкой SHA-256:

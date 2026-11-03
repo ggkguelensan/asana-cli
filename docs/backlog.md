@@ -138,6 +138,25 @@ Issue ID следует сохранить в заголовке.
 | LTR-004 | P3 | research | Attachment upload | SEC-004, DEV-010 | Отдельный threat model для path access, MIME, size и data exfiltration |
 | LTR-005 | P3 | ready | Enterprise managed policies | SEC-004, REL-003 | Policy bundle подписан, валидируется и не может ослабляться project config без явного override |
 
+## Service / board / plugins — следующий scope
+
+Authoritative scope и acceptance criteria: [service delivery plan](service-delivery-plan.md).
+`done` у SVC-000 означает только готовый design, не runtime. Остальные задачи не реализованы.
+Исходный research LTR-003 уточняется SVC-004/SVC-005 и не считается выполненным.
+
+| ID | P | Статус | Задача | Зависит от | Acceptance criteria |
+|---|---|---|---|---|---|
+| SVC-000 | P1 | done | Target architecture и client routes | — | Design, current/target distinction и delivery criteria в связанных service documents |
+| SVC-001 | P1 | ready | Daemon lifecycle и authenticated discovery | SVC-000 | См. SVC-001 в delivery plan; compiled-binary lifecycle и single-instance guarantees |
+| SVC-002 | P1 | blocked | Board core, SQLite, HTTP и events | SVC-001 | См. SVC-002; CAS, ownership, atomic outbox и replay/resync |
+| SVC-003 | P1 | blocked | Embedded responsive web board | SVC-002 | См. SVC-003; common operations, browser auth и UI states |
+| SVC-004 | P1 | blocked | Events API и active-task discovery | SVC-002 | См. SVC-004; durable cursors, source freshness и recovery |
+| SVC-005 | P1 | blocked | Webhook ingress и subscription lifecycle | SVC-004 | См. SVC-005; handshake, HMAC, owned hooks и fallback |
+| SVC-006 | P1 | blocked | Curated MCP и local plugin packages | SVC-002 | См. SVC-006; shared tools, deterministic packages и native evidence |
+| SVC-007 | P1 | blocked | Gateway, OAuth, pairing и remote UI | SVC-003, SVC-006 | См. SVC-007; tenant/device/effect isolation и human approval |
+| SVC-008 | P1 | blocked | Qualification шести client surfaces | SVC-005, SVC-007 | См. SVC-008; real-client records, explicit mobile modes и limitations |
+| SVC-009 | P2 | blocked | GitLab/GitHub MR/PR source adapters | SVC-002 | См. SVC-009; scoped providers и independent freshness |
+
 ## Definition of Done для любой задачи
 
 - Реализация не расширяет agent access к `auth`, `api call`, `request` или произвольным файлам.
