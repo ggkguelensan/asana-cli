@@ -24,6 +24,7 @@
       },
       "dependencies": {
         "@asana-cli/asana-client": "workspace:*",
+        "@asana-cli/core": "workspace:*",
         "@asana-cli/local-runtime": "workspace:*",
         "zod": "4.6.7",
       },

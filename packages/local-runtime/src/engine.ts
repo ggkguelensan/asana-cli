@@ -17,6 +17,9 @@ export class TrackingEngine {
   eventChanges=0;
   revision=1;
   onChange: (resource?:string)=>void=()=>{};
+  onTask: (task:SourceTask)=>void=()=>{};
+  onTick: ()=>void=()=>{};
+  private stopped=false;
   private timer:ReturnType<typeof setInterval>|undefined;
   private busy=false;
   private refreshing:Promise<void>|undefined;
@@ -33,6 +36,8 @@ export class TrackingEngine {
       const result=await this.source.assigned(this.user);
       this.candidates=result.tasks; this.truncated=result.truncated;
       for(const task of result.tasks)this.tasks.set(task.gid,task);
+      if(this.stopped)return;
+      result.tasks.forEach(task=>this.onTask(task));
       this.reselect(); this.state='connected'; this.fetchedAt=new Date().toISOString();
     } catch {this.state='asana_unavailable';}
     this.discoveryAt=Date.now(); this.notify();
@@ -43,9 +48,9 @@ export class TrackingEngine {
     this.prune();
   }
   configure(rule:TrackingRule):void {this.rule=rule;this.reselect();this.notify();}
-  private notify(resource?:string):void {this.revision++;this.onChange(resource);}
+  notify(resource?:string):void {this.revision++;this.onChange(resource);}
   start():void { this.timer=setInterval(()=>void this.tick(),2000); void this.refresh(); }
-  stop():void {clearInterval(this.timer);this.timer=undefined;this.interests.snapshot().forEach(entry=>this.release(entry.owner));}
+  stop():void {this.stopped=true;clearInterval(this.timer);this.timer=undefined;this.interests.snapshot().forEach(entry=>this.release(entry.owner));}
   private prune():void {
     const live=new Set(this.interests.resources());
     this.pruneMap(this.eventState,live);this.pruneMap(this.tasks,live);
@@ -58,7 +63,8 @@ export class TrackingEngine {
     try{await this.work();}finally{this.busy=false;}
   }
   private async work():Promise<void> {
-    this.interests.expire(Date.now());this.prune();
+    if(this.stopped)return;
+    this.onTick();this.interests.expire(Date.now());this.prune();
     if(Date.now()-this.discoveryAt>60_000)await this.refresh();
     const gid=this.nextResource();
     if(gid)await this.poll(gid);
@@ -84,7 +90,7 @@ export class TrackingEngine {
   private async update(gid:string):Promise<void> {
     const task=await this.source.task(gid);
     if(!this.interests.count(gid))return;
-    this.tasks.set(gid,task);
+    this.tasks.set(gid,task);this.onTask(task);
     this.candidates=this.candidates.map(t=>t.gid===gid?task:t);
     this.reselect();this.fetchedAt=new Date().toISOString();this.notify(gid);
   }

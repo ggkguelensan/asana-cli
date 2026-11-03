@@ -42,6 +42,9 @@ LOCAL DEVELOPER CONTEXT
 
 INTEGRATIONS
   asana-cli service start|status|stop        Experimental local next tracker
+  asana-cli work list                       Saved work and ready continuations
+  asana-cli work wait --input @file         Save checkpoint and Asana wait condition
+  asana-cli work action <id> --input @file  Claim/report/heartbeat/complete/cancel/retry
   asana-cli board open|list|sources          My work, real source criteria and live views
   asana-cli integrations list
   asana-cli integrations status --client CLIENT --scope user|project [--skill SKILL]

@@ -55,6 +55,7 @@ export function enforceAgentPolicy(args: ParsedArgs): void {
   ) {
     throw new CliError("policy-denied", "Agent mode cannot apply integration lifecycle changes");
   }
+  enforceWorkWrite(args);
   const write = command === "task" && ["update", "comment"].includes(action ?? "");
   if (write) {
     throw new CliError(
@@ -71,6 +72,13 @@ export function enforceAgentPolicy(args: ParsedArgs): void {
       "policy-denied",
       "Agent writes are disabled. Start the agent host with ASANA_CLI_AGENT_POLICY=read-write; host approval is still required.",
     );
+  }
+}
+
+function enforceWorkWrite(args: ParsedArgs): void {
+  if (args.positionals[0] !== 'work' || args.positionals[1] === 'list') return;
+  if (agentEnvironment().ASANA_CLI_AGENT_POLICY !== 'read-write') {
+    throw new CliError('policy-denied', 'Local workflow writes require ASANA_CLI_AGENT_POLICY=read-write in the agent host');
   }
 }
 

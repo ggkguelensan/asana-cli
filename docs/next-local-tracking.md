@@ -5,6 +5,9 @@
 Он не опубликован как новый stable release. Название локального executable `asana-cli-next`
 позволяет проверять его рядом с установленным stable `asana-cli`.
 
+Следующий реализованный slice: [durable work](next-durable-work.md) добавляет SQLite work records,
+checkpoints, ожидания и ручные/CLI продолжения.
+
 ## Пользовательский запуск
 
 Существующий PAT берётся из credential manager CLI или `ASANA_ACCESS_TOKEN`.
@@ -129,8 +132,8 @@ session; это не изоляция недоверенного кода. По�
 
 ## Что хранится локально и как приходят изменения
 
-SQLite содержит только KV settings: tracking rule, account binding и признак ручной
-остановки. Schema описана в `packages/local-runtime/src/schema.ts`, SQL сгенерирован Drizzle Kit,
+SQLite содержит KV settings: tracking rule, account binding и признак ручной
+остановки; durable workflow slice добавляет собственные work records, описанные отдельно. Schema описана в `packages/local-runtime/src/schema.ts`, SQL сгенерирован Drizzle Kit,
 reviewed migration встроена в executable и применяется в транзакции с version guard.
 Task metadata, candidates, графы, интересы consumers и Events cursors живут в RAM.
 После рестарта core заново читает Asana и получает свежие sync tokens. PAT в SQLite не хранится.

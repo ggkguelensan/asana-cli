@@ -10,13 +10,17 @@ import type { ParsedArgs } from './args';
 
 function stateDirectory(){return join(dirname(resolveOperationJournalDirectory()),'next-service');}
 async function discovery(){try{return discoverySchema.parse(JSON.parse(await readFile(join(stateDirectory(),'service.json'),'utf8')) as unknown);}catch{return undefined;}}
-async function request(path:string,init:RequestInit={}){
+export async function serviceRequest(path:string,init:RequestInit={}){
   const info=await discovery();if(!info)throw new CliError('validation','Next service is not running');
-  const response=await fetch(`${info.origin}${path}`,{...init,signal:AbortSignal.timeout(3000),headers:{Authorization:`Bearer ${info.nativeToken}`,...init.headers}});
-  if(!response.ok)throw new CliError('validation',`Next service returned ${response.status}`);
+  const response=await fetch(`${info.origin}${path}`,{...init,signal:AbortSignal.timeout(15_000),headers:{Authorization:`Bearer ${info.nativeToken}`,...init.headers}});
+  if(!response.ok)throw new CliError('validation',`Next service returned ${response.status}: ${await failureCode(response)}`);
   return z.record(z.string(),z.unknown()).parse(await response.json());
 }
-async function status(){try{return await request('/api/v1/status');}catch{return undefined;}}
+async function failureCode(response: Response): Promise<string> {
+  const parsed = z.object({error:z.string().regex(/^[a-z_]+$/)}).safeParse(await response.json().catch(() => null));
+  return parsed.success ? parsed.data.error : 'request_failed';
+}
+async function status(){try{return await serviceRequest('/api/v1/status');}catch{return undefined;}}
 function alive(pid:number):boolean {try{process.kill(pid,0);return true;}catch{return false;}}
 async function claim(name:string){
   const directory=stateDirectory();await mkdir(directory,{recursive:true,mode:0o700});const path=join(directory,name);
@@ -61,7 +65,7 @@ async function run(args:ParsedArgs){
 }
 async function openBoard(){
   await start();const info=await discovery();if(!info)throw new CliError('internal','Missing service discovery');
-  const code=z.object({code:z.string()}).parse(await request('/api/v1/session/bootstrap',{method:'POST'})).code;
+  const code=z.object({code:z.string()}).parse(await serviceRequest('/api/v1/session/bootstrap',{method:'POST'})).code;
   const child=Bun.spawn([process.platform==='darwin'?'open':'xdg-open',`${info.origin}/#bootstrap=${code}`],{stdout:'ignore',stderr:'ignore'});
   if(await child.exited!==0)throw new CliError('validation','Could not open browser');
   return {channel:'next',url:info.origin,browser_opened:true};
@@ -69,7 +73,7 @@ async function openBoard(){
 async function serviceAction(action:string|undefined,args:ParsedArgs){
   const handlers:Record<string,()=>Promise<unknown>>={
     run:()=>run(args),start,status:async()=>await status()??{state:'stopped',channel:'next'},
-    stop:()=>request('/api/v1/commands',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({request_id:crypto.randomUUID(),kind:'service_stop'})}),
+    stop:()=>serviceRequest('/api/v1/commands',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({request_id:crypto.randomUUID(),kind:'service_stop'})}),
   };
   const handler=handlers[action??''];
   if(!handler)throw new CliError('usage','Use service start|run|status|stop or board open');
@@ -78,8 +82,8 @@ async function serviceAction(action:string|undefined,args:ParsedArgs){
 async function boardAction(args:ParsedArgs){
   const action=args.positionals[1];
   if(action==='open')return openBoard();
-  if(action==='list')return request('/api/v1/board');
-  if(action==='sources')return request('/api/v1/tracking');
+  if(action==='list')return serviceRequest('/api/v1/board');
+  if(action==='sources')return serviceRequest('/api/v1/tracking');
   throw new CliError('usage','Use board open|list|sources');
 }
 export async function runServiceCommand(args:ParsedArgs){

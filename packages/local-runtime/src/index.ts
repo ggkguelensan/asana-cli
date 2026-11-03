@@ -1,4 +1,6 @@
 import { Hono, type Context } from 'hono';
+import { Workflow } from './workflow';
+import { workRoutes } from './work-routes';
 import { GraphSession } from './graph-session';
 import { upgradeWebSocket, websocket } from 'hono/bun';
 import { bodyLimit } from 'hono/body-limit';
@@ -24,6 +26,9 @@ export async function runService(options:ServiceOptions){
   const store=openStore(options.stateDirectory);
   const source=options.source??createTaskSource(createAsanaTransport(options.pat,{timeoutMs:10_000}));
   const engine=new TrackingEngine(source,store.rule());
+  const workflow=new Workflow(store.work,engine.interests,()=>engine.notify());
+  engine.onTask=task=>workflow.observe(task,new Date().toISOString());
+  engine.onTick=()=>workflow.expire(new Date().toISOString());
   const user=await source.identity();store.bindAccount(user.gid);
   const sessions=new Sessions();const nativeToken=crypto.randomUUID();const instance=crypto.randomUUID();
   const clients=new Map<unknown,{ws:WSContext;authorized:()=>boolean;interested:(resource?:string)=>boolean}>();let origin='';let closed=false;
@@ -60,7 +65,8 @@ export async function runService(options:ServiceOptions){
     c.header('Set-Cookie',`asana_next=${id}; HttpOnly; SameSite=Strict; Path=/; Max-Age=43200`);
     return c.json({connected:true});
   });
-  app.get('/api/v1/capabilities',c=>c.json({channel:'next',protocol:1,features:['my-work.select','task.metadata.read','task.events.watch','dependency_graph.read','view.lease'],asana_mutations:false,lease_ttl_ms:45000,graph_limits:{depth:3,per_level:12},events:{mode:'asana_events_api',global_interval_ms:2000,minimum_resource_interval_ms:30000}}));
+  app.get('/api/v1/capabilities',c=>c.json({channel:'next',protocol:1,features:['my-work.select','task.metadata.read','task.events.watch','dependency_graph.read','view.lease','work.wait','work.checkpoint','work.claim','work.report'],asana_mutations:false,lease_ttl_ms:45000,graph_limits:{depth:3,per_level:12},events:{mode:'asana_events_api',global_interval_ms:2000,minimum_resource_interval_ms:30000}}));
+  app.route('/api/v1/work',workRoutes(workflow,source));
   app.get('/api/v1/status',c=>c.json({instance,channel:'next',protocol:1,...engine.status()}));
   app.get('/api/v1/tracking',c=>{
     const csrf=sessions.read(c.req.header('Cookie')??'')?.csrf??'native';
@@ -84,7 +90,7 @@ export async function runService(options:ServiceOptions){
     };
   }));
   const stop=async()=>{
-    if(closed)return;closed=true;engine.stop();
+    if(closed)return;closed=true;workflow.stop();engine.stop();
     for(const {ws} of clients.values()){ws.send(JSON.stringify({type:'service.stopping'}));ws.close();}
     server.stop(true);store.close();await rm(join(options.stateDirectory,'service.json'),{force:true});await options.onStop?.();
   };
@@ -123,5 +129,5 @@ export async function runService(options:ServiceOptions){
   const temporary=join(options.stateDirectory,`${instance}.json`);
   await writeFile(temporary,JSON.stringify(descriptor),{mode:0o600});await rename(temporary,join(options.stateDirectory,'service.json'));
   engine.start();
-  return {descriptor,engine,stop,server};
+  return {descriptor,engine,workflow,stop,server};
 }

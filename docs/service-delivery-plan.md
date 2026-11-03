@@ -6,6 +6,8 @@
 Реализованный [next watcher](next-local-tracking.md) покрывает часть SVC-001–004:
 lifecycle/session, SQLite settings, embedded UI, Events API и view leases. Это не закрывает
 полные workflow, production/release acceptance и остальные этапы.
+[Durable work slice](next-durable-work.md) добавляет часть SVC-002: сохранённые checkpoints,
+условия Asana, версионированную очередь и lease/report/complete; runner и GitLab остаются планом.
 
 Authoritative design:
 

@@ -188,3 +188,36 @@ test('dependency view uses the reusable websocket graph API and renders arrows',
   await expect(page.getByRole('img',{name:'Граф: стрелка ведёт от задачи к её зависимости'})).toBeVisible();
   await expect(page.getByRole('heading',{name:'Prerequisite'})).toBeVisible();
 });
+
+test('saved work appears after reload and a human can claim and complete its continuation', async ({page}) => {
+  const {board} = await service(page); const first = board.items[0]!; first.id = '111';
+  const items: import('@asana-cli/service-client/workflow').Work[] = [];
+  await page.route('**/api/v1/tracking', route => route.fulfill({json:{state:'connected',candidates:1,tracked:1,truncated:false,rule:{preset:'current_work',choices:[]},csrf_token:board.csrf_token,choices:[],subscriptions:{resources:1,event_responses:1,event_changes:0,synced:1,retrying:0,owners:[]}}}));
+  await page.route('**/api/v1/work', async route => {
+    if (route.request().method() === 'GET') return route.fulfill({json:{items,lease_ms:90000}});
+    expect(route.request().headers()['x-csrf-token']).toBe(board.csrf_token);
+    const input = route.request().postDataJSON(); const at = new Date().toISOString();
+    items.push({id:input.request_id,revision:1,task_gid:input.task_gid,title:first.title!,status:'waiting',condition:input.condition,checkpoint:input.checkpoint,created_at:at,updated_at:at});
+    return route.fulfill({status:201,json:items[0]});
+  });
+  await page.route('**/api/v1/work/*/actions', async route => {
+    const action = route.request().postDataJSON(); const work = items[0]!;
+    expect(action.expected_revision).toBe(work.revision); work.revision++;
+    if (action.kind === 'claim') { work.status='running'; work.run={worker:action.worker,started_at:new Date().toISOString(),expires_at:new Date(Date.now()+90000).toISOString()}; }
+    else { expect(action.kind).toBe('complete'); work.status='completed'; work.run!.report=action.summary; }
+    return route.fulfill({json:work});
+  });
+  await page.goto('/'); await page.getByRole('button',{name:first.title!,exact:true}).click();
+  await page.getByText('Сохранить работу и дождаться изменения',{exact:true}).click();
+  await page.getByLabel('Что уже сделано',{exact:true}).fill('Подготовлено исправление');
+  await page.getByLabel('Что сделать после ожидания',{exact:true}).fill('Проверить итог тестирования');
+  await page.getByRole('button',{name:'Сохранить ожидание',exact:true}).click();
+  await expect(page.getByText('Ожидание сохранено.',{exact:false})).toBeVisible();
+  await page.reload(); await expect(page.getByRole('heading',{name:'Работа и продолжения'})).toBeVisible();
+  await expect(page.getByText('Ожидает Asana',{exact:true})).toBeVisible();
+  items[0]!.status='ready'; items[0]!.revision=2; await page.reload();
+  await page.getByRole('button',{name:'Продолжить в этом окне',exact:true}).click();
+  await page.getByLabel('Результат или ход работы',{exact:true}).fill('Результат проверен');
+  await page.getByRole('button',{name:'Завершить продолжение',exact:true}).click();
+  await expect(page.getByText('Продолжение завершено',{exact:true})).toBeVisible();
+});

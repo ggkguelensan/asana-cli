@@ -19,6 +19,9 @@
 детерминированная выборка задач и Events API. Полный product scope остаётся в
 [плане реализации](docs/service-delivery-plan.md).
 
+В next также доступны [сохранённая работа, ожидания и очередь продолжений](docs/next-durable-work.md):
+checkpoint переживает рестарт, а подтверждённое условие Asana открывает ручное/CLI продолжение.
+
 В [apps/web/](apps/web/README.md) уже есть самостоятельная доска на **TypeScript + React + Jotai + Vite**:
 компоненты, HTTP/WebSocket client, responsive UI и явный режим примера. Next binary запускает
 Bun/Hono core, отдаёт встроенную доску и подключает браузер к реальной Asana через локальную session.
