@@ -114,14 +114,18 @@ integration/skill inputs. Старые evals не переименованы в 
 Перед релизом нужна новая полная qualification матрица текущего binary.
 
 Immutable `evidence/v1` проверяется по Git blobs исходного commit
-`c86fdc081319d1c6f250b6dd2b15b5ed28240f94`. Сам audit JSON также должен остаться byte-identical.
+`dd4760f8fc25215f9311f3eb1ea8c025137b562e`. Сам audit JSON также должен остаться byte-identical.
 Проверка требует полной Git history и не утверждает безопасность нынешнего dependency tree.
 Текущие проверки — frozen install, workspace boundaries, tests, SBOM и `bun audit --production`.
 
 Fallow 3.4.2 new-only attribution не сопоставляет перемещённые пути. Чтобы перенос не
-выдавал старые findings за новые, health/dupes baseline сгенерированы на том же исходном
-commit и перенесены только по правилам `src/ → apps/cli/src/`, `web/ → apps/web/`.
+выдавал старые findings за новые, health/dupes baseline сгенерированы на pre-monorepo source
+commit `c86fdc081319d1c6f250b6dd2b15b5ed28240f94`
+и перенесены только по правилам `src/ → apps/cli/src/`, `web/ → apps/web/`.
 Clone identities повторно сортируются после изменения путей. Прежний dead-code baseline
 проходит ту же механическую миграцию. Значения метрик не увеличивались; findings нового
 кода не принимались. Генератор — `bun run generate:fallow-migration`; outputs не редактируются
 вручную. Health score ≥80, duplication ≤5% и regression gates продолжают действовать.
+
+Для повторного получения source baseline после squash merge можно загрузить сохранённую
+историю PR: `git fetch origin refs/pull/51/head:refs/remotes/origin/pr-51-history`.

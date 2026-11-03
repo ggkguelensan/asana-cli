@@ -58,6 +58,6 @@ client-adapter, and integration-lifecycle dependency sets.
 ## Immutable v1 archive
 
 The v1 audit remains byte-identical and is verified against Git blobs at
-`c86fdc081319d1c6f250b6dd2b15b5ed28240f94`, including its original manifest and lockfile.
+`dd4760f8fc25215f9311f3eb1ea8c025137b562e`, including its original manifest and lockfile.
 A full clone is required. This is historical verification, not a clean-dependency claim for today.
 See [monorepo](../docs/monorepo.md) for current checks and release qualification boundaries.

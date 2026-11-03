@@ -14,7 +14,7 @@ export const V1_DEPENDENCY_AUDIT_SCHEMA = "asana-cli.v1-dependency-audit.v1" as 
 const projectRoot = resolve(import.meta.dir, "..");
 // Immutable source anchor for the pre-monorepo v1 audit. This is archival evidence,
 // not a security or compatibility qualification of the current workspace.
-const V1_SOURCE_COMMIT = "c86fdc081319d1c6f250b6dd2b15b5ed28240f94";
+const V1_SOURCE_COMMIT = "dd4760f8fc25215f9311f3eb1ea8c025137b562e";
 const archiveCache = new Map<string, Promise<Uint8Array>>();
 export function readV1Archive(path: string): Promise<Uint8Array> {
   relativePathSchema.parse(path);
