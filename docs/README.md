@@ -37,6 +37,11 @@ at their stable paths so existing release evidence and external links do not bre
 
 ## Planning
 
+- [Agent-authored views](service-extensible-views.md) — arbitrary TSX/HTML composition using shared
+  UI and typed core capabilities, authoring workflow, registry and runtime isolation.
+- [GitLab integration](service-gitlab-integration.md) — Gitbeaker/glab adapters, webhooks,
+  polling/reconciliation and shared live data for all views.
+
 - [Topology, launch and authentication audit](service-launch-and-auth-audit.md) — PAT/web setup,
   one core runtime, distribution matrix, Electron sidecar and immediate architecture corrections.
 

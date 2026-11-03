@@ -29,6 +29,7 @@ GitHub tracking: [epic #52](https://github.com/ggkguelensan/asana-cli/issues/52)
 | SVC-008 | [#60](https://github.com/ggkguelensan/asana-cli/issues/60) |
 | SVC-009 | [#61](https://github.com/ggkguelensan/asana-cli/issues/61) |
 | SVC-010 | [#62](https://github.com/ggkguelensan/asana-cli/issues/62) |
+| SVC-011 | [View authoring contract](service-extensible-views.md); implementation pending |
 
 ## Зависимости и release slices
 
@@ -47,6 +48,8 @@ flowchart TD
     GW --> Q[SVC-008: six-client qualification]
     WH --> Q
     B --> GIT[SVC-009: GitLab / GitHub change tracking]
+    UI --> VIEWS[SVC-011: agent-authored views / UI SDK]
+    B --> VIEWS
 ```
 
 | Slice | Включает | Условие завершения |
@@ -57,7 +60,8 @@ flowchart TD
 | Permission parity | SVC-010 | Default access равен правам Asana user, optional restrictions явные |
 | Remote access | SVC-007 | Gateway/pairing/OAuth, scoped remote UI и offline semantics |
 | Six clients | SVC-008 | Реальные evidence records для каждой заявленной поверхности |
-| Change requests | SVC-009 | Независимая freshness MR/PR/CI/approve без расширения authority |
+| Change requests | SVC-009 | SDK/glab ports, shared refresh/hooks и independent MR/CI freshness |
+| Custom views | SVC-011 | Agent-authored HTML/TSX, reusable UI/SDK, grants и host bridge |
 
 Remote release не объявляется готовым по local E2E. Первая local версия не ждёт gateway hosting,
 marketplace publication или embedded widgets. Package publishing, hosting deployment и новый
@@ -249,10 +253,12 @@ Acceptance:
 Embedded UI resources добавляются только после подтверждения host/mobile capability; полная web
 board доступна независимо от этого. Marketplace listings/publication требуют отдельного действия.
 
-## SVC-009 — MR/PR, CI и approvals
+## SVC-009 — GitLab/GitHub API, MR/PR, CI и subscriptions
 
 Зависимость: SVC-002. GitLab/GitHub adapters для явно связанных canonical change refs.
 Provider auth отделён от Asana credential, arbitrary hosts не выбираются из task content.
+[GitLab contract](service-gitlab-integration.md): primary Gitbeaker adapter, explicit alternative
+`glab api` transport, общие typed ports, webhook + обязательный polling/reconciliation.
 
 Acceptance:
 
@@ -261,6 +267,11 @@ Acceptance:
 - bounded refresh, provider permissions, rate limit и stale/offline outcomes;
 - task с несколькими изменениями не становится done после merge одного;
 - review карточка показывает ожидаемое действие без автоматического approve/merge;
+- SDK и glab adapters имеют explicit host/actor, bounded IO, validated DTO и no hidden write retry;
+- polling-only работает без hook-management rights; hooks shared/refcounted, только owned IDs;
+- webhook duplicate/out-of-order/failure/revoke и scheduler restart проверены;
+- GraphQL subscriptions не обещают полное покрытие; MR notification subscribe не считается event stream;
+- base board и новые views используют один scheduler/watch projection без N дополнительных hooks/pollers;
 - fixtures обезличены, реальный self-hosted GitLab credential не попадает в GitHub.
 
 ## SVC-010 — Default Asana access по правам пользователя
@@ -291,3 +302,25 @@ public CLI black-box tests, docs/help и repository gates. Changes в digest-bou
 В PR показывать final structure before/after, изменённые trust boundaries, выполненные checks
 и material limitations. Не выдавать сохранённый design за runtime demo. Дальнейший progress
 отмечается в GitHub Issues и связанных PR, без переписывания исторических release records.
+
+## SVC-011 — Agent-authored views и reusable UI/SDK
+
+Зависимости: SVC-002, SVC-003; provider-specific views используют capabilities SVC-009.
+Контракт: [extensible views](service-extensible-views.md). Реальная runtime integration ещё
+не реализована; новые package skeletons и fake support claims не создаются.
+
+Deliverables: извлечённые presentation UI modules и service client, typed view SDK, authoring
+skill/template, versioned capability catalogue, static HTML manifest/registry, isolated frame
+host bridge, atomic activate/disable/rollback и view settings/provenance metadata.
+
+Acceptance:
+
+- агент создаёт новый layout/form/chart и использует готовые BoardView/карточки без копирования business rules;
+- TS/TSX source → build → static HTML/assets; core не исполняет build/install scripts;
+- SDK query/command/watch берут schemas из core catalogue; unknown capabilities дают явную ошибку;
+- HTML работает в нашем host; сторонние artifact surfaces и file URLs не получают auth автоматически;
+- custom frame не получает PAT, service cookies/control token или raw board CSRF metadata;
+- operations используют общие handlers/revision/idempotency/receipts и host approval;
+- lifecycle, forged protocol, revoke, incompatible bundle, offline/resync и browser isolation tested;
+- сохраняются view registry/grants/settings, а не task mirror, private chat или API credentials;
+- готовый view работает после завершения агента; отсутствие custom views не ломает основной human flow.

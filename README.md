@@ -22,6 +22,10 @@
 компоненты, HTTP/WebSocket client, responsive UI и явный режим примера. Daemon/API и встраивание
 доски в CLI пока не реализованы; работа с реальной Asana через браузер ещё недоступна.
 
+[Расширяемые views](docs/service-extensible-views.md) и
+[GitLab integration](docs/service-gitlab-integration.md) задают следующий scope: агент собирает
+HTML/TSX интерфейсы поверх общей основы; SDK/glab и subscriptions остаются на стороне core.
+
 [Аудит запуска и авторизации](docs/service-launch-and-auth-audit.md) определяет целевой PAT setup,
 browser session и единый core для CLI, desktop и plugins. Это план runtime, ещё не готовые команды.
 

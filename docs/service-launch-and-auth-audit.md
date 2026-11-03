@@ -256,6 +256,10 @@ registration, и не гарантия shell доступа у любого clou
 Electron Windows shell может быть remote client; local Windows core не входит в текущую POSIX
 release matrix и потребует отдельной квалификации.
 
+Дополнительные требования: [agent-authored views](service-extensible-views.md) используют
+SDK/готовую UI library и host bridge; [GitLab](service-gitlab-integration.md) работает через
+server-side adapter и общий sync. Generated HTML не получает runtime/admin credentials.
+
 ## 7. Что менять первым
 
 1. Source gate TS/TSX и inventory исправлены в этом изменении; JS source files не найдено.

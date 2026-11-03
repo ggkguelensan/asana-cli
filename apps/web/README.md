@@ -73,6 +73,13 @@ native modal dialogs с Escape и отдельное подтверждение 
 Целевой [PAT/browser flow](../../docs/service-launch-and-auth-audit.md) использует owner-only
 local setup и общий OS credential store с CLI; отдельный OAuth flow нужен для «Войти через Asana».
 
+## Расширение интерфейса агентами
+
+Текущий путь — доверенное изменение TSX source и переиспользование компонентов внутри host
+Jotai Provider. [View contract](../../docs/service-extensible-views.md) описывает проверяемый
+source example и следующий runtime scope: UI library, view SDK и установка isolated HTML views.
+Registry/bridge и [GitLab live data](../../docs/service-gitlab-integration.md) ещё не реализованы.
+
 ## Контракт подключения и текущая граница
 
 Daemon/HTTP API ещё не реализован. По умолчанию приложение пытается подключиться к сервису;

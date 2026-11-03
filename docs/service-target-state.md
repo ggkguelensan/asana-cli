@@ -13,6 +13,10 @@
 [аудите топологии](service-launch-and-auth-audit.md); при различии деталей запуска/auth
 используется этот контракт. Он отделяет текущий source от будущего runtime.
 
+[Расширяемые views](service-extensible-views.md) позволяют агенту собирать дополнительные
+HTML/TSX интерфейсы поверх API/готового UI. [GitLab integration](service-gitlab-integration.md)
+определяет SDK/glab adapters и общие subscriptions для всех представлений.
+
 ## 1. Результат для пользователя
 
 `asana-cli` становится локальным центром ведения задач. Пользователь может работать из терминала,

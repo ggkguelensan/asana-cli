@@ -105,6 +105,10 @@ CLI и UI будут клиентами общего сервиса. Налич�
 webhooks или remote gateway: эти этапы остаются в [delivery plan](service-delivery-plan.md).
 Asana остаётся источником task data; SQLite не становится полной локальной копией Asana.
 
+Новые требования [custom views](service-extensible-views.md) добавляют future `ui`/`view-sdk`
+modules и host registry; [GitLab](service-gitlab-integration.md) — `gitlab-client` с SDK/glab
+adapters. Они извлекаются при фактической реализации consumers; runtime packages пока не созданы.
+
 ## Release и исторические проверки
 
 Standalone binary, public CLI envelopes, platform matrix и root `dist/` сохранены.
