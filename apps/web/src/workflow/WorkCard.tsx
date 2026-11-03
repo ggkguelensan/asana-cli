@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
-import { atom, useAtom } from 'jotai';
+import { atom, useAtom, useAtomValue } from 'jotai';
+import { trackingStatusAtom } from '../state/tracking';
 import type { Work, WorkAction } from '@asana-cli/service-client/workflow';
 const labels: Record<Work['status'],string> = { waiting: 'Ожидает Asana', ready: 'Готово к продолжению', running: 'Работа принята', interrupted: 'Исполнитель не подтвердил связь', completed: 'Продолжение завершено', cancelled: 'Отменено' };
 type Action = (work: Work, action: WorkAction) => Promise<void>;
@@ -20,9 +21,16 @@ function RunActions({ work, token, act, busy }: { work: Work; token?: string; ac
     <p className="muted">Закрытие окна прекратит подтверждение связи. Asana этим действием не изменяется.</p>
   </div>;
 }
+function WaitDescription({work}:{work:Work}) {
+  const tracking=useAtomValue(trackingStatusAtom);
+  if(work.condition.kind==='completed')return <p><b>Условие:</b> задача завершена в Asana.</p>;
+  const choiceId=work.condition.choice_id;
+  const choice=tracking?.choices.find(item=>item.id===choiceId);
+  return <p><b>Условие:</b> {choice ? `${choice.group} — ${choice.label}` : choiceId}</p>;
+}
 export function WorkCard({ work, token, act, busy }: { work: Work; token?: string; act: (work: Work, action: WorkAction) => Promise<void>; busy: boolean }) {
   return <article className="workflow-card"><p className="eyebrow">{labels[work.status]}</p><h3><a href={`https://app.asana.com/0/0/${work.task_gid}`} target="_blank" rel="noopener noreferrer">{work.title}</a></h3>
-    <p><b>Сделано:</b> {work.checkpoint.summary}</p><p><b>Следующий шаг:</b> {work.checkpoint.next}</p>
+    <WaitDescription work={work}/><p><b>Сделано:</b> {work.checkpoint.summary}</p><p><b>Следующий шаг:</b> {work.checkpoint.next}</p>
     {work.evidence && <p className="muted">Условие проверено {new Date(work.evidence.observed_at).toLocaleString('ru-RU')}</p>}
     {work.run && <p><b>Исполнитель:</b> {work.run.worker}<br/>{work.run.report}</p>}
     <ReadyActions work={work} act={act} busy={busy}/><RunActions work={work} token={token} act={act} busy={busy}/><ClosedActions work={work} act={act} busy={busy}/>

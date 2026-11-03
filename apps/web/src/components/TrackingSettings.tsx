@@ -1,15 +1,16 @@
 function toggleChoice(choices:string[],id:string){return choices.includes(id)?choices.filter(v=>v!==id):[...choices,id];}
 import { useEffect } from 'react';
 import { atom, useAtom } from 'jotai';
+import { trackingStatusAtom } from '../state/tracking';
 import { loadTracking, saveTracking, type TrackingStatus } from '@asana-cli/service-client';
 import type { TrackingRule } from '@asana-cli/core';
 
-const statusAtom=atom<TrackingStatus|null>(null);
+
 const errorAtom=atom('');
 const busyAtom=atom(false);
 const draftAtom=atom<TrackingRule|null>(null);
 export function TrackingSettings(){
- const [status,setStatus]=useAtom(statusAtom);const [error,setError]=useAtom(errorAtom);const [busy,setBusy]=useAtom(busyAtom);const [draft,setDraft]=useAtom(draftAtom);
+ const [status,setStatus]=useAtom(trackingStatusAtom);const [error,setError]=useAtom(errorAtom);const [busy,setBusy]=useAtom(busyAtom);const [draft,setDraft]=useAtom(draftAtom);
  useEffect(()=>{const abort=new AbortController();const load=()=>void loadTracking(abort.signal).then(setStatus).catch(()=>{});load();const timer=setInterval(load,5000);return()=>{abort.abort();clearInterval(timer);};},[]);
  async function save(rule:TrackingRule){if(!status)return;setDraft(rule);setBusy(true);setError('');try{await saveTracking(rule,status.csrf_token);setStatus(await loadTracking());}catch{setError('Не удалось сохранить выбор. Повторите подключение к сервису.');}finally{setDraft(null);setBusy(false);}}
  if(!status)return null;
