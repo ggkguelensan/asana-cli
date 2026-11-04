@@ -50,3 +50,12 @@ Historical release evidence must never be rewritten or relabeled as evidence for
 Narrowing the subject digest may reduce unrelated evidence churn, but it changes a security gate.
 Do it only in a dedicated change that defines and tests separate runtime, agent-contract,
 client-adapter, and integration-lifecycle dependency sets.
+
+## Published v1 archive
+
+The immutable v1 records are verified against Git blobs at
+`dd4760f8fc25215f9311f3eb1ea8c025137b562e`, including the original lockfile.
+The checker rejects modifications to the completion record itself and requires full Git history.
+This verifies historical evidence, not current dependencies. CI separately runs
+`bun audit --production` against the current frozen lockfile; run it locally before review too.
+Current client, native integration, test, and release gates remain independent.
