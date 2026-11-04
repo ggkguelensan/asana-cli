@@ -4,6 +4,9 @@
 small, preserve the public wire format unless the protocol is intentionally versioned, and leave the
 branch in a releasable state.
 
+Product proposals must follow the [Asana-only scope](docs/architecture.md#product-scope).
+External orchestration should consume the public CLI contract rather than become part of its runtime.
+
 ## Local setup
 
 Requirements:

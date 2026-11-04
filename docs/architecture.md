@@ -9,6 +9,16 @@ Both surfaces share validated domain services. The agent surface additionally en
 actions, explicit read/write effects, host policy, durable prepare/apply records, and content
 budgets.
 
+## Product scope
+
+The target architecture is defined by the [v2 roadmap](roadmap.md). CLI and service share one
+release version. The CLI performs Asana operations independently; the optional service owns only
+Asana observation, event ingestion, cursors, retention, and recovery. Both use a shared Asana module.
+Git/worktree context, client installation, agent orchestration, and consumer workflows are outside v2.
+
+The runtime layers below describe the current v1 implementation, including features scheduled for
+removal. They are not the target v2 structure.
+
 ## Runtime layers
 
 ```text

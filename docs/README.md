@@ -37,15 +37,17 @@ at their stable paths so existing release evidence and external links do not bre
 
 ## Planning
 
-- [Roadmap](roadmap.md)
-- [Backlog](backlog.md)
-- [Current implementation plan](implementation-plan.md)
-- [Experimental client research](experimental-client-research.md)
+- [Roadmap v2](roadmap.md) — authoritative scope, stages, acceptance criteria, migration and
+  responsibility audit for asana-cli and asana-service, released under one version.
 
-Completed backlog items should remain as stable historical records; new active work should be opened
-as GitHub Issues while retaining the documented task ID.
+Current operating guides above describe v1. Git/worktree features and client installers are
+scheduled for removal; they are not requirements for the v2 implementation.
 
 ## Historical records
+
+- [v1 backlog](backlog.md)
+- [v1 implementation plan](implementation-plan.md)
+- [v1 experimental client research](experimental-client-research.md)
 
 - [v1 release plan](release-plan.md)
 - [v1 completion and security audit](v1-completion-audit.md)
