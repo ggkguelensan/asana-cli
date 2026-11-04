@@ -1,5 +1,9 @@
 # Backlog asana-cli
 
+> Исторический план v1. Единственный активный план — [roadmap v2](roadmap.md).
+> Статусы и критерии ниже сохраняют историю; они не назначают новые работы v2.
+
+
 Backlog реализует [roadmap](roadmap.md). Порядок ближайшего выполнения описан в
 [implementation plan](implementation-plan.md).
 

@@ -11,18 +11,13 @@ budgets.
 
 ## Product scope
 
-`asana-cli` owns access to Asana: authentication, API operations, validated inputs, predictable
-machine-readable results, and local state needed to perform those operations safely. New product
-work must expand or improve these Asana capabilities.
+The target architecture is defined by the [v2 roadmap](roadmap.md). CLI and service share one
+release version. The CLI performs Asana operations independently; the optional service owns only
+Asana observation, event ingestion, cursors, retention, and recovery. Both use a shared Asana module.
+Git/worktree context, client installation, agent orchestration, and consumer workflows are outside v2.
 
-External applications may invoke the CLI through its documented command and JSON contracts.
-They own scheduling, event delivery, agent execution, chat continuation, and coordination between
-services. The CLI does not embed a shared daemon, task board, workflow database, remote gateway,
-Git-provider monitoring, or Claude/Codex orchestration and MCP bridges.
-
-Existing skills and client installers document and expose Asana commands. They do not make the CLI
-responsible for running clients or managing their sessions. Asana Events and webhook API commands
-may belong here; a persistent receiver, synchronization service, or task mirror belongs outside it.
+The runtime layers below describe the current v1 implementation, including features scheduled for
+removal. They are not the target v2 structure.
 
 ## Runtime layers
 
