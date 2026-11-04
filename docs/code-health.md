@@ -49,7 +49,7 @@ For a transitive fix, add an exact `overrides` entry to `package.json`, then res
 explain why waiting is riskier, keep the version exact, and pass the full quality gate. Do not add
 permanent `minimumReleaseAgeExcludes`.
 
-Current exception: `brace-expansion` is pinned to fixed version `5.0.8` because
+Current exception: `brace-expansion` is pinned to fixed version `5.0.12` because
 [GHSA-mh99-v99m-4gvg](https://github.com/advisories/GHSA-mh99-v99m-4gvg) affects every older release
 and the production dependency audit treats it as high severity. This override may be removed after
 the Asana SDK dependency tree no longer resolves the vulnerable legacy line.
@@ -92,3 +92,12 @@ bun run check:fallow-regression
 
 Commit a lower baseline together with the cleanup. Raising a baseline or threshold requires an
 explicit rationale in the pull request.
+
+The November dependency refresh also pins transitive `qs` (6.16.1), `browserslist`
+(4.29.4), and `baseline-browser-mapping` (2.11.30) through overrides and updates Zod to 4.6.7.
+These address [qs](https://github.com/advisories/GHSA-x5fp-wj9c-mxmx),
+[Browserslist](https://github.com/advisories/GHSA-c83g-rgw3-j3cx),
+[baseline mapping](https://github.com/advisories/GHSA-w5vr-8v7q-w6rv),
+[Zod](https://github.com/advisories/GHSA-mrhx-c7xc-m3w5), and additional
+[brace expansion](https://github.com/advisories/GHSA-rgw5-rvv9-x895) advisories.
+All selected versions passed normal 14-day resolution; no age-gate bypass is used.
