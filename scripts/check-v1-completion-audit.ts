@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import {
   buildV1CompletionAudit,
+  readV1Archive,
   renderV1CompletionAudit,
   verifyV1CompletionAudit,
   v1CompletionAuditSchema,
@@ -16,6 +17,8 @@ async function main(): Promise<void> {
     readFile(resolve(projectRoot, "docs/roadmap.md"), "utf8"),
     readFile(resolve(projectRoot, "docs/backlog.md"), "utf8"),
   ]);
+  const archived = new TextDecoder().decode(await readV1Archive("evidence/v1/completion-audit.json"));
+  if (auditText !== archived) throw new Error("Immutable v1 completion audit was modified");
   const audit = v1CompletionAuditSchema.parse(JSON.parse(auditText) as unknown);
   await verifyV1CompletionAudit(audit, roadmapMarkdown, backlogMarkdown);
   const expected = renderV1CompletionAudit(await buildV1CompletionAudit());
@@ -23,7 +26,7 @@ async function main(): Promise<void> {
     throw new Error("V1 completion audit drifted from direct repository evidence");
   }
   process.stdout.write(
-    `V1 completion audit verified: ${audit.criteria.length} roadmap criteria, 0 active pre-1.0 tasks, no open critical/high findings\n`,
+    `Archived v1 completion audit verified: ${audit.criteria.length} roadmap criteria, 0 active pre-1.0 tasks, no open critical/high findings\n`,
   );
 }
 
