@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { z } from "zod";
+import { commentPayloadSchema } from "../comment-content";
 import {
   expandedTaskCreateFieldsSchema,
   taskCreateTemplateMetadataSchema,
@@ -76,9 +77,7 @@ const taskUpdatePayloadSchema = z.strictObject({
   changes: taskPatchSchema,
 });
 
-const taskCommentPayloadSchema = z.strictObject({
-  text: z.string().min(1).max(8_000),
-});
+const taskCommentPayloadSchema = commentPayloadSchema;
 
 const taskCreatePayloadSchema = z.strictObject({
   fields: expandedTaskCreateFieldsSchema,
