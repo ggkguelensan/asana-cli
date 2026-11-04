@@ -7,7 +7,7 @@ export const GENERATED_CLIENT_COMPATIBILITY = {
       "qualification": {
         "kind": "behavioral-eval",
         "evidence": "evidence/client-evals/claude-code.json",
-        "evidence_sha256": "d91f7d5a638ea2bb534e4786c32da346bef1716504a323a7043f180af508c044"
+        "evidence_sha256": "d2a2d60aa699225a11a408fdc2cf1eadf8ecc1d73829c1a7819efe8c76bb8916"
       }
     },
     "codex": {
@@ -15,7 +15,7 @@ export const GENERATED_CLIENT_COMPATIBILITY = {
       "qualification": {
         "kind": "behavioral-eval",
         "evidence": "evidence/client-evals/codex.json",
-        "evidence_sha256": "9821c9bf7d7f59f597e44be2a98c50a92b421187e79f8e8a45de932b5a41f832"
+        "evidence_sha256": "ad4bb0be549750b0f4db8822586bf2152b133e6aea987dcca63ffa9cf15c190f"
       }
     },
     "cursor": {
@@ -31,7 +31,7 @@ export const GENERATED_CLIENT_COMPATIBILITY = {
       "qualification": {
         "kind": "adapter-only",
         "evidence": "evidence/client-adapters/gemini-cli.json",
-        "evidence_sha256": "744d1fe638fa38f5e2e620ab21af6ff1d3d578e25a8bf4d89457bf57d6559dae"
+        "evidence_sha256": "ada4260b3a7d6b54080214ff433528a06b41a5f999032d8cb9b812a63d789542"
       }
     },
     "generic-agent-skills": {
@@ -47,7 +47,7 @@ export const GENERATED_CLIENT_COMPATIBILITY = {
       "qualification": {
         "kind": "adapter-only",
         "evidence": "evidence/client-adapters/github-copilot.json",
-        "evidence_sha256": "410f236c2068fff81971b8702f96715ad3bafbbe67ae16ef20d7e69d89342b85"
+        "evidence_sha256": "aaefe151c3e79a718f39ff3c66c82ef29a8d36e44923c3bcfb3d0cf4adeb68b4"
       }
     },
     "kimi-code": {
@@ -63,7 +63,7 @@ export const GENERATED_CLIENT_COMPATIBILITY = {
       "qualification": {
         "kind": "adapter-only",
         "evidence": "evidence/client-adapters/opencode.json",
-        "evidence_sha256": "c9a9b52ba38054648d1981bb2ef487da66abce196230b838e9ac3fd9becc1500"
+        "evidence_sha256": "dc25cb82242880570d52e6aee2f8106360938394be443db295a1eb04b2ee1abb"
       }
     },
     "pi": {

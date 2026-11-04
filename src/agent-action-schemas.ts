@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { commentTextSchema, mentionUserGidsSchema } from "./comment-content";
 import {
   projectAliasSchema,
   qualifiedTaskAliasSchema,
@@ -360,7 +361,8 @@ export const prepareTaskUpdateInputSchema = z.strictObject({
 
 export const prepareCommentInputSchema = z.strictObject({
   task_gid: gidSchema,
-  text: z.string().min(1).max(8_000),
+  text: commentTextSchema,
+  mention_user_gids: mentionUserGidsSchema.optional(),
 });
 
 export const prepareTaskCreateInputSchema = z.strictObject({

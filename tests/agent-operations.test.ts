@@ -83,6 +83,9 @@ type FakeAsanaOptions = Readonly<{
     section?: { gid: string };
   }>;
   sectionProjectGid?: string;
+  mentionUserGid?: string;
+  mentionUserName?: string;
+  denyMentionUser?: boolean;
   onWrite?: (trace: ApiTrace) => Promise<unknown>;
 }>;
 
@@ -115,6 +118,13 @@ function fakeAsana(options: FakeAsanaOptions = {}): {
             },
           },
         };
+      }
+      if (method === "GET" && path === "/workspaces/{workspace_gid}/users/{user_gid}") {
+        if (options.denyMentionUser) throw new CliError("validation", "User is not accessible in workspace");
+        return { response: {}, data: { data: {
+          gid: options.mentionUserGid ?? pathParams.user_gid,
+          name: options.mentionUserName ?? "Reviewer",
+        } } };
       }
       if (method === "GET" && path === "/projects/{project_gid}") {
         return {
@@ -1210,5 +1220,50 @@ describe("durable agent operation apply", () => {
     });
     expect(repository.getCalls).toBe(0);
     expect(asana.traces).toEqual([]);
+  });
+});
+
+
+describe("agent comment mentions", () => {
+  test("previews resolved recipients and applies only the persisted rich payload", async () => {
+    const repository = memoryRepository(firstOperationId);
+    const asana = fakeAsana();
+    const service = new AgentOperationService(asana.client, repository, { writePolicy: permittedWritePolicy });
+    const prepared = await service.prepareComment({ task_gid: "123", text: "QA <ready> & review", mention_user_gids: ["2001", "2002"] });
+    expect(prepared).toMatchObject({ preview: {
+      text: "QA <ready> & review",
+      mentions: [{ gid: "2001", name: "Reviewer" }, { gid: "2002", name: "Reviewer" }],
+      html_text: '<body><p><a data-asana-gid="2001"/> <a data-asana-gid="2002"/></p><p>QA &lt;ready&gt; &amp; review</p></body>',
+    } });
+    expect(asana.traces.filter((trace) => trace.method === "POST")).toHaveLength(0);
+    if (prepared.operation !== "task.comment" || !("html_text" in prepared.preview)) throw new Error("Expected mention preview");
+    const stored = await repository.get(firstOperationId);
+    expect(stored?.payload).toEqual(prepared.preview);
+    await service.apply(firstOperationId);
+    const writes = asana.traces.filter((trace) => trace.method === "POST");
+    expect(writes).toHaveLength(1);
+    expect(writes[0]?.body).toEqual({ data: { html_text: prepared.preview.html_text } });
+    expect(asana.traces.filter((trace) => trace.path.includes("/workspaces/")).every((trace) => trace.path_params.workspace_gid === "100")).toBe(true);
+  });
+
+  test("rejects inaccessible and mismatched users before storing a comment", async () => {
+    for (const options of [{ denyMentionUser: true }, { mentionUserGid: "9999" }]) {
+      const repository = memoryRepository(firstOperationId);
+      const asana = fakeAsana(options);
+      const service = new AgentOperationService(asana.client, repository, { writePolicy: permittedWritePolicy });
+      await expect(service.prepareComment({ task_gid: "123", text: "Review", mention_user_gids: ["2001"] })).rejects.toThrow();
+      expect(await repository.get(firstOperationId)).toBeNull();
+      expect(asana.traces.filter((trace) => trace.method === "POST")).toHaveLength(0);
+    }
+  });
+
+  test("revalidates user access at apply without rewriting the approved payload", async () => {
+    const repository = memoryRepository(firstOperationId);
+    const before = fakeAsana();
+    await new AgentOperationService(before.client, repository, { writePolicy: permittedWritePolicy }).prepareComment({ task_gid: "123", text: "Review", mention_user_gids: ["2001"] });
+    const after = fakeAsana({ denyMentionUser: true });
+    await expect(new AgentOperationService(after.client, repository, { writePolicy: permittedWritePolicy }).apply(firstOperationId)).rejects.toThrow();
+    expect((await repository.get(firstOperationId))?.state).toBe("prepared");
+    expect(after.traces.filter((trace) => trace.method === "POST")).toHaveLength(0);
   });
 });

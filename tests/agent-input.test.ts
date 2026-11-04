@@ -555,3 +555,17 @@ describe("agent durable write input", () => {
     ])))).toBe("usage");
   });
 });
+
+
+describe("agent mention input", () => {
+  test("maps repeated recipient flags and stdin to the same bounded input", async () => {
+    const expected = { task_gid: "123", text: "Review", mention_user_gids: ["2001", "2002"] };
+    expect(await readPrepareCommentAgentInput(parseArgs(["agent", "prepare-comment", "--task", "123", "--text", "Review", "--mention-user", "2001", "--mention-user", "2002"]))).toEqual(expected);
+    expect(await withAgentStdin(expected, () => readPrepareCommentAgentInput(parseArgs(["agent", "prepare-comment", "--input", "-"])))).toEqual(expected);
+  });
+  test("rejects duplicate, missing and non-GID mention flags", async () => {
+    for (const extra of [["--mention-user"], ["--mention-user", "email@example.test"], ["--mention-user", "2001", "--mention-user", "2001"]]) {
+      expect(await errorCode(() => readPrepareCommentAgentInput(parseArgs(["agent", "prepare-comment", "--task", "123", "--text", "Review", ...extra])))).toBe("validation");
+    }
+  });
+});

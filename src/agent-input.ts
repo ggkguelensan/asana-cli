@@ -394,9 +394,13 @@ export function readApplyAgentInput(
 export function readPrepareCommentAgentInput(
   args: ParsedArgs,
 ): Promise<AgentActionInput<"prepare-comment">> {
-  return readDirectOrStdinInput(args, "prepare-comment", ["task", "text"], () => ({
+  return readDirectOrStdinInput(args, "prepare-comment", ["task", "text", "mention-user"], () => ({
     task_gid: requireValue(stringValue(args, "task"), "task"),
     text: requireValue(stringValue(args, "text"), "text"),
+    ...(args.flags["mention-user"] === undefined ? {} : {
+      mention_user_gids: Array.isArray(args.flags["mention-user"])
+        ? args.flags["mention-user"] : [args.flags["mention-user"]],
+    }),
   }));
 }
 
