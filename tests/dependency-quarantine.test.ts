@@ -40,7 +40,10 @@ describe("dependency quarantine", () => {
     const packageManifest = await Bun.file(resolve(root, "package.json")).json();
 
     expect(packageManifest.overrides).toEqual({
-      "brace-expansion": "5.0.8",
+      "brace-expansion": "5.0.12",
+      "qs": "6.16.1",
+      "browserslist": "4.29.4",
+      "baseline-browser-mapping": "2.11.30",
     });
   });
 });
