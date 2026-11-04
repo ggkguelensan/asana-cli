@@ -1,6 +1,6 @@
 # Code health
 
-Fallow 3.4.2 is the repository-wide structural health gate. The version itself has completed the
+The Fallow version pinned in `package.json` is the repository-wide structural health gate. It has completed the
 project's 14-day dependency quarantine. TypeScript correctness still belongs to `tsc`, tests to Bun,
 and security verification to the project security workflow.
 
