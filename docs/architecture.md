@@ -9,6 +9,21 @@ Both surfaces share validated domain services. The agent surface additionally en
 actions, explicit read/write effects, host policy, durable prepare/apply records, and content
 budgets.
 
+## Product scope
+
+`asana-cli` owns access to Asana: authentication, API operations, validated inputs, predictable
+machine-readable results, and local state needed to perform those operations safely. New product
+work must expand or improve these Asana capabilities.
+
+External applications may invoke the CLI through its documented command and JSON contracts.
+They own scheduling, event delivery, agent execution, chat continuation, and coordination between
+services. The CLI does not embed a shared daemon, task board, workflow database, remote gateway,
+Git-provider monitoring, or Claude/Codex orchestration and MCP bridges.
+
+Existing skills and client installers document and expose Asana commands. They do not make the CLI
+responsible for running clients or managing their sessions. Asana Events and webhook API commands
+may belong here; a persistent receiver, synchronization service, or task mirror belongs outside it.
+
 ## Runtime layers
 
 ```text

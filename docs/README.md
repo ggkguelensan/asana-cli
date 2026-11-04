@@ -37,6 +37,10 @@ at their stable paths so existing release evidence and external links do not bre
 
 ## Planning
 
+All new work follows the [Asana-only product scope](architecture.md#product-scope).
+The shared-service and board proposal is cancelled; historical release records remain evidence
+of past behavior, not commitments to expand the product.
+
 - [Roadmap](roadmap.md)
 - [Backlog](backlog.md)
 - [Current implementation plan](implementation-plan.md)

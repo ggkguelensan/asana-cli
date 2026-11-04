@@ -130,13 +130,16 @@ Issue ID следует сохранить в заголовке.
 
 ## Later
 
+Активные идеи ограничены [возможностями Asana](architecture.md#product-scope).
+Исторические завершённые задачи выше не являются планом расширения продукта.
+
 | ID | P | Статус | Задача | Зависит от | Acceptance criteria |
 |---|---|---|---|---|---|
 | LTR-001 | P3 | research | Несколько credential profiles | SEC-004 | Profile selection не раскрывает PAT и однозначно связывается с policy/workspace |
 | LTR-002 | P3 | research | OAuth | LTR-001 | Отдельный threat model, secure refresh-token storage и revocation workflow |
-| LTR-003 | P3 | research | Events/watch и read cache | AP-013 | Cache bounded, invalidation documented, content защищён restrictive permissions |
+| LTR-003 | P3 | research | Asana Events и webhook API commands | AP-013 | Bounded CLI requests and machine-readable results; persistent receivers, synchronization services and task mirrors remain external |
 | LTR-004 | P3 | research | Attachment upload | SEC-004, DEV-010 | Отдельный threat model для path access, MIME, size и data exfiltration |
-| LTR-005 | P3 | ready | Enterprise managed policies | SEC-004, REL-003 | Policy bundle подписан, валидируется и не может ослабляться project config без явного override |
+| LTR-005 | P3 | cancelled | Enterprise managed policies | SEC-004, REL-003 | Cancelled: centralized policy distribution is outside the Asana CLI scope |
 
 ## Definition of Done для любой задачи
 

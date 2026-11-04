@@ -1,6 +1,10 @@
 # Roadmap asana-cli
 
-Актуально на 2026-07-24. Текущий опубликованный GitHub Release —
+Текущее направление: расширение возможностей Asana в рамках
+[границ CLI](architecture.md#product-scope). Планы общего сервиса, веб-доски, удалённого шлюза
+и управления агентами отменены. Разделы релизов ниже сохраняют историю выполненной работы.
+
+Исторический снимок на 2026-07-24. Текущий опубликованный GitHub Release —
 [`v1.0.1`](https://github.com/ggkguelensan/asana-cli/releases/tag/v1.0.1), tag указывает на
 commit [`da67cf3`](https://github.com/ggkguelensan/asana-cli/commit/da67cf3f06062b2d0a3678fe3936e1563d4937bb).
 Запланированная реализация до v1 завершена. Immutable tag `v1.0.0` существует, но его failed
@@ -279,8 +283,6 @@ Windows support. Прямое digest-bound evidence и security review сохр�
 ## После v1.0
 
 - несколько auth profiles и OAuth;
-- events/watch и локальный read cache;
+- ограниченные команды чтения Asana Events и управления Asana webhooks;
 - attachment upload после отдельного threat-model review;
-- enterprise managed policy bundles;
-- расширенные batch workflows;
-- дополнительные agent clients только по результатам реальных acceptance tests.
+- расширенные batch workflows.
