@@ -29,10 +29,10 @@ async function readArchiveBlob(path: string): Promise<Uint8Array> {
     cwd: projectRoot, stdout: "pipe", stderr: "pipe",
   });
   const [bytes, error, code] = await Promise.all([
-    new Response(child.stdout).bytes(), new Response(child.stderr).text(), child.exited,
+    new Response(child.stdout).arrayBuffer(), new Response(child.stderr).text(), child.exited,
   ]);
   if (code !== 0) throw new Error(`Cannot verify v1 archive; fetch full Git history: ${error}`);
-  return bytes;
+  return new Uint8Array(bytes);
 }
 async function archivedText(path: string): Promise<string> {
   return new TextDecoder().decode(await readV1Archive(path));
