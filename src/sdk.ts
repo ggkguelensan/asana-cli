@@ -1,17 +1,16 @@
 import * as AsanaModule from "asana";
 import { z } from "zod";
 import { CliError } from "./errors";
-import { resolvePatWithSource } from "./pat-store";
-import { registerSecret } from "./security";
+import { assertNoKnownSecrets, registerSecret } from "./security";
 import { zodIssueSummary } from "./schemas";
 
 export type AsanaClient = InstanceType<typeof AsanaModule.ApiClient>;
 
-interface ApiInstance {
+export interface ApiInstance {
   [methodName: string]: unknown;
 }
 
-interface ApiConstructor {
+export interface ApiConstructor {
   new(client?: AsanaClient): ApiInstance;
   readonly prototype: ApiInstance;
 }
@@ -29,12 +28,6 @@ const collectionBoundarySchema = z.looseObject({
 });
 
 const asanaExports = Object.entries(AsanaModule) as Array<[string, unknown]>;
-
-export async function resolvePat(
-  env: Record<string, string | undefined> = process.env,
-): Promise<string> {
-  return (await resolvePatWithSource(env)).pat;
-}
 
 export function createClient(pat: string): AsanaClient {
   registerSecret(pat);
@@ -106,6 +99,7 @@ export async function invokeApiMethod(
   if (typeof method !== "function") {
     throw new CliError("internal", `Asana method ${resolved.name}.${actualMethod} is not callable`);
   }
+  assertNoKnownSecrets(args);
   const result: unknown = await Reflect.apply(method, instance, args);
   return result;
 }

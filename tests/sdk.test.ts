@@ -22,6 +22,13 @@ describe("node-asana boundary", () => {
     ).rejects.toThrow("Unknown method");
   });
 
+  test("blocks known credentials in outbound data before calling the API", async () => {
+    const token = "OUTBOUND_SDK_CREDENTIAL_CANARY";
+    await expect(invokeApiMethod(createClient(token), "TasksApi", "updateTask", [
+      { data: { notes: `Do not send ${token}` } }, "123",
+    ])).rejects.toThrow("Request data contains a credential");
+  });
+
   test("normalizes Collection without serializing its API client", () => {
     const collection = {
       data: [{ gid: "1" }],

@@ -1,34 +1,27 @@
 import { describe, expect, test } from "bun:test";
-import { resolve } from "node:path";
+import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 
-const projectRoot = resolve(import.meta.dir, "..");
-const installer = resolve(projectRoot, "install.sh");
-
-describe("portable installer entrypoints", () => {
-  test("ships valid POSIX shell with local help and strict version validation", async () => {
-    const syntax = Bun.spawnSync(["sh", "-n", installer], {
-      stdout: "pipe",
-      stderr: "pipe",
-    });
-    expect(syntax.exitCode).toBe(0);
-
-    const help = Bun.spawnSync(["sh", installer, "--help"], {
-      stdout: "pipe",
-      stderr: "pipe",
-    });
-    expect(help.exitCode).toBe(0);
-    expect(new TextDecoder().decode(help.stdout)).toContain("ASANA_CLI_INSTALL_DIR");
-
-    const unsafe = Bun.spawnSync(["sh", installer, "--version", "../../unsafe"], {
-      stdout: "pipe",
-      stderr: "pipe",
-    });
-    expect(unsafe.exitCode).toBe(2);
+describe("local binary installer", () => {
+  test("installs an explicit executable into a directory containing spaces", async () => {
+    const root = await mkdtemp(join(tmpdir(), "asana-install-"));
+    try {
+      const binary = resolve(import.meta.dir, "../dist/asana-cli");
+      const destination = join(root, "local bin");
+      const child = Bun.spawn(["sh", "install.sh", "--binary", binary, "--bin-dir", destination], {
+        cwd: resolve(import.meta.dir, ".."), stdin: "ignore", stdout: "pipe", stderr: "pipe",
+      });
+      expect(await child.exited).toBe(0);
+      const installed = join(destination, "asana-cli");
+      expect(await readFile(installed)).toEqual(await readFile(binary));
+      expect((await stat(installed)).mode & 0o777).toBe(0o755);
+    } finally { await rm(root, { recursive: true, force: true }); }
   });
-
-  test("documents standalone and Bun global installation", async () => {
-    const readme = await Bun.file(resolve(projectRoot, "README.md")).text();
-    expect(readme).toContain("install.sh | sh");
-    expect(readme).toContain("bun add --global github:ggkguelensan/asana-cli");
+  test("rejects relative destinations before installing", async () => {
+    const child = Bun.spawn(["sh", "install.sh", "--binary", "/does/not/exist", "--bin-dir", "relative"], {
+      cwd: resolve(import.meta.dir, ".."), stdin: "ignore", stdout: "pipe", stderr: "pipe",
+    });
+    expect(await child.exited).toBe(2);
   });
 });

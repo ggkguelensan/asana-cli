@@ -1,126 +1,75 @@
 # asana-cli
 
-Один CLI для работы с Asana из терминала и AI-агентов. Работает на macOS и Linux.
+Самостоятельный CLI для Asana на официальном [Node SDK](https://github.com/Asana/node-asana).
+Работает на macOS и Linux. Все структурированные результаты возвращаются в JSON;
+ошибки — в stderr с ненулевым exit code. `--compact` включает однострочный JSON.
 
-## Зачем
-
-- читать, искать и изменять задачи без браузера;
-- использовать всю Asana API через официальный `node-asana` и raw REST;
-- безопасно подключать Codex, Claude Code и другие агенты без MCP;
-- хранить PAT в credential manager ОС;
-- видеть локальную историю команд и получать практические insights;
-- устанавливать и обновлять один standalone binary — Bun/Node для него не нужны.
-
-## Скачать
-
-Готовый binary с проверкой SHA-256:
+## Сборка
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/ggkguelensan/asana-cli/main/install.sh | sh
+bun install --frozen-lockfile
+bun run build
+./dist/asana-cli --help
 ```
 
-По умолчанию он устанавливается в `~/.local/bin`. Скрипт можно сначала скачать и прочитать:
+Для установки собранного бинарника: `./install.sh --binary "$PWD/dist/asana-cli"`.
+Поддерживаемые платформы описаны в [support-policy](docs/support-policy.md).
+
+## Авторизация
 
 ```sh
-curl -fLO https://raw.githubusercontent.com/ggkguelensan/asana-cli/main/install.sh
-sh install.sh --help
-sh install.sh --version 1.0.1 --bin-dir "$HOME/.local/bin"
-```
-
-Через Bun:
-
-```sh
-bun add --global github:ggkguelensan/asana-cli
-```
-
-Или скачайте binary и `SHA256SUMS` вручную из
-[GitHub Releases](https://github.com/ggkguelensan/asana-cli/releases).
-
-## Начать работать
-
-```sh
-asana-cli doctor
 asana-cli auth pat set
 asana-cli auth pat status
-
 asana-cli me
+```
+
+Приоритет: `ASANA_ACCESS_TOKEN` → `ASANA_PAT` → хранилище ОС.
+PAT можно передать через скрытый ввод, stdin или окружение; аргумент с токеном запрещён.
+Создание и отзыв PAT выполняются в Asana Developer Console.
+
+## Задачи
+
+```sh
 asana-cli workspaces --all
-asana-cli tasks mine --all --max-results 100
-```
-
-PAT создаётся в [Asana Developer Console](https://app.asana.com/0/my-apps). CLI принимает его
-только через скрытый ввод, credential manager или `ASANA_ACCESS_TOKEN`; он не принимает секрет
-как аргумент и не печатает его.
-
-Примеры:
-
-```sh
+asana-cli tasks mine --workspace WORKSPACE_GID --all
 asana-cli task get TASK_GID
-asana-cli task comments TASK_GID --all
-asana-cli task search-git 'owner/repo#418' --workspace WORKSPACE_GID
-
+asana-cli task comments TASK_GID
+asana-cli task search "release" --workspace WORKSPACE_GID --all-assignees
 asana-cli task update TASK_GID --completed=true --dry-run
-asana-cli task update TASK_GID --completed=true
-asana-cli task comment TASK_GID "Исправлено в PR #418"
+asana-cli task comment TASK_GID "Комментарий"
 ```
 
-## Для агента
+`task get`, `comments`, `stories`, `update` и `comment` также принимают URL задачи Asana.
+`--dry-run` у update/comment возвращает тело запроса без изменения задачи.
+JSON-параметры принимают литерал, `@file.json` или `-` для stdin.
+Для чтения доступны `--fields`, `--all`, `--max-results`; набор флагов зависит от команды.
 
-Первая точка входа:
+## SDK и REST API
 
 ```sh
-asana-cli --agents
+asana-cli api list
+asana-cli api list NotificationsApi
+asana-cli api docs NotificationsApi getNotificationsForUser
+asana-cli api call NotificationsApi getNotificationsForUser --args '["me","WORKSPACE_GID",{"limit":20}]'
+asana-cli request GET /tasks/TASK_GID --query '{"opt_fields":"name,completed"}'
 ```
 
-Она возвращает clients, scopes, правила безопасности и четыре встроенных навыка:
+Все методы SDK доступны через `api call`, кроме `WithHttpInfo`, возвращающих HTTP internals.
+Аргументы соответствуют порядку в SDK. Новые возможности SDK описаны в [sdk-3.4.0](docs/sdk-3.4.0.md).
 
-- использование `asana-cli`;
-- устройство и глоссарий Asana;
-- read-only изучение процессов Asana конкретной компании;
-- анализ локальной истории `asana-cli`.
+## Диагностика
 
-Установка всех навыков только для проекта:
+`asana-cli doctor` проверяет платформу, PATH и авторизацию Asana.
+`doctor --offline` пропускает сетевую проверку PAT.
+Встроенная справка: `asana-cli man`, `man glossary`, `man examples`, `man auth`.
+CLI не устанавливает навыки или настройки внешних клиентов и не управляет Git/worktree.
+Он не ведёт журнал вызовов и не обновляет себя из GitHub.
+
+## Разработка
 
 ```sh
-asana-cli agent-setup --client codex --scope project --dry-run
-asana-cli agent-setup --client codex --scope project --apply
+bun run check
 ```
 
-Для глобальной установки используйте `--scope user`. Сначала проверяйте dry-run. Установщик не
-меняет `AGENTS.md`, `CLAUDE.md`, settings, hooks или MCP.
-
-## Самостоятельно изучать
-
-```sh
-asana-cli --help
-asana-cli man
-asana-cli man glossary
-asana-cli man examples
-asana-cli man agents
-asana-cli man company
-```
-
-`asana-cli man` встроен в binary и содержит глоссарий, примеры и гайдбуки. Полная техническая
-документация находится в [`docs/`](docs).
-
-## Обслуживать и анализировать
-
-```sh
-asana-cli doctor
-asana-cli update --check
-asana-cli update
-asana-cli insights --days 30
-```
-
-CLI ведёт owner-only JSONL-журнал локальных запусков. В нём есть только категории команд,
-результаты, длительность и нормализованные коды ошибок — без свободных значений аргументов, GID,
-путей, содержимого задач/комментариев и PAT. Путь и состояние журнала показывает `asana-cli doctor`.
-
-Подробности:
-
-- [`SECURITY.md`](SECURITY.md) — модель безопасности;
-- [`docs/agent-clients.md`](docs/agent-clients.md) — агентский контракт;
-- [`docs/release-verification.md`](docs/release-verification.md) — проверка release;
-- [`CONTRIBUTING.md`](CONTRIBUTING.md) — разработка и проверки.
-
-Лицензия: [MIT](LICENSE).
+[Архитектура](docs/architecture.md) · [Тестирование](docs/testing.md) ·
+[Безопасность](SECURITY.md) · [Вклад в проект](CONTRIBUTING.md)

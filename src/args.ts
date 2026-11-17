@@ -78,12 +78,6 @@ export function flag(args: ParsedArgs, name: string): string | boolean | undefin
   return Array.isArray(value) ? value[value.length - 1] : value;
 }
 
-export function flagStrings(args: ParsedArgs, name: string): string[] {
-  const value = args.flags[name];
-  if (value === undefined) return [];
-  return Array.isArray(value) ? value : [String(value)];
-}
-
 export function stringFlag(args: ParsedArgs, name: string): string | undefined {
   const value = flag(args, name);
   if (value === undefined) return undefined;

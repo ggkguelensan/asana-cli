@@ -1,7 +1,7 @@
 import { resolve } from "node:path";
 
-export const projectRoot = resolve(import.meta.dir, "../..");
-export const sourceEntrypoint = resolve(projectRoot, "src/index.ts");
+const projectRoot = resolve(import.meta.dir, "../..");
+const sourceEntrypoint = resolve(projectRoot, "src/index.ts");
 
 export type CommandResult = Readonly<{
   stdout: string;
@@ -15,7 +15,7 @@ export type CommandOptions = Readonly<{
   stdin?: string;
 }>;
 
-export function testEnvironment(
+function testEnvironment(
   overrides: Readonly<Record<string, string | undefined>> = {},
 ): Record<string, string> {
   const environment = Object.fromEntries(
@@ -33,7 +33,7 @@ export function testEnvironment(
   return environment;
 }
 
-export async function runCommand(
+async function runCommand(
   command: readonly string[],
   options: CommandOptions = {},
 ): Promise<CommandResult> {

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { CliError } from "./errors";
 
-export const supportedRuntimePlatformSchema = z.enum(["darwin", "linux"]);
+const supportedRuntimePlatformSchema = z.enum(["darwin", "linux"]);
 export type SupportedRuntimePlatform = z.output<typeof supportedRuntimePlatformSchema>;
 
 export const SUPPORTED_RUNTIME_PLATFORMS = supportedRuntimePlatformSchema.options;

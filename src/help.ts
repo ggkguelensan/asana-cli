@@ -1,64 +1,49 @@
 import { CLI_VERSION } from "./version";
 
-export const HELP = `asana-cli ${CLI_VERSION} — Asana из терминала и AI-агентов
+export const HELP = `asana-cli ${CLI_VERSION} — Asana из терминала
 
 USAGE
   asana-cli <command> [arguments] [options]
 
-AGENT CLIENTS
-  asana-cli --agents                     Первая точка входа для любого агента
-  asana-cli agent-setup ...              Установить навыки глобально или в проект
-  asana-cli agent capabilities           Безопасный машиночитаемый контракт
-
-START
-  asana-cli doctor                       Проверить установку, PATH, PAT и журнал
-  asana-cli auth pat set                 Сохранить PAT через скрытый ввод
-  asana-cli me                           Текущий пользователь
-  asana-cli workspaces --all             Доступные workspace
-
-TASKS
-  asana-cli tasks mine [--all]           Мои задачи
-  asana-cli task get GID                 Одна задача
-  asana-cli task comments GID            Комментарии
-  asana-cli task search TEXT             Поиск
-  asana-cli task update GID [options]    Изменить задачу
-  asana-cli task comment GID TEXT        Добавить комментарий
-
-LEARN AND MAINTAIN
-  asana-cli man [TOPIC]                  Глоссарий, примеры и гайдбуки
-  asana-cli insights [--days 30]         Анализ локальной истории CLI
-  asana-cli update --check               Проверить новую версию
-  asana-cli update                       Безопасно обновить CLI
-
 AUTHENTICATION
-  asana-cli auth                         Инструкции
-  asana-cli auth pat status              Проверить источник и валидность PAT
-  asana-cli auth pat delete              Удалить локальную копию
+  asana-cli auth pat set [--stdin|--from-env]
+  asana-cli auth pat status
+  asana-cli auth pat delete
+  asana-cli auth status
 
-LOCAL DEVELOPER CONTEXT
-  asana-cli context quick                Текущий task/worktree context
-  asana-cli context alias list           Локальные task aliases
-  asana-cli context history              Недавний context
+READ
+  asana-cli me
+  asana-cli workspaces [--all]
+  asana-cli tasks mine [--workspace GID] [--completed false|true|all]
+  asana-cli task get GID_OR_URL
+  asana-cli task get-custom-id ID --workspace GID
+  asana-cli task comments GID_OR_URL
+  asana-cli task stories GID_OR_URL
+  asana-cli task search TEXT [--workspace GID] [--all-assignees]
 
-INTEGRATIONS
-  asana-cli integrations list
-  asana-cli integrations status --client CLIENT --scope user|project [--skill SKILL]
-  asana-cli integrations install --client CLIENT --scope user|project --dry-run|--apply
+WRITE
+  asana-cli task update GID_OR_URL --data JSON [--dry-run]
+  asana-cli task update GID_OR_URL --name TEXT --completed=true [--dry-run]
+  asana-cli task comment GID_OR_URL TEXT [--dry-run]
+  asana-cli task comment GID_OR_URL --file PATH
 
-NODE-ASANA PRIMITIVES
+SDK AND REST API
   asana-cli api list [ApiClass]
-  asana-cli api docs <ApiClass> [method]
-  asana-cli api call <ApiClass> <method> --args '<JSON array>'
+  asana-cli api docs ApiClass [method]
+  asana-cli api call ApiClass method --args 'JSON array'
+  asana-cli request GET|POST|PUT|PATCH|DELETE /path [--query JSON] [--data JSON]
 
-RAW REST API
-  asana-cli request <GET|POST|PUT|PATCH|DELETE> </path> [--data '<JSON>']
+DIAGNOSTICS AND HELP
+  asana-cli doctor [--offline]
+  asana-cli man [start|glossary|examples|auth]
+  asana-cli --version
 
 COMMON OPTIONS
-  --workspace GID   --fields CSV   --all   --max-results N   --compact
-  --help, -h        --version, -V
+  --fields CSV  --all  --max-results N  --compact  --help
 
-Подробности: asana-cli man
-Перед первой сетевой командой: asana-cli auth`;
+JSON input accepts a literal value, @path, or - for stdin.
+Output is JSON; diagnostics and errors use stderr.
+Credentials: ASANA_ACCESS_TOKEN -> ASANA_PAT -> OS credential storage.`;
 
 export const AUTH_HELP = `Asana PAT setup
 
@@ -74,7 +59,7 @@ export const AUTH_HELP = `Asana PAT setup
    Keychain or Linux Secret Service.
 
 3. Recommended for CI and ephemeral shells — process environment (higher priority).
-   Use ASANA_ACCESS_TOKEN; the TOKEN suffix is recognized by agent environment filters.
+   Use ASANA_ACCESS_TOKEN.
 
    For the current shell without putting the token in shell history:
      read -s ASANA_ACCESS_TOKEN

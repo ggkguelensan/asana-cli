@@ -28,7 +28,7 @@ export const RELEASE_TARGETS = Object.freeze([
   {
     target: "bun-darwin-arm64",
     output: "asana-cli-darwin-arm64",
-    runner: "macos-14",
+    runner: "macos-15",
   },
   {
     target: "bun-darwin-x64",
@@ -157,20 +157,8 @@ export function verifySupportMatrix(input: Readonly<{
   if (!/^\s+needs:\s+build\s*$/m.test(input.releaseWorkflow)) {
     throw new Error("Release publish job must depend on the complete supported build matrix");
   }
-  if (
-    !input.ciWorkflow.includes("native-integration-lifecycle:") ||
-    !input.ciWorkflow.includes("runner: [ubuntu-latest, macos-14]") ||
-    !input.ciWorkflow.includes("bun run test:integration-lifecycle")
-  ) {
-    throw new Error("CI must run the compiled integration lifecycle on native macOS and Linux");
-  }
-  if (
-    !input.releaseWorkflow.includes("scripts/integration-lifecycle-e2e.ts") ||
-    !input.releaseWorkflow.includes(
-      '"${{ matrix.target }}" --output "dist/${{ matrix.output }}.lifecycle.json"',
-    )
-  ) {
-    throw new Error("Every release target must publish compiled integration lifecycle evidence");
+  if (!input.ciWorkflow.includes("runner: [ubuntu-latest, macos-15]")) {
+    throw new Error("CI must test the CLI on native macOS and Linux");
   }
 
   for (const releaseTarget of RELEASE_TARGETS) {

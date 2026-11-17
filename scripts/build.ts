@@ -1,7 +1,5 @@
-import { generateIntegrationBundle } from "./generate-integrations";
 import { parseRequestedBuildTarget } from "./check-support-matrix";
 
-await generateIntegrationBundle();
 
 const [rawTarget, requestedOutput, ...unexpectedArguments] = process.argv.slice(2);
 if (unexpectedArguments.length > 0) {

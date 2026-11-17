@@ -35,3 +35,35 @@ describe("raw request safety", () => {
     expect((capturedInit?.headers as Record<string, string>).Authorization).toBe("Bearer opaque-token");
   });
 });
+
+test("raw requests block known credentials before calling fetch", async () => {
+  let called = false;
+  const token = "OUTBOUND_REST_CREDENTIAL_CANARY";
+  await expect(rawRequest(token, {
+    method: "POST", path: "/tasks", data: { data: { notes: token } },
+    fetchImpl: async () => { called = true; return Response.json({ data: {} }); },
+  })).rejects.toThrow("Request data contains a credential");
+  expect(called).toBe(false);
+});
+
+test("inline query and path credentials are blocked before calling fetch", async () => {
+  const token = "INLINE_REST_CREDENTIAL_CANARY";
+  const encoded = [...token].map((character) => `%${character.charCodeAt(0).toString(16)}`).join("");
+  for (const path of [`/tasks?name=${token}`, `/tasks?name=${encoded}`, `/tasks/${token}`, `/tasks/${encoded}`]) {
+    let called = false;
+    await expect(rawRequest(token, {
+      method: "POST", path,
+      fetchImpl: async () => { called = true; return Response.json({ data: {} }); },
+    })).rejects.toThrow("Request data contains a credential");
+    expect(called).toBe(false);
+  }
+});
+
+test("malformed percent encoding fails as a validation error before fetch", async () => {
+  let called = false;
+  await expect(rawRequest("TEST_REST_TOKEN", {
+    method: "GET", path: "/tasks/%ZZ",
+    fetchImpl: async () => { called = true; return Response.json({ data: {} }); },
+  })).rejects.toMatchObject({ code: "validation" });
+  expect(called).toBe(false);
+});

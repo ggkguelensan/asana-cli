@@ -1,6 +1,7 @@
 import { asanaHttpErrorCode, CliError } from "./errors";
 import { z } from "zod";
 import { jsonObjectSchema, jsonValueSchema } from "./schemas";
+import { assertNoKnownSecrets, registerSecret } from "./security";
 import { CLI_VERSION } from "./version";
 
 const BASE_URL = "https://app.asana.com/api/1.0";
@@ -11,7 +12,7 @@ export interface RawRequestOptions {
   path: string;
   query?: Record<string, unknown>;
   data?: unknown;
-  fetchImpl?: typeof fetch;
+  fetchImpl?: (url: URL, init: RequestInit) => Promise<Response>;
 }
 
 const rawErrorSchema = z.looseObject({
@@ -47,6 +48,14 @@ export async function rawRequest(pat: string, options: RawRequestOptions): Promi
   if (hasBody && !jsonValueSchema.safeParse(options.data).success) {
     throw new CliError("validation", "Raw request body must be a JSON value");
   }
+  let decodedPath: string;
+  try {
+    decodedPath = decodeURIComponent(url.pathname);
+  } catch {
+    throw new CliError("validation", "API path contains invalid percent encoding");
+  }
+  registerSecret(pat);
+  assertNoKnownSecrets([decodedPath, [...url.searchParams], options.query, options.data]);
   const response = await (options.fetchImpl ?? fetch)(url, {
     method,
     redirect: "error",

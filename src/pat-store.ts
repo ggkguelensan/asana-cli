@@ -136,8 +136,3 @@ export async function readPatInteractively(): Promise<string> {
     process.stdin.on("data", onData);
   });
 }
-
-export const PAT_STORE_INFO = {
-  service: SERVICE,
-  name: NAME,
-};

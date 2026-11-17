@@ -14,7 +14,7 @@ describe("maintainer quality gate", () => {
     expect(fast[0]?.command).toEqual(["bun", "run", "typecheck"]);
     expect(fast.map((step) => step.name)).not.toContain("client evidence");
     expect(fast.map((step) => step.name)).toContain("Fallow code health");
-    expect(ci.map((step) => step.name)).toContain("client evidence");
+    expect(ci.map((step) => step.name)).toContain("CLI contract");
     expect(ci.map((step) => step.name)).toContain("Fallow code health");
     expect(ci.at(-1)?.command).toEqual(["./dist/asana-cli", "--version"]);
     expect([...release.slice(0, ci.length)]).toEqual([...ci]);
@@ -36,7 +36,7 @@ describe("maintainer quality gate", () => {
     };
 
     expect(runQualityGate("fast", executor)).rejects.toThrow(
-      "Quality gate failed at client compatibility",
+      "Quality gate failed at Fallow code health",
     );
     expect(calls).toEqual(
       expected.slice(0, 3).map((step) => [...step.command]),
