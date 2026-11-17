@@ -19,7 +19,7 @@ jobs:
         with:
           bun-version: 1.3.14
       - run: bun install --frozen-lockfile
-      - uses: fallow-rs/fallow@71369f80d099e25726ad04382f15aef14a251abc # v3.31.0
+      - uses: fallow-rs/fallow@d052786ef2baf78fa5b196f06dbccd6f0d26798e # v3.38.1
         with:
           command: audit
           version: 3.31.0
