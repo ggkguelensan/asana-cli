@@ -35,32 +35,6 @@ export async function readJsonInput<S extends z.ZodType>(
   }
 }
 
-export async function readAgentJsonInput<S extends z.ZodType>(
-  value: string | undefined,
-  schema: S,
-): Promise<z.output<S>> {
-  if (value !== "-") {
-    throw new CliError("usage", "Agent commands require JSON on stdin via --input -");
-  }
-  const text = await Bun.stdin.text();
-  if (new TextEncoder().encode(text).byteLength > 65_536) {
-    throw new CliError("validation", "Agent input exceeds the 64 KiB limit");
-  }
-  if (!text.trim()) throw new CliError("validation", "Agent input is empty");
-  try {
-    const decoded: unknown = JSON.parse(text);
-    const parsed = schema.safeParse(decoded);
-    if (!parsed.success) {
-      throw new CliError("validation", `Agent input validation failed: ${zodIssueSummary(parsed.error)}`);
-    }
-    return parsed.data;
-  } catch (error) {
-    if (error instanceof CliError) throw error;
-    const message = error instanceof Error ? error.message : String(error);
-    throw new CliError("validation", `Agent input is not valid JSON: ${message}`);
-  }
-}
-
 export function printJson(value: unknown, compact = false): void {
   process.stdout.write(`${JSON.stringify(value, null, compact ? 0 : 2)}\n`);
 }

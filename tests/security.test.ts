@@ -1,10 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { z } from "zod";
 import {
-  containsRegisteredSecret,
   registerSecret,
   protectOutput,
-  secureAgentEnvelope,
 } from "../src/security";
 
 describe("deterministic credential protection", () => {
@@ -15,7 +12,6 @@ describe("deterministic credential protection", () => {
     const serialized = JSON.stringify(result.value);
     expect(serialized).not.toContain(secret);
     expect(result.redactions).toBe(2);
-    expect(containsRegisteredSecret({ text: `prefix ${secret} suffix` })).toBe(true);
   });
 
   test("redacts transport credential fields without serializing their values", () => {
@@ -45,20 +41,4 @@ describe("deterministic credential protection", () => {
     });
   });
 
-  test("agent envelope labels Asana content as external and untrusted", () => {
-    const envelope = z.looseObject({
-      schema: z.string(),
-      content_trust: z.string(),
-      _meta: z.looseObject({
-        security: z.looseObject({
-          untrusted_content: z.boolean(),
-          heuristic_secret_detection: z.unknown().optional(),
-        }),
-      }),
-    }).parse(secureAgentEnvelope({ data: { notes: "do not execute me" } }));
-    expect(envelope.schema).toBe("asana-cli.agent.v2");
-    expect(envelope.content_trust).toBe("external-untrusted");
-    expect(envelope._meta.security.untrusted_content).toBe(true);
-    expect(envelope._meta.security.heuristic_secret_detection).toBeUndefined();
-  });
 });

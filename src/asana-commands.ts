@@ -63,38 +63,7 @@ export const STORY_FIELDS = [
   "is_edited",
 ].join(",");
 
-export const AGENT_TASK_FIELDS = [
-  "gid",
-  "name",
-  "completed",
-  "completed_at",
-  "assignee",
-  "assignee.gid",
-  "assignee.name",
-  "due_on",
-  "due_at",
-  "start_on",
-  "projects",
-  "projects.gid",
-  "projects.name",
-  "memberships",
-  "memberships.project.gid",
-  "memberships.project.name",
-  "memberships.section.gid",
-  "memberships.section.name",
-  "permalink_url",
-  "modified_at",
-].join(",");
-
-export const AGENT_USER_FIELDS = [
-  "gid",
-  "name",
-  "workspaces",
-  "workspaces.gid",
-  "workspaces.name",
-].join(",");
-
-interface CommandPageOptions {
+export interface CommandPageOptions {
   all: boolean;
   maxResults: number;
 }
@@ -205,14 +174,6 @@ export async function getTask(client: AsanaClient, gid: string, fields: string):
   return invokeApiMethod(client, "TasksApi", "getTask", [gid, { opt_fields: fields }]);
 }
 
-export async function getProject(client: AsanaClient, gid: string, fields: string): Promise<unknown> {
-  return invokeApiMethod(client, "ProjectsApi", "getProject", [gid, { opt_fields: fields }]);
-}
-
-export async function getSection(client: AsanaClient, gid: string, fields: string): Promise<unknown> {
-  return invokeApiMethod(client, "SectionsApi", "getSection", [gid, { opt_fields: fields }]);
-}
-
 export async function getTaskComments(
   client: AsanaClient,
   gid: string,
@@ -275,91 +236,6 @@ export async function addTaskComment(
   ]);
 }
 
-export async function createTask(
-  client: AsanaClient,
-  data: Record<string, unknown>,
-  fields: string,
-): Promise<unknown> {
-  return invokeApiMethod(client, "TasksApi", "createTask", [
-    { data },
-    { opt_fields: fields },
-  ]);
-}
-
-export async function createSubtask(
-  client: AsanaClient,
-  parentTaskGid: string,
-  data: Record<string, unknown>,
-  fields: string,
-): Promise<unknown> {
-  return invokeApiMethod(client, "TasksApi", "createSubtaskForTask", [
-    { data },
-    parentTaskGid,
-    { opt_fields: fields },
-  ]);
-}
-
-export async function addTaskToProject(
-  client: AsanaClient,
-  taskGid: string,
-  projectGid: string,
-  sectionGid?: string,
-): Promise<unknown> {
-  return invokeApiMethod(client, "TasksApi", "addProjectForTask", [
-    {
-      data: {
-        project: projectGid,
-        ...(sectionGid === undefined ? {} : { section: sectionGid }),
-      },
-    },
-    taskGid,
-  ]);
-}
-
-export async function removeTaskFromProject(
-  client: AsanaClient,
-  taskGid: string,
-  projectGid: string,
-): Promise<unknown> {
-  return invokeApiMethod(client, "TasksApi", "removeProjectForTask", [
-    { data: { project: projectGid } },
-    taskGid,
-  ]);
-}
-
-export async function moveTaskToSection(
-  client: AsanaClient,
-  taskGid: string,
-  sectionGid: string,
-): Promise<unknown> {
-  return invokeApiMethod(client, "SectionsApi", "addTaskForSection", [
-    sectionGid,
-    { body: { data: { task: taskGid } } },
-  ]);
-}
-
-export async function addTaskDependency(
-  client: AsanaClient,
-  taskGid: string,
-  dependencyTaskGid: string,
-): Promise<unknown> {
-  return invokeApiMethod(client, "TasksApi", "addDependenciesForTask", [
-    { data: { dependencies: [dependencyTaskGid] } },
-    taskGid,
-  ]);
-}
-
-export async function removeTaskDependency(
-  client: AsanaClient,
-  taskGid: string,
-  dependencyTaskGid: string,
-): Promise<unknown> {
-  return invokeApiMethod(client, "TasksApi", "removeDependenciesForTask", [
-    { data: { dependencies: [dependencyTaskGid] } },
-    taskGid,
-  ]);
-}
-
 export async function searchTasks(
   client: AsanaClient,
   query: string,
@@ -369,7 +245,6 @@ export async function searchTasks(
     mine: boolean;
     completed?: boolean;
     extra?: Record<string, unknown>;
-    includeText?: boolean;
   },
 ): Promise<unknown> {
   if (!query.trim()) throw new CliError("validation", "Search query must not be empty");
@@ -383,7 +258,7 @@ export async function searchTasks(
     const result = await invokeApiMethod(client, "TasksApi", "searchTasksForWorkspace", [
       workspace.gid,
       {
-        ...(options.includeText === false ? {} : { text: query }),
+        text: query,
         opt_fields: options.fields,
         ...(options.mine ? { "assignee.any": "me" } : {}),
         ...(options.completed === undefined ? {} : { completed: options.completed }),

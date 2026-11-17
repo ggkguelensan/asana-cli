@@ -36,7 +36,7 @@ jobs:
       - run: bun audit --production
       - run: bun run check
 
-  native-integration-lifecycle:
+  native-cli:
     strategy:
       fail-fast: false
       matrix:
@@ -48,5 +48,4 @@ jobs:
         with:
           bun-version: 1.3.14
       - run: bun install --frozen-lockfile
-      - run: bun run build
-      - run: bun run test:integration-lifecycle
+      - run: bun run test:black-box

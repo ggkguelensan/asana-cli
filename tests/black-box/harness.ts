@@ -2,8 +2,8 @@ import { mkdir, mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
-export const projectRoot = resolve(import.meta.dir, "../..");
-export const binary = join(projectRoot, "dist", "asana-cli");
+const projectRoot = resolve(import.meta.dir, "../..");
+const binary = join(projectRoot, "dist", "asana-cli");
 
 export type BlackBoxFixture = Readonly<{
   root: string;
@@ -110,7 +110,7 @@ export async function runBinary(
   }
 }
 
-export function decodeJson(text: string, label: string): unknown {
+function decodeJson(text: string, label: string): unknown {
   try {
     return JSON.parse(text) as unknown;
   } catch (error) {
@@ -141,48 +141,6 @@ export function record(value: unknown, label: string): Record<string, unknown> {
     throw new Error(`${label} must be an object`);
   }
   return value as Record<string, unknown>;
-}
-
-export function array(value: unknown, label: string): unknown[] {
-  if (!Array.isArray(value)) throw new Error(`${label} must be an array`);
-  return value;
-}
-
-export function text(value: unknown, label: string): string {
-  if (typeof value !== "string") throw new Error(`${label} must be a string`);
-  return value;
-}
-
-export function number(value: unknown, label: string): number {
-  if (typeof value !== "number") throw new Error(`${label} must be a number`);
-  return value;
-}
-
-export function wireError(payload: unknown): Record<string, unknown> {
-  const root = record(payload, "error payload");
-  const direct = root.error;
-  if (direct !== undefined) return record(direct, "error");
-  return record(record(root.result, "agent error result").error, "agent error");
-}
-
-export function git(
-  fixture: BlackBoxFixture,
-  cwd: string,
-  args: readonly string[],
-): string {
-  const result = Bun.spawnSync(["git", ...args], {
-    cwd,
-    env: fixture.environment,
-    stdin: "ignore",
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-  if (result.exitCode !== 0) {
-    throw new Error(
-      `git ${args.join(" ")} exited ${result.exitCode}: ${new TextDecoder().decode(result.stderr)}`,
-    );
-  }
-  return new TextDecoder().decode(result.stdout).trim();
 }
 
 export async function allFilesystemEntries(root: string): Promise<string[]> {

@@ -1,24 +1,11 @@
-## Summary
+## Outcome
 
-<!-- What changes, and why? -->
+<!-- Describe resulting Asana CLI behavior and any removed public interfaces. -->
 
-## Contract and risk
+## Validation
 
-- [ ] Public CLI/agent behavior is unchanged, or the protocol and migration are documented.
-- [ ] Trust boundaries, filesystem state, and write authorization were considered.
-- [ ] `tests/black-box/` remains compiled-binary-only.
-- [ ] Generated artifacts were produced by their generator, not edited manually.
-- [ ] Changes under the client subject digest have matching fresh evidence.
+<!-- Record exact checks and any unverified behavior. -->
 
-## Verification
-
-<!-- List exact commands and important manual checks. -->
-
-- [ ] `bun run check:fast`
 - [ ] `bun run check`
-- [ ] Release-only: `bun run check:release`
-
-## Worktree hygiene
-
-- [ ] The branch has a dedicated worktree or no concurrent agent shares its checkout.
-- [ ] No credentials, local state, build output, or unrelated changes are included.
+- [ ] Public command changes are reflected in help and migration documentation.
+- [ ] No credentials, build output, or local state are included.

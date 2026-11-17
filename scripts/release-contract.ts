@@ -16,27 +16,11 @@ export type ReleaseContractExecutor = (
 export function releaseContractCommands(binaryPath: string): readonly (readonly string[])[] {
   const binary = binaryPathSchema.parse(binaryPath);
   return Object.freeze([
-    ["bun", "run", "check:generated-integrations"],
-    ["bun", "run", "check:client-compatibility"],
-    ["bun", "run", "check:gemini-extension"],
-    ["bun", "run", "check:v1-audit"],
     ["bun", "run", "check:support-matrix"],
     ["bun", "run", "check:release-workflow"],
-    ["bun", "run", "check:client-evidence"],
-    ["bun", "run", "check:native-client-evidence"],
-    ["bun", "run", "check:integration-lifecycle-evidence"],
     ["bun", "run", "check:package-content", "--", binary],
-    ["bun", "run", "--no-env-file", "scripts/check-v1-examples.ts", binary],
-    [
-      "bun",
-      "test",
-      "tests/agent-protocol.test.ts",
-      "tests/agent-v02-compat.test.ts",
-      "tests/client-eval-contract.test.ts",
-      "tests/package-content.test.ts",
-      "tests/security.test.ts",
-    ],
   ].map((command) => Object.freeze(command)));
+
 }
 
 async function execute(command: readonly string[]): Promise<ReleaseContractResult> {

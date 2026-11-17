@@ -8,12 +8,7 @@ export const cliErrorCodeSchema = z.enum([
   "auth-failed",
   "policy-denied",
   "not-found",
-  "ambiguous",
   "conflict",
-  "stale",
-  "expired",
-  "unknown-result",
-  "storage-locked",
   "storage-invalid",
   "network",
   "asana-api",
@@ -39,12 +34,7 @@ export const CLI_ERROR_REGISTRY = z.record(
   "auth-failed": { default_exit_code: 3, retryable: false },
   "policy-denied": { default_exit_code: 2, retryable: false },
   "not-found": { default_exit_code: 4, retryable: false },
-  ambiguous: { default_exit_code: 4, retryable: false },
   conflict: { default_exit_code: 4, retryable: false },
-  stale: { default_exit_code: 4, retryable: false },
-  expired: { default_exit_code: 4, retryable: false },
-  "unknown-result": { default_exit_code: 4, retryable: false },
-  "storage-locked": { default_exit_code: 4, retryable: true },
   "storage-invalid": { default_exit_code: 3, retryable: false },
   network: { default_exit_code: 1, retryable: true },
   "asana-api": { default_exit_code: 4, retryable: false },
@@ -63,7 +53,6 @@ export const errorPayloadSchema = z.strictObject({
   }),
 });
 
-export const AGENT_ERROR_SCHEMA_ID = "asana-cli.agent.error.v2" as const;
 
 export class CliError extends Error {
   readonly code: CliErrorCode;
@@ -111,35 +100,6 @@ const errorShapeSchema = z.looseObject({
 const apiErrorBodySchema = z.looseObject({
   message: z.string().optional(),
   errors: z.array(z.looseObject({ message: z.string().optional() })).optional(),
-});
-
-const operationJournalErrorCodeSchema = z.enum([
-  "NOT_FOUND",
-  "ALREADY_EXISTS",
-  "INVALID_RECORD",
-  "INSECURE_STORAGE",
-  "LOCKED",
-  "CORRUPT_LOCK",
-  "STORAGE_ERROR",
-]);
-
-const operationJournalErrorSchema = z.looseObject({
-  name: z.literal("OperationJournalError"),
-  code: operationJournalErrorCodeSchema,
-  message: z.string(),
-});
-
-const operationErrorCodeMap = z.record(
-  operationJournalErrorCodeSchema,
-  cliErrorCodeSchema,
-).parse({
-  NOT_FOUND: "not-found",
-  ALREADY_EXISTS: "conflict",
-  INVALID_RECORD: "storage-invalid",
-  INSECURE_STORAGE: "storage-invalid",
-  LOCKED: "storage-locked",
-  CORRUPT_LOCK: "storage-invalid",
-  STORAGE_ERROR: "storage-invalid",
 });
 
 const networkErrorSchema = z.looseObject({
@@ -197,12 +157,6 @@ export function asanaHttpErrorCode(status: number): CliErrorCode {
   return "asana-api";
 }
 
-function operationError(error: unknown): CliError | undefined {
-  const parsed = operationJournalErrorSchema.safeParse(error);
-  if (!parsed.success) return undefined;
-  return new CliError(operationErrorCodeMap[parsed.data.code], parsed.data.message);
-}
-
 function isNetworkError(error: unknown): boolean {
   const parsed = networkErrorSchema.safeParse(error);
   if (parsed.success) {
@@ -215,9 +169,6 @@ function isNetworkError(error: unknown): boolean {
 
 export function normalizeError(error: unknown, pat?: string): CliError {
   if (error instanceof CliError) return error;
-
-  const journalError = operationError(error);
-  if (journalError) return journalError;
 
   const status = httpStatus(error);
   const body = responseBody(error);
@@ -236,10 +187,6 @@ export function normalizeError(error: unknown, pat?: string): CliError {
   }
   if (isNetworkError(error)) return new CliError("network", message);
   return new CliError("internal", message);
-}
-
-export function errorStatus(error: unknown): number {
-  return httpStatus(error) ?? 0;
 }
 
 export function errorPayload(error: CliError): z.output<typeof errorPayloadSchema> {

@@ -35,3 +35,13 @@ describe("raw request safety", () => {
     expect((capturedInit?.headers as Record<string, string>).Authorization).toBe("Bearer opaque-token");
   });
 });
+
+test("raw requests block known credentials before calling fetch", async () => {
+  let called = false;
+  const token = "OUTBOUND_REST_CREDENTIAL_CANARY";
+  await expect(rawRequest(token, {
+    method: "POST", path: "/tasks", data: { data: { notes: token } },
+    fetchImpl: async () => { called = true; return Response.json({ data: {} }); },
+  })).rejects.toThrow("Request data contains a credential");
+  expect(called).toBe(false);
+});

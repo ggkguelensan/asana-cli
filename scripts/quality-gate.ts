@@ -15,107 +15,20 @@ export type QualityGateExecutor = (
   command: readonly string[],
 ) => Promise<QualityGateResult>;
 
-const typecheck: QualityGateStep = {
-  name: "typecheck",
-  command: ["bun", "run", "typecheck"],
-};
-const generatedIntegrations: QualityGateStep = {
-  name: "generated integrations",
-  command: ["bun", "run", "check:generated-integrations"],
-};
-const clientCompatibility: QualityGateStep = {
-  name: "client compatibility",
-  command: ["bun", "run", "check:client-compatibility"],
-};
-const geminiExtension: QualityGateStep = {
-  name: "Gemini extension",
-  command: ["bun", "run", "check:gemini-extension"],
-};
-const projectPlan: QualityGateStep = {
-  name: "project plan",
-  command: ["bun", "run", "check:project-plan"],
-};
-const supportMatrix: QualityGateStep = {
-  name: "support matrix",
-  command: ["bun", "run", "check:support-matrix"],
-};
-const fallow: QualityGateStep = {
-  name: "Fallow code health",
-  command: ["bun", "run", "check:fallow"],
-};
-const build: QualityGateStep = {
-  name: "build",
-  command: ["bun", "run", "build"],
-};
-const tests: QualityGateStep = {
-  name: "tests",
-  command: ["bun", "test"],
-};
-const version: QualityGateStep = {
-  name: "compiled version",
-  command: ["./dist/asana-cli", "--version"],
-};
-
 const fastSteps: readonly QualityGateStep[] = Object.freeze([
-  typecheck,
-  generatedIntegrations,
-  clientCompatibility,
-  geminiExtension,
-  projectPlan,
-  supportMatrix,
-  fallow,
-  build,
-  tests,
-  version,
+  { name: "typecheck", command: ["bun", "run", "typecheck"] },
+  { name: "support matrix", command: ["bun", "run", "check:support-matrix"] },
+  { name: "Fallow code health", command: ["bun", "run", "check:fallow"] },
+  { name: "release workflow", command: ["bun", "run", "check:release-workflow"] },
+  { name: "build", command: ["bun", "run", "build"] },
+  { name: "CLI contract", command: ["bun", "run", "check:package-content"] },
+  { name: "tests", command: ["bun", "test"] },
+  { name: "compiled version", command: ["./dist/asana-cli", "--version"] },
 ]);
-
-const ciSteps: readonly QualityGateStep[] = Object.freeze([
-  typecheck,
-  generatedIntegrations,
-  clientCompatibility,
-  geminiExtension,
-  projectPlan,
-  {
-    name: "v1 completion audit",
-    command: ["bun", "run", "check:v1-audit"],
-  },
-  supportMatrix,
-  fallow,
-  {
-    name: "release workflow",
-    command: ["bun", "run", "check:release-workflow"],
-  },
-  {
-    name: "client evidence",
-    command: ["bun", "run", "check:client-evidence"],
-  },
-  {
-    name: "native client evidence",
-    command: ["bun", "run", "check:native-client-evidence"],
-  },
-  {
-    name: "integration lifecycle evidence",
-    command: ["bun", "run", "check:integration-lifecycle-evidence"],
-  },
-  build,
-  {
-    name: "package content",
-    command: ["bun", "run", "check:package-content"],
-  },
-  {
-    name: "v1 examples",
-    command: ["bun", "run", "check:v1-examples"],
-  },
-  tests,
-  version,
-]);
-
+const ciSteps = fastSteps;
 const releaseSteps: readonly QualityGateStep[] = Object.freeze([
   ...ciSteps,
-  {
-    name: "release compatibility contract",
-    command: ["bun", "run", "release:contract", "--", "dist/asana-cli"],
-  },
+  { name: "release compatibility contract", command: ["bun", "run", "release:contract", "--", "dist/asana-cli"] },
 ]);
 
 export function qualityGateSteps(

@@ -24,7 +24,6 @@ const releaseWorkflow = [
     `            runner: ${target.runner}`,
   ]),
   "    steps:",
-  "      - run: bun run --no-env-file scripts/integration-lifecycle-e2e.ts \"dist/${{ matrix.output }}\" \"${{ matrix.target }}\" --output \"dist/${{ matrix.output }}.lifecycle.json\"",
   "  publish:",
   "    needs: build",
   "",
@@ -32,12 +31,12 @@ const releaseWorkflow = [
 
 const ciWorkflow = [
   "jobs:",
-  "  native-integration-lifecycle:",
+  "  native-cli:",
   "    strategy:",
   "      matrix:",
   "        runner: [ubuntu-latest, macos-14]",
   "    steps:",
-  "      - run: bun run test:integration-lifecycle",
+  "      - run: bun run test:black-box",
   "",
 ].join("\n");
 

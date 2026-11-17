@@ -9,20 +9,12 @@ import {
 const binary = resolve(import.meta.dir, "../dist/asana-cli");
 
 describe("release compatibility contract", () => {
-  test("pins generated skills, client evidence, lifecycle, package content, protocol and security", () => {
-    const commands = releaseContractCommands(binary).map((command) => command.join(" "));
-    expect(commands).toContain("bun run check:generated-integrations");
-    expect(commands).toContain("bun run check:client-compatibility");
-    expect(commands).toContain("bun run check:v1-audit");
-    expect(commands).toContain("bun run check:release-workflow");
-    expect(commands).toContain("bun run check:client-evidence");
-    expect(commands).toContain("bun run check:native-client-evidence");
-    expect(commands).toContain("bun run check:integration-lifecycle-evidence");
-    expect(commands).toContain(`bun run check:package-content -- ${binary}`);
-    expect(commands).toContain(`bun run --no-env-file scripts/check-v1-examples.ts ${binary}`);
-    expect(commands.at(-1)).toContain("tests/agent-protocol.test.ts");
-    expect(commands.at(-1)).toContain("tests/agent-v02-compat.test.ts");
-    expect(commands.at(-1)).toContain("tests/security.test.ts");
+  test("checks supported targets, release safety and the compiled CLI", () => {
+    expect(releaseContractCommands(binary)).toEqual([
+      ["bun", "run", "check:support-matrix"],
+      ["bun", "run", "check:release-workflow"],
+      ["bun", "run", "check:package-content", "--", binary],
+    ]);
   });
 
   test("runs in order and stops at the first failed contract gate", async () => {

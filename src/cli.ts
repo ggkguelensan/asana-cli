@@ -1,7 +1,6 @@
 import {
   booleanFlag,
   flag,
-  flagStrings,
   integerFlag,
   parseArgs,
   requirePositional,
@@ -21,7 +20,7 @@ import {
   TASK_FIELDS,
   updateTask,
 } from "./asana-commands";
-import { CliError, errorStatus } from "./errors";
+import { CliError } from "./errors";
 import { AUTH_HELP, HELP, PAT_HELP } from "./help";
 import { materializeFileReferences, readJsonInput, readTextInput } from "./io";
 import { rawRequest } from "./raw-request";
@@ -45,90 +44,33 @@ import {
   savePat,
   storedPat,
 } from "./pat-store";
-import { AGENT_MANIFEST, enforceAgentPolicy, isAgentMode } from "./agent-mode";
-import { rejectDeprecatedLegacyAgentApply } from "./agent-deprecations";
-import { runAgentCommand, runLocalAgentCommand } from "./agent-cli";
-import { FileMetadataAuditStore } from "./audit/file-repository";
-import { FixedFileHostScopedWritePolicyProvider } from "./host-write-policy";
-import { FixedFileRepositoryAsanaMappingProvider } from "./repository-asana-mapping";
-import { FixedFileRepositoryContextManifestProvider } from "./repository-context";
-import { FileOperationRepository } from "./operations/file-repository";
-import type { OperationRepository } from "./operations/repository";
 import {
   jsonArraySchema,
   jsonObjectSchema,
   jsonValueSchema,
   parseExternalData,
-  taskListEnvelopeSchema,
   userSchema,
-  zodIssueSummary,
-  type AsanaTask,
 } from "./schemas";
-import { publishAgentSchemas } from "./agent-contract";
-import { runIntegrationCommand } from "./integration-cli";
-import { runContextCommand } from "./context-cli";
 import { CLI_VERSION } from "./version";
-import { runUpdateCommand } from "./self-update";
 import { runDoctorCommand } from "./doctor";
-import {
-  agentOnboardingManifest,
-  runAgentSetupCommand,
-} from "./agent-setup";
-import { runInsightsCommand } from "./insights";
 import { runManualCommand } from "./manual";
 
-const completedModeSchema = z.enum(["false", "true", "all"]);
 const cliEnvironmentSchema = z.object({
   ASANA_ACCESS_TOKEN: z.string().optional(),
   ASANA_PAT: z.string().optional(),
-  ASANA_GIT_FIELD_GID: z.string().optional(),
 });
 
-function isExactLocalAgentCommand(args: ParsedArgs): boolean {
-  if (args.positionals[1] === "context") {
-    const flagNames = Object.keys(args.flags);
-    return Object.hasOwn(args.flags, "worktree-task") ||
-      Object.hasOwn(args.flags, "repository-asana") ||
-      Object.hasOwn(args.flags, "repository-context") ||
-      (
-        args.positionals.length === 2 &&
-        flagNames.length === 1 &&
-        flagNames[0] === "git-current" &&
-        args.flags["git-current"] === true
-      );
-  }
-  return args.positionals[1] === "operation" &&
-    args.positionals.length === 4 &&
-    args.positionals[2] === "status" &&
-    Object.keys(args.flags).length === 0 &&
-    z.uuid().safeParse(args.positionals[3]).success;
-}
-
-function lazyFileOperationRepository(): OperationRepository {
-  let fileRepository: FileOperationRepository | undefined;
-  const file = (): FileOperationRepository => {
-    fileRepository ??= new FileOperationRepository();
-    return fileRepository;
-  };
-  return {
-    create: (input) => file().create(input),
-    get: (id) => file().get(id),
-    inspect: (id) => file().inspect(id),
-    compareAndSet: (transition) => file().compareAndSet(transition),
-  };
-}
-
+const completedModeSchema = z.enum(["false", "true", "all"]);
 export interface CliResult {
   value?: unknown;
   text?: string;
   compact?: boolean;
-  agentMode?: boolean;
 }
 
 function pageOptions(args: ParsedArgs) {
   return {
     all: booleanFlag(args, "all", false) || booleanFlag(args, "paginate", false),
-    maxResults: integerFlag(args, "max-results", isAgentMode(args) ? 100 : 1000, 1, 100_000),
+    maxResults: integerFlag(args, "max-results", 1000, 1, 100_000),
   };
 }
 
@@ -207,115 +149,6 @@ async function updateData(args: ParsedArgs): Promise<Record<string, unknown>> {
     throw new CliError("validation", "due_on and due_at cannot be set at the same time");
   }
   return data;
-}
-
-function extractTasks(result: unknown): AsanaTask[] {
-  const parsed = taskListEnvelopeSchema.safeParse(result);
-  if (!parsed.success) {
-    throw new CliError("internal", `Invalid task list response: ${zodIssueSummary(parsed.error)}`);
-  }
-  return parsed.data.data;
-}
-
-function deduplicateTasks(tasks: AsanaTask[]): AsanaTask[] {
-  const seen = new Set<string>();
-  return tasks.filter((task) => {
-    const key = String(task?.gid ?? JSON.stringify(task));
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-}
-
-function taskSearchText(task: AsanaTask): string {
-  const customFields = Array.isArray(task?.custom_fields)
-    ? task.custom_fields.map((field) => field.display_value ?? field.text_value ?? "")
-    : [];
-  return [task?.name, task?.notes, task?.html_notes, ...customFields]
-    .filter((value) => typeof value === "string")
-    .join("\n");
-}
-
-function matchesGitReference(task: AsanaTask, reference: string, contains: boolean): boolean {
-  const haystack = taskSearchText(task);
-  if (contains) return haystack.toLowerCase().includes(reference.toLowerCase());
-  const escaped = reference.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return new RegExp(`(^|[^A-Za-z0-9])${escaped}($|[^A-Za-z0-9])`, "i").test(haystack);
-}
-
-async function findGitTasks(client: AsanaClient, args: ParsedArgs, reference: string): Promise<unknown> {
-  const page = pageOptions(args);
-  const workspace = stringFlag(args, "workspace");
-  const selectedFields = fields(args, TASK_FIELDS);
-  const mine = !booleanFlag(args, "all-assignees", false);
-  const contains = booleanFlag(args, "contains", false);
-  const environment = cliEnvironmentSchema.parse(process.env);
-  const configuredFields = [
-    ...flagStrings(args, "field"),
-    ...(environment.ASANA_GIT_FIELD_GID ?? "").split(",").filter(Boolean),
-  ];
-
-  try {
-    const results = [
-      await searchTasks(client, reference, {
-        ...page,
-        workspace,
-        fields: selectedFields,
-        mine,
-      }),
-    ];
-    for (const fieldGid of configuredFields) {
-      const operator = contains ? "contains" : "value";
-      results.push(await searchTasks(client, reference, {
-        ...page,
-        workspace,
-        fields: selectedFields,
-        mine,
-        includeText: false,
-        extra: { [`custom_fields.${fieldGid}.${operator}`]: reference },
-      }));
-    }
-    const merged = deduplicateTasks(results.flatMap(extractTasks));
-    const exact = merged.filter((task) => matchesGitReference(task, reference, contains));
-    return {
-      data: exact,
-      meta: {
-        query: reference,
-        count: exact.length,
-        mode: "asana-search",
-        exact_match: !contains,
-        custom_fields: configuredFields,
-        warnings: [
-          "Asana full-text search covers task names and descriptions, not comments.",
-          "Search indexing can lag behind recent task updates.",
-        ],
-      },
-    };
-  } catch (error) {
-    if (errorStatus(error) !== 402 || booleanFlag(args, "no-scan-fallback", false)) throw error;
-    const scanned = await getMyTasks(client, {
-      ...page,
-      all: true,
-      workspace,
-      completed: "all",
-      limit: integerFlag(args, "limit", 100, 1, 100),
-      fields: selectedFields,
-    });
-    const matches = deduplicateTasks(extractTasks(scanned)).filter((task) =>
-      matchesGitReference(task, reference, contains),
-    );
-    return {
-      data: matches,
-      meta: {
-        query: reference,
-        count: matches.length,
-        mode: "local-scan-fallback",
-        reason: "Asana advanced search returned HTTP 402 (Premium feature)",
-        exact_match: !contains,
-        scanned: extractTasks(scanned).length,
-      },
-    };
-  }
 }
 
 async function apiCommand(client: AsanaClient | undefined, args: ParsedArgs): Promise<CliResult> {
@@ -405,7 +238,7 @@ async function patCommand(args: ParsedArgs): Promise<CliResult> {
     }
 
     let user: unknown;
-    if (!booleanFlag(args, "no-verify", false)) {
+    if (booleanFlag(args, "verify", true)) {
       const me = await getMe(createClient(pat));
       user = parseExternalData(me, userSchema, "UsersApi.getUser");
     }
@@ -414,7 +247,7 @@ async function patCommand(args: ParsedArgs): Promise<CliResult> {
       value: {
         stored: true,
         storage: "os-credential-store",
-        verified: !booleanFlag(args, "no-verify", false),
+        verified: booleanFlag(args, "verify", true),
         ...(user ? { user } : {}),
         note: "ASANA_PAT and ASANA_ACCESS_TOKEN override the stored PAT when set.",
       },
@@ -455,6 +288,46 @@ async function patCommand(args: ParsedArgs): Promise<CliResult> {
   throw new CliError("usage", `Unknown auth pat action: ${action}`);
 }
 
+const commonFlags = ["compact", "help"];
+const pageFlags = ["all", "paginate", "max-results"];
+const taskReadFlags = ["fields", ...pageFlags];
+const commandFlags: Record<string, readonly string[]> = {
+  version: [], man: [], doctor: ["offline"], auth: [],
+  "auth pat": [], "auth pat set": ["stdin", "from-env", "verify"],
+  "auth pat status": [], "auth pat delete": [], "auth pat remove": [],
+  "auth pat help": [], "auth help": [], "auth status": [],
+  me: [], workspaces: pageFlags, "workspace list": pageFlags,
+  "api list": [], "api methods": [], "api docs": [], "api call": ["args", ...pageFlags],
+  request: ["query", "data", "body"],
+  "tasks mine": [...taskReadFlags, "workspace", "completed", "include-completed", "limit", "modified-since"],
+  "task mine": [...taskReadFlags, "workspace", "completed", "include-completed", "limit", "modified-since"],
+  "task get": ["fields"],
+  "task comments": [...taskReadFlags, "limit", "all-stories"],
+  "task stories": [...taskReadFlags, "limit", "all-stories"],
+  "task update": ["data", "input", "name", "notes", "html-notes", "assignee", "due-on", "due-at", "start-on", "completed", "not-completed", "unassign", "clear-due", "notes-file", "dry-run", "fields"],
+  "task comment": ["html-text", "text", "file", "stdin", "dry-run", "fields"],
+  "task search": [...taskReadFlags, "workspace", "all-assignees", "completed", "filters"],
+  "task get-custom-id": ["workspace", "fields"],
+};
+
+function validateCommand(args: ParsedArgs): void {
+  const command = args.positionals[0];
+  let key = command ?? "";
+  if (["task", "tasks", "api", "workspace"].includes(key)) {
+    key = args.positionals.slice(0, 2).join(" ");
+  } else if (key === "auth") {
+    key = args.positionals.slice(0, args.positionals[1] === "pat" ? 3 : 2).join(" ");
+  }
+  const discovery = command === undefined || command === "help";
+  if (!discovery && !Object.hasOwn(commandFlags, key)) {
+    throw new CliError("usage", `Unknown command: ${key}. Run \`asana-cli --help\`.`);
+  }
+  const allowed = new Set([...commonFlags, ...(discovery ? ["version"] : commandFlags[key]), "version"]);
+  for (const name of Object.keys(args.flags)) {
+    if (!allowed.has(name)) throw new CliError("usage", `Unsupported option: --${name}`);
+  }
+}
+
 export async function runCli(argv: string[]): Promise<CliResult> {
   const args = parseArgs(argv);
   const command = args.positionals[0];
@@ -466,74 +339,15 @@ export async function runCli(argv: string[]): Promise<CliResult> {
       );
     }
   }
-  if (command === "agent") rejectDeprecatedLegacyAgentApply(args.positionals[1]);
-  enforceAgentPolicy(args);
+  validateCommand(args);
   const compact = booleanFlag(args, "compact", false);
-  if (Object.hasOwn(args.flags, "agents")) {
-    if (
-      !booleanFlag(args, "agents") ||
-      command !== undefined ||
-      Object.keys(args.flags).some((name) => !["agents", "compact"].includes(name))
-    ) {
-      throw new CliError("usage", "Usage: asana-cli --agents [--compact]");
-    }
-    return {
-      value: agentOnboardingManifest(),
-      compact,
-      agentMode: true,
-    };
-  }
   if (flag(args, "version") === true || command === "version") return { text: CLI_VERSION };
   if (!command || flag(args, "help") === true || command === "help") return { text: HELP };
   if (command === "man") {
     return { text: runManualCommand(args) };
   }
-  if (command === "agent-setup") {
-    return {
-      value: await runAgentSetupCommand(args),
-      compact,
-      agentMode: true,
-    };
-  }
-  if (command === "insights") {
-    return { value: await runInsightsCommand(args), compact };
-  }
-  if (command === "update") {
-    return { value: await runUpdateCommand(args), compact };
-  }
   if (command === "doctor") {
     return { value: await runDoctorCommand(args), compact };
-  }
-  if (command === "integrations") {
-    const result = await runIntegrationCommand(args);
-    return { ...result, compact };
-  }
-  if (command === "context") {
-    return { value: await runContextCommand(args), compact };
-  }
-  if (command === "agent" && args.positionals[1] === "schema") {
-    return {
-      value: publishAgentSchemas(args.positionals[2]),
-      compact,
-      agentMode: true,
-    };
-  }
-  if (
-    command === "agent" &&
-    (args.positionals[1] === undefined || ["manifest", "capabilities"].includes(args.positionals[1]))
-  ) {
-    return { value: AGENT_MANIFEST, compact, agentMode: true };
-  }
-  if (command === "agent" && isExactLocalAgentCommand(args)) {
-    return {
-      value: await runLocalAgentCommand(args, {
-        operations: lazyFileOperationRepository(),
-        repositoryAsanaMapping: new FixedFileRepositoryAsanaMappingProvider(),
-        repositoryContext: new FixedFileRepositoryContextManifestProvider(),
-      }),
-      compact: true,
-      agentMode: true,
-    };
   }
   if (command === "auth" && (args.positionals[1] === undefined || args.positionals[1] === "help")) {
     return { text: AUTH_HELP };
@@ -560,17 +374,6 @@ export async function runCli(argv: string[]): Promise<CliResult> {
         user: parseExternalData(me, userSchema, "UsersApi.getUser"),
       },
       compact,
-    };
-  }
-  if (command === "agent") {
-    return {
-      value: await runAgentCommand(client, args, {
-        operations: lazyFileOperationRepository(),
-        writePolicy: new FixedFileHostScopedWritePolicyProvider(),
-        audit: new FileMetadataAuditStore(),
-      }),
-      compact: true,
-      agentMode: true,
     };
   }
   if (command === "me") return { value: await getMe(client), compact };
@@ -649,10 +452,9 @@ export async function runCli(argv: string[]): Promise<CliResult> {
       }
       return { value: await addTaskComment(client, gid, content, fields(args, STORY_FIELDS)), compact };
     }
-    if (action === "search" || action === "search-git" || action === "find-git") {
+    if (action === "search") {
       const query = args.positionals.slice(2).join(" ");
       if (!query) throw new CliError("usage", "Missing search query");
-      if (action !== "search") return { value: await findGitTasks(client, args, query), compact };
       const filtersInput = stringFlag(args, "filters");
       const extra = filtersInput
         ? await readJsonInput(filtersInput, "--filters", jsonObjectSchema)

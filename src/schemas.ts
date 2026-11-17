@@ -5,7 +5,6 @@ export const jsonValueSchema = z.json();
 export const jsonObjectSchema = z.record(z.string(), jsonValueSchema);
 export const jsonArraySchema = z.array(jsonValueSchema);
 
-export const gidSchema = z.string().regex(/^\d{1,64}$/, "must be a numeric Asana GID");
 
 export const workspaceSchema = z.looseObject({
   gid: z.string(),
@@ -19,14 +18,14 @@ export const userSchema = z.looseObject({
   workspaces: z.array(workspaceSchema).optional(),
 });
 
-export const customFieldSchema = z.looseObject({
+const customFieldSchema = z.looseObject({
   gid: z.string().optional(),
   name: z.string().optional(),
   display_value: z.unknown().optional(),
   text_value: z.unknown().optional(),
 });
 
-export const resourceReferenceSchema = z.looseObject({
+const resourceReferenceSchema = z.looseObject({
   gid: z.string(),
   name: z.string().optional(),
 });
@@ -72,14 +71,8 @@ export const storySchema = z.looseObject({
   is_edited: z.boolean().optional(),
 });
 
-export const taskListEnvelopeSchema = z.looseObject({
-  data: z.array(taskSchema),
-});
-
 const dataEnvelopeSchema = z.looseObject({ data: z.unknown() });
 
-export type JsonObject = z.infer<typeof jsonObjectSchema>;
-export type AsanaTask = z.infer<typeof taskSchema>;
 export type AsanaUser = z.infer<typeof userSchema>;
 export type Workspace = z.infer<typeof workspaceSchema>;
 

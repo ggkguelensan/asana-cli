@@ -73,7 +73,7 @@ export function buildHomebrewFormula(input: HomebrewFormulaInput): string {
 
   return [
     "class AsanaCli < Formula",
-    '  desc "Safe single-binary CLI and agent protocol for Asana"',
+    '  desc "Standalone CLI for the Asana API"',
     '  homepage "https://github.com/ggkguelensan/asana-cli"',
     `  version "${version}"`,
     '  license "MIT"',

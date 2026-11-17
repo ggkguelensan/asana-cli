@@ -8,7 +8,6 @@ const sha256Schema = z.string().regex(/^[a-f0-9]{64}$/);
 const safeReleaseFileSchema = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9.-]*$/);
 
 export const RELEASE_SIDECAR_SUFFIXES = Object.freeze([
-  ".lifecycle.json",
   ".spdx.json",
   ".reproducibility.json",
   ".provenance.sigstore.json",
@@ -22,7 +21,6 @@ export const RELEASE_PAYLOAD_NAMES = Object.freeze([
   ]),
   "asana-cli.rb",
   "install.sh",
-  "release-evidence.json",
 ].sort());
 
 export const RELEASE_DISTRIBUTION_NAMES = Object.freeze([
