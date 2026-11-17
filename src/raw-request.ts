@@ -48,8 +48,14 @@ export async function rawRequest(pat: string, options: RawRequestOptions): Promi
   if (hasBody && !jsonValueSchema.safeParse(options.data).success) {
     throw new CliError("validation", "Raw request body must be a JSON value");
   }
+  let decodedPath: string;
+  try {
+    decodedPath = decodeURIComponent(url.pathname);
+  } catch {
+    throw new CliError("validation", "API path contains invalid percent encoding");
+  }
   registerSecret(pat);
-  assertNoKnownSecrets([options.query, options.data]);
+  assertNoKnownSecrets([decodedPath, [...url.searchParams], options.query, options.data]);
   const response = await (options.fetchImpl ?? fetch)(url, {
     method,
     redirect: "error",

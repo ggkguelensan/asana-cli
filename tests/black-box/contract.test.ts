@@ -23,6 +23,25 @@ describe("compiled Asana CLI public interface", () => {
       expect(help.stdout).not.toMatch(/agent-setup|--agents|integrations install|worktree/);
     } finally { await removeFixture(fixture); }
   });
+  test("global help and version work for existing groups without restoring removed commands", async () => {
+    const fixture = await createFixture("asana-group-help-");
+    try {
+      const version = await runBinary(fixture, ["--version"]);
+      for (const group of [["task"], ["tasks"], ["api"], ["workspace"], ["auth"], ["auth", "pat"]]) {
+        const help = await runBinary(fixture, [...group, "--help"]);
+        expect(help.exitCode).toBe(0);
+        expect(help.stdout).toContain("USAGE");
+        const result = await runBinary(fixture, [...group, "--version"]);
+        expect(result.exitCode).toBe(0);
+        expect(result.stdout).toBe(version.stdout);
+      }
+      for (const group of [["agent"], ["context"], ["task", "find-git"]]) {
+        const result = await runBinary(fixture, [...group, "--help"]);
+        expect(result.exitCode).toBe(2);
+        expect(JSON.parse(result.stderr)).toMatchObject({ error: { code: "usage" } });
+      }
+    } finally { await removeFixture(fixture); }
+  });
   test("has plain JSON errors and rejects SDK HTTP response methods", async () => {
     const fixture = await createFixture("asana-errors-");
     try {

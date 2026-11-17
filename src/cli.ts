@@ -319,10 +319,12 @@ function validateCommand(args: ParsedArgs): void {
     key = args.positionals.slice(0, args.positionals[1] === "pat" ? 3 : 2).join(" ");
   }
   const discovery = command === undefined || command === "help";
-  if (!discovery && !Object.hasOwn(commandFlags, key)) {
+  const globalDiscovery = flag(args, "help") === true || flag(args, "version") === true;
+  const knownGroup = globalDiscovery && Object.keys(commandFlags).some((name) => name.startsWith(`${key} `));
+  if (!discovery && !Object.hasOwn(commandFlags, key) && !knownGroup) {
     throw new CliError("usage", `Unknown command: ${key}. Run \`asana-cli --help\`.`);
   }
-  const allowed = new Set([...commonFlags, ...(discovery ? ["version"] : commandFlags[key]), "version"]);
+  const allowed = new Set([...commonFlags, ...(commandFlags[key] ?? []), "version"]);
   for (const name of Object.keys(args.flags)) {
     if (!allowed.has(name)) throw new CliError("usage", `Unsupported option: --${name}`);
   }
