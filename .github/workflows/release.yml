@@ -38,7 +38,7 @@ jobs:
         include:
           - target: bun-darwin-arm64
             output: asana-cli-darwin-arm64
-            runner: macos-14
+            runner: macos-15
           - target: bun-darwin-x64
             output: asana-cli-darwin-x64
             runner: macos-15-intel

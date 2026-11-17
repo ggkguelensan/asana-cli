@@ -34,7 +34,7 @@ const ciWorkflow = [
   "  native-cli:",
   "    strategy:",
   "      matrix:",
-  "        runner: [ubuntu-latest, macos-14]",
+  "        runner: [ubuntu-latest, macos-15]",
   "    steps:",
   "      - run: bun run test:black-box",
   "",

@@ -310,18 +310,27 @@ const commandFlags: Record<string, readonly string[]> = {
   "task get-custom-id": ["workspace", "fields"],
 };
 
-function validateCommand(args: ParsedArgs): void {
-  const command = args.positionals[0];
-  let key = command ?? "";
-  if (["task", "tasks", "api", "workspace"].includes(key)) {
-    key = args.positionals.slice(0, 2).join(" ");
-  } else if (key === "auth") {
-    key = args.positionals.slice(0, args.positionals[1] === "pat" ? 3 : 2).join(" ");
+function commandKey(args: ParsedArgs): string {
+  const command = args.positionals[0] ?? "";
+  if (["task", "tasks", "api", "workspace"].includes(command)) {
+    return args.positionals.slice(0, 2).join(" ");
   }
-  const discovery = command === undefined || command === "help";
-  const globalDiscovery = flag(args, "help") === true || flag(args, "version") === true;
-  const knownGroup = globalDiscovery && Object.keys(commandFlags).some((name) => name.startsWith(`${key} `));
-  if (!discovery && !Object.hasOwn(commandFlags, key) && !knownGroup) {
+  if (command === "auth") {
+    return args.positionals.slice(0, args.positionals[1] === "pat" ? 3 : 2).join(" ");
+  }
+  return command;
+}
+
+function isKnownCommand(args: ParsedArgs, key: string): boolean {
+  if (args.positionals[0] === undefined || args.positionals[0] === "help") return true;
+  if (Object.hasOwn(commandFlags, key)) return true;
+  const discovery = flag(args, "help") === true || flag(args, "version") === true;
+  return discovery && Object.keys(commandFlags).some((name) => name.startsWith(`${key} `));
+}
+
+function validateCommand(args: ParsedArgs): void {
+  const key = commandKey(args);
+  if (!isKnownCommand(args, key)) {
     throw new CliError("usage", `Unknown command: ${key}. Run \`asana-cli --help\`.`);
   }
   const allowed = new Set([...commonFlags, ...(commandFlags[key] ?? []), "version"]);
